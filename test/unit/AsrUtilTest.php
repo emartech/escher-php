@@ -9,7 +9,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
 
     protected function setUp()
     {
-        $this->util = new AsrUtil();
+        $this->util = new AsrUtil(new SigningAlgorithm(SigningAlgorithm::SHA_256));
     }
 
     /**
@@ -26,7 +26,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateStringToSign()
     {
-        $result = $this->util->createStringToSign($this->algorithm(), $this->fullDate(), $this->credentialScope(), $this->canonicalHash());
+        $result = $this->util->createStringToSign($this->fullDate(), $this->credentialScope(), $this->canonicalHash());
         $this->assertEquals($this->stringToSign(), $result);
     }
 
@@ -54,7 +54,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function stringToSign()
     {
-        return implode("\n", array($this->algorithm(), $this->fullDate(), $this->credentialScope(), $this->canonicalHash()));
+        return implode("\n", array('AWS4-HMAC-SHA256', $this->fullDate(), $this->credentialScope(), $this->canonicalHash()));
     }
 
     /**
@@ -140,15 +140,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         return '20110909T233600Z';
     }
-
-    /**
-     * @return string
-     */
-    private function algorithm()
-    {
-        return 'AWS4-HMAC-SHA256';
-    }
-
     /**
      * @return string
      */
