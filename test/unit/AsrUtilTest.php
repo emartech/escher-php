@@ -35,7 +35,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateStringToSign()
     {
-        $result = $this->util->generateStringToSign($this->fullDate(), $this->credentialScope(), $this->canonicalHash());
+        $result = $this->util->generateStringToSign($this->fullDate(), $this->credentialScope($this->shortDate()), $this->canonicalHash());
         $this->assertEquals($this->stringToSign(), $result);
     }
 
@@ -45,7 +45,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     public function itShouldCalculateSigningKey()
     {
         $shortDate = '20120215';
-        $result = $this->util->generateSigningKey($shortDate, $this->region(), $this->service(), $this->secretKey());
+        $result = $this->util->generateSigningKey($this->credentials($shortDate), $this->secretKey());
         $this->assertEquals($this->signingKey(), bin2hex($result));
     }
 
@@ -54,7 +54,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignString()
     {
-        $result = $this->util->sign($this->stringToSign(), $this->shortDate(), $this->region(), $this->service(), $this->secretKey());
+        $result = $this->util->sign($this->stringToSign(), $this->credentials($this->shortDate()), $this->secretKey());
         $this->assertEquals($this->signedRequest(), $result);
     }
 
@@ -63,7 +63,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function stringToSign()
     {
-        return implode("\n", array('AWS4-HMAC-SHA256', $this->fullDate(), $this->credentialScope(), $this->canonicalHash()));
+        return implode("\n", array('AWS4-HMAC-SHA256', $this->fullDate(), $this->credentialScope($this->shortDate()), $this->canonicalHash()));
     }
 
     /**
@@ -150,10 +150,20 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
         return '20110909T233600Z';
     }
     /**
+     * @param $shortDate
      * @return string
      */
-    private function credentialScope()
+    private function credentialScope($shortDate)
     {
-        return implode('/', array($this->shortDate(), $this->region(), $this->service(), 'aws4_request'));
+        return implode('/', $this->credentials($shortDate));
+    }
+
+    /**
+     * @param $shortDate
+     * @return array
+     */
+    private function credentials($shortDate)
+    {
+        return array($shortDate, $this->region(), $this->service(), 'aws4_request');
     }
 }

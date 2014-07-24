@@ -22,22 +22,23 @@ class AsrUtil
         $shortDate       = substr($fullDate, 0, 8);
         $signedHeaders   = array_keys($headers);
         $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
-        $credentialScope = $this->generateCredentialScope($shortDate, $region, $service);
+        $credentials     = array($shortDate, $region, $service, 'aws4_request');
+        $credentialScope = implode('/', $credentials);
         $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
-        $signingKey      = $this->generateSigningKey($shortDate, $region, $service, $secretKey);
+        $signingKey      = $this->generateSigningKey($credentials, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
-    public function sign($stringToSign, $date, $region, $service, $secretKey)
+    public function sign($stringToSign, array $credentials, $secretKey)
     {
-        $signingKey = $this->generateSigningKey($date, $region, $service, $secretKey);
+        $signingKey = $this->generateSigningKey($credentials, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
-    public function generateSigningKey($date, $region, $service, $secretKey)
+    public function generateSigningKey(array $credentials, $secretKey)
     {
         $key = $secretKey;
-        foreach (array($date, $region, $service, 'aws4_request') as $data) {
+        foreach ($credentials as $data) {
             $key = $this->algorithm->hmac($data, $key, true);
         }
         return $key;
@@ -89,17 +90,6 @@ class AsrUtil
     private function convertSignedHeaders(array $signedHeaders)
     {
         return implode(';', array_map('strtolower', $signedHeaders));
-    }
-
-    /**
-     * @param $fullDate
-     * @param $region
-     * @param $service
-     * @return string
-     */
-    private function generateCredentialScope($fullDate, $region, $service)
-    {
-        return $fullDate . '/' . $region . '/' . $service . '/' . 'aws4_request';
     }
 }
 
