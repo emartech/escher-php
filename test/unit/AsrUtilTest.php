@@ -17,7 +17,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $result = $this->util->signRequest($this->secretKey(), $this->baseCredentials(), $this->fullDate(), 'POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers());
+        $result = $this->util->signRequest($this->secretKey(), $this->baseCredentials(), $this->fullDate(), 'POST', $this->url(), $this->payload(), $this->headers());
         $this->assertEquals($this->signedRequest(), $result);
     }
 
@@ -26,7 +26,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateCanonicalHash()
     {
-        $result = $this->util->generateCanonicalHash('POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers(), array_keys($this->headers()));
+        $result = $this->util->generateCanonicalHash('POST', $this->url(), $this->payload(), $this->headers(), array_keys($this->headers()));
         $this->assertEquals($this->canonicalHash(), $result);
     }
 
@@ -44,8 +44,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $shortDate = '20120215';
-        $result = $this->util->generateSigningKey($this->credentials($shortDate), $this->secretKey());
+        $result = $this->util->generateSigningKey($this->credentials('20120215'), $this->secretKey());
         $this->assertEquals($this->signingKey(), bin2hex($result));
     }
 
@@ -96,22 +95,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function secretKey()
     {
         return 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
-    }
-
-    /**
-     * @return string
-     */
-    private function service()
-    {
-        return 'iam';
-    }
-
-    /**
-     * @return string
-     */
-    private function region()
-    {
-        return 'us-east-1';
     }
 
     /**
@@ -172,6 +155,14 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function baseCredentials()
     {
-        return array($this->region(), $this->service(), 'aws4_request');
+        return array('us-east-1', 'iam', 'aws4_request');
+    }
+
+    /**
+     * @return string
+     */
+    private function url()
+    {
+        return 'http://iam.amazonaws.com/';
     }
 }
