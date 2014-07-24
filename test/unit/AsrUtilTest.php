@@ -17,7 +17,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $result = $this->util->signRequest($this->secretKey(), $this->fullDate(), 'POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers());
+        $result = $this->util->signRequest($this->secretKey(), $this->baseCredentials(), $this->fullDate(), 'POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers());
         $this->assertEquals($this->signedRequest(), $result);
     }
 
@@ -164,6 +164,14 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function credentials($shortDate)
     {
-        return array($shortDate, $this->region(), $this->service(), 'aws4_request');
+        return array_merge(array($shortDate), $this->baseCredentials());
+    }
+
+    /**
+     * @return array
+     */
+    private function baseCredentials()
+    {
+        return array($this->region(), $this->service(), 'aws4_request');
     }
 }

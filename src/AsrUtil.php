@@ -15,15 +15,13 @@ class AsrUtil
         $this->algorithm = $algorithm;
     }
 
-    public function signRequest($secretKey, $fullDate, $method, $url, $payload, $headers)
+    public function signRequest($secretKey, $baseCredentials, $fullDate, $method, $url, $payload, $headers)
     {
-        $region          = 'us-east-1';
-        $service         = 'iam';
         $shortDate       = substr($fullDate, 0, 8);
         $signedHeaders   = array_keys($headers);
-        $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
-        $credentials     = array($shortDate, $region, $service, 'aws4_request');
+        $credentials     = array_merge(array($shortDate), $baseCredentials);
         $credentialScope = implode('/', $credentials);
+        $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
         $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
         $signingKey      = $this->generateSigningKey($credentials, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
