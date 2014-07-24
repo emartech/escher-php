@@ -24,10 +24,10 @@ class AsrUtil
     public function calculateSigningKey($date, $region, $service, $secretKey)
     {
         $secret = 'AWS4' . $secretKey;
-        $hashedDate    = $this->hmacSha($date, $secret);
-        $hashedRegion  = $this->hmacSha($region, $hashedDate);
-        $hashedService = $this->hmacSha($service, $hashedRegion);
-        $signing       = $this->hmacSha('aws4_request', $hashedService);
+        $hashedDate    = $this->algorithm->hmac($date, $secret,true);
+        $hashedRegion  = $this->algorithm->hmac($region, $hashedDate, true);
+        $hashedService = $this->algorithm->hmac($service, $hashedRegion, true);
+        $signing       = $this->algorithm->hmac('aws4_request', $hashedService, true);
         return $signing;
     }
 
@@ -78,17 +78,6 @@ class AsrUtil
     private function convertSignedHeaders(array $signedHeaders)
     {
         return implode(';', array_map('strtolower', $signedHeaders));
-    }
-
-    /**
-     * @param $data
-     * @param $key
-     * @param $raw
-     * @return string
-     */
-    private function hmacSha($data, $key, $raw = true)
-    {
-        return $this->algorithm->hmac($data, $key, $raw);
     }
 }
 
