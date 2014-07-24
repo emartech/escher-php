@@ -32,6 +32,15 @@ class AsrUtil
         return $result;
     }
 
+    public function validateSignature(array $request, array $headers)
+    {
+        // parse authorization header
+        // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
+        // credential scope date's day should equal to x-amz-date
+        // x-amz-date should be within X minutes of server's time
+        // signature check:
+    }
+
     public function sign($stringToSign, array $credentials, $secretKey)
     {
         $signingKey = $this->generateSigningKey($credentials, $secretKey);
