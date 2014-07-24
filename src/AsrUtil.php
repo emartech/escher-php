@@ -36,11 +36,11 @@ class AsrUtil
 
     public function generateSigningKey($date, $region, $service, $secretKey)
     {
-        $hashedDate    = $this->algorithm->hmac($date, $secretKey, true);
-        $hashedRegion  = $this->algorithm->hmac($region, $hashedDate, true);
-        $hashedService = $this->algorithm->hmac($service, $hashedRegion, true);
-        $signing       = $this->algorithm->hmac('aws4_request', $hashedService, true);
-        return $signing;
+        $key = $secretKey;
+        foreach (array($date, $region, $service, 'aws4_request') as $data) {
+            $key = $this->algorithm->hmac($data, $key, true);
+        }
+        return $key;
     }
 
     public function generateStringToSign($date, $credentialScope, $canonicalHash)
