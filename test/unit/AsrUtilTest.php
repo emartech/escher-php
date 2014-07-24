@@ -190,6 +190,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         return array(
             'Authorization' => "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-amz-date, Signature={$this->signedRequest()}",
+            'X-Amz-Date'    => $this->fullDate(),
         );
     }
 }

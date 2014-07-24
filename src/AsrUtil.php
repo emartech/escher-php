@@ -24,7 +24,10 @@ class AsrUtil
         $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
         $signingKey      = $this->generateSigningKey($credentials, $secretKey);
         $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
-        $result = array('Authorization' => "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$this->convertSignedHeaders($signedHeaders)}, Signature=$signature");
+        $result          = array(
+            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $signedHeaders, $credentialScope, $signature),
+            'X-Amz-Date'    => $fullDate,
+        );
         return $result;
     }
 
