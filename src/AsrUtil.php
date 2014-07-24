@@ -15,11 +15,12 @@ class AsrUtil
         $this->algorithm = $algorithm;
     }
 
-    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers, array $signedHeaders)
+    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
     {
         $shortDate       = substr($fullDate, 0, 8);
         $credentials     = array_merge(array($shortDate), $baseCredentials);
         $credentialScope = implode('/', $credentials);
+        $signedHeaders = array_keys($headers);
         $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
         $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
         $signingKey      = $this->generateSigningKey($credentials, $secretKey);
@@ -51,7 +52,7 @@ class AsrUtil
         return implode("\n", array($this->algorithm->getName(), $date, $credentialScope, $canonicalHash));
     }
 
-    public function generateCanonicalHash($method, $url, $payload, array $headers, array $signedHeaders)
+    public function generateCanonicalHash($method, $url, $payload, array $headers)
     {
         $urlParts = parse_url($url);
 
@@ -61,7 +62,7 @@ class AsrUtil
         $requestLines = array_merge(
             array(strtoupper($method), $path, $query),
             $this->convertHeaders($headers),
-            array('', $this->convertSignedHeaders($signedHeaders), $this->algorithm->hash($payload))
+            array('', $this->convertSignedHeaders(array_keys($headers)), $this->algorithm->hash($payload))
         );
 
         return $this->algorithm->hash(implode("\n", $requestLines));
@@ -92,6 +93,18 @@ class AsrUtil
     private function convertSignedHeaders(array $signedHeaders)
     {
         return implode(';', array_map('strtolower', $signedHeaders));
+    }
+
+    /**
+     * @param $accessKeyId
+     * @param array $signedHeaders
+     * @param $credentialScope
+     * @param $signature
+     * @return string
+     */
+    private function buildAuthorizationHeader($accessKeyId, array $signedHeaders, $credentialScope, $signature)
+    {
+        return "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$this->convertSignedHeaders($signedHeaders)}, Signature=$signature";
     }
 }
 

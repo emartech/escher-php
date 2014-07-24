@@ -25,7 +25,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateCanonicalHash()
     {
-        $result = $this->util->generateCanonicalHash('POST', $this->url(), $this->payload(), $this->headers(), array_keys($this->headers()));
+        $result = $this->util->generateCanonicalHash('POST', $this->url(), $this->payload(), $this->headers());
         $this->assertEquals($this->canonicalHash(), $result);
     }
 
@@ -178,8 +178,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
             'POST',
             $this->url(),
             $this->payload(),
-            $this->headers(),
-            array_keys($this->headers())
+            $this->headers()
         );
     }
 
