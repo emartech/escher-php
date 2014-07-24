@@ -36,8 +36,7 @@ class AsrUtil
 
     public function generateSigningKey($date, $region, $service, $secretKey)
     {
-        $secret = 'AWS4' . $secretKey;
-        $hashedDate    = $this->algorithm->hmac($date, $secret,true);
+        $hashedDate    = $this->algorithm->hmac($date, $secretKey, true);
         $hashedRegion  = $this->algorithm->hmac($region, $hashedDate, true);
         $hashedService = $this->algorithm->hmac($service, $hashedRegion, true);
         $signing       = $this->algorithm->hmac('aws4_request', $hashedService, true);
@@ -53,7 +52,6 @@ class AsrUtil
     {
         $urlParts = parse_url($url);
 
-        $host = $urlParts['host'];
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
 

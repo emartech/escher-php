@@ -95,7 +95,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function secretKey()
     {
-        return 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
+        return 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
     }
 
     /**
