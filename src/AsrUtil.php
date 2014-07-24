@@ -2,7 +2,7 @@
 
 class AsrUtil
 {
-    public function generate($method, $url, $payload, array $headers, array $signedHeaders)
+    public function generateCanonicalHash($method, $url, $payload, array $headers, array $signedHeaders)
     {
         $urlParts = parse_url($url);
 

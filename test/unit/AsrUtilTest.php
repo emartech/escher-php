@@ -15,9 +15,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
-    public function itShouldGenerateSignedRequestHeader()
+    public function itShouldGenerateCanonicalHash()
     {
-        $result = $this->util->generate('POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers(), array_keys($this->headers()));
+        $result = $this->util->generateCanonicalHash('POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers(), array_keys($this->headers()));
         $this->assertEquals($this->canonicalHash(), $result);
     }
 
@@ -26,11 +26,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateStringToSign()
     {
-        $algo = 'AWS4-HMAC-SHA256';
-        $date = '20110909T233600Z';
-        $canonicalRequestHash = $this->canonicalHash();
-        $credentialScope = '20110909/us-east-1/iam/aws4_request';
-        $result = $this->util->createStringToSign($algo, $date, $credentialScope, $canonicalRequestHash);
+        $result = $this->util->createStringToSign($this->algorithm(), $this->fullDate(), $this->credentialScope(), $this->canonicalHash());
         $this->assertEquals($this->stringToSign(), $result);
     }
 
@@ -58,9 +54,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function stringToSign()
     {
-        return implode("\n", array(
-            'AWS4-HMAC-SHA256', '20110909T233600Z', '20110909/us-east-1/iam/aws4_request', $this->canonicalHash()
-        ));
+        return implode("\n", array($this->algorithm(), $this->fullDate(), $this->credentialScope(), $this->canonicalHash()));
     }
 
     /**
@@ -137,5 +131,29 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function payload()
     {
         return 'Action=ListUsers&Version=2010-05-08';
+    }
+
+    /**
+     * @return string
+     */
+    private function fullDate()
+    {
+        return '20110909T233600Z';
+    }
+
+    /**
+     * @return string
+     */
+    private function algorithm()
+    {
+        return 'AWS4-HMAC-SHA256';
+    }
+
+    /**
+     * @return string
+     */
+    private function credentialScope()
+    {
+        return implode('/', array($this->date(), $this->region(), $this->service(), 'aws4_request'));
     }
 }
