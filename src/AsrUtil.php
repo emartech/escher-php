@@ -15,10 +15,9 @@ class AsrUtil
         $this->algorithm = $algorithm;
     }
 
-    public function signRequest($secretKey, $baseCredentials, $fullDate, $method, $url, $payload, $headers)
+    public function signRequest($secretKey, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers, array $signedHeaders)
     {
         $shortDate       = substr($fullDate, 0, 8);
-        $signedHeaders   = array_keys($headers);
         $credentials     = array_merge(array($shortDate), $baseCredentials);
         $credentialScope = implode('/', $credentials);
         $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);

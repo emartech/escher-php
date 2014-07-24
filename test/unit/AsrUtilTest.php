@@ -17,7 +17,16 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $result = $this->util->signRequest($this->secretKey(), $this->baseCredentials(), $this->fullDate(), 'POST', $this->url(), $this->payload(), $this->headers());
+        $result = $this->util->signRequest(
+            $this->secretKey(),
+            $this->baseCredentials(),
+            $this->fullDate(),
+            'POST',
+            $this->url(),
+            $this->payload(),
+            $this->headers(),
+            array_keys($this->headers())
+        );
         $this->assertEquals($this->signedRequest(), $result);
     }
 
