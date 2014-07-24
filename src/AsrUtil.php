@@ -2,6 +2,16 @@
 
 class AsrUtil
 {
+    /**
+     * @var SigningAlgorithm
+     */
+    private $algorithm;
+
+    public function __construct()
+    {
+        $this->algorithm = new SigningAlgorithm(SigningAlgorithm::SHA_256);
+    }
+
     public function generateCanonicalHash($method, $url, $payload, array $headers, array $signedHeaders)
     {
         $urlParts = parse_url($url);
@@ -13,10 +23,10 @@ class AsrUtil
         $requestLines = array_merge(
             array(strtoupper($method), $path, $query),
             $this->convertHeaders($headers),
-            array('', $this->convertSignedHeaders($signedHeaders), hash('sha256', $payload))
+            array('', $this->convertSignedHeaders($signedHeaders), $this->algorithm->hash($payload))
         );
 
-        return hash('sha256', implode("\n", $requestLines));
+        return $this->algorithm->hash(implode("\n", $requestLines));
     }
 
     public function createStringToSign($algorithm, $date, $credentialScope, $canonicalRequestHash)
@@ -69,7 +79,7 @@ class AsrUtil
      */
     private function hmacSha($data, $key, $raw = true)
     {
-        return hash_hmac('sha256', $data, $key, $raw);
+        return $this->algorithm->hmac($data, $key, $raw);
     }
 
     public function signRequest($stringToSign, $date, $region, $service, $secretKey)
@@ -79,5 +89,33 @@ class AsrUtil
             $this->calculateSigningKey($date, $region, $service, $secretKey),
             false
         );
+    }
+}
+
+class SigningAlgorithm
+{
+    const SHA_256 = 'sha256';
+
+    /**
+     * @var string
+     */
+    private $algorithm;
+
+    /**
+     * @param string $algorithm
+     */
+    public function __construct($algorithm)
+    {
+        $this->algorithm = $algorithm;
+    }
+
+    public function hmac($data, $key, $raw = false)
+    {
+        return hash_hmac('sha256', $data, $key, $raw);
+    }
+
+    public function hash($data, $raw = false)
+    {
+        return hash($this->algorithm, $data, $raw);
     }
 }
