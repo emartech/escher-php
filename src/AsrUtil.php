@@ -15,7 +15,7 @@ class AsrUtil
         $this->algorithm = $algorithm;
     }
 
-    public function signRequest($secretKey, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers, array $signedHeaders)
+    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers, array $signedHeaders)
     {
         $shortDate       = substr($fullDate, 0, 8);
         $credentials     = array_merge(array($shortDate), $baseCredentials);
@@ -23,7 +23,9 @@ class AsrUtil
         $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
         $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
         $signingKey      = $this->generateSigningKey($credentials, $secretKey);
-        return $this->algorithm->hmac($stringToSign, $signingKey, false);
+        $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
+        $result = array('Authorization' => "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$this->convertSignedHeaders($signedHeaders)}, Signature=$signature");
+        return $result;
     }
 
     public function sign($stringToSign, array $credentials, $secretKey)

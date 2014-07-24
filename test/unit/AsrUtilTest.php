@@ -17,17 +17,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $result = $this->util->signRequest(
-            $this->secretKey(),
-            $this->baseCredentials(),
-            $this->fullDate(),
-            'POST',
-            $this->url(),
-            $this->payload(),
-            $this->headers(),
-            array_keys($this->headers())
-        );
-        $this->assertEquals($this->signedRequest(), $result);
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest());
     }
 
     /**
@@ -173,5 +163,33 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function url()
     {
         return 'http://iam.amazonaws.com/';
+    }
+
+    /**
+     * @return array
+     */
+    private function callSignRequest()
+    {
+        return $this->util->signRequest(
+            $this->secretKey(),
+            'AKIDEXAMPLE',
+            $this->baseCredentials(),
+            $this->fullDate(),
+            'POST',
+            $this->url(),
+            $this->payload(),
+            $this->headers(),
+            array_keys($this->headers())
+        );
+    }
+
+    /**
+     * @return array
+     */
+    private function authorizationHeader()
+    {
+        return array(
+            'Authorization' => "AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-amz-date, Signature={$this->signedRequest()}",
+        );
     }
 }
