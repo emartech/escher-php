@@ -15,6 +15,15 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
+    public function itShouldSignRequest()
+    {
+        $result = $this->util->signRequest($this->secretKey(), $this->fullDate(), 'POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers());
+        $this->assertEquals($this->signedRequest(), $result);
+    }
+
+    /**
+     * @test
+     */
     public function itShouldGenerateCanonicalHash()
     {
         $result = $this->util->generateCanonicalHash('POST', 'http://iam.amazonaws.com/', $this->payload(), $this->headers(), array_keys($this->headers()));
@@ -26,7 +35,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateStringToSign()
     {
-        $result = $this->util->createStringToSign($this->fullDate(), $this->credentialScope(), $this->canonicalHash());
+        $result = $this->util->generateStringToSign($this->fullDate(), $this->credentialScope(), $this->canonicalHash());
         $this->assertEquals($this->stringToSign(), $result);
     }
 
@@ -35,8 +44,8 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $date = '20120215';
-        $result = $this->util->calculateSigningKey($date, $this->region(), $this->service(), $this->secretKey());
+        $shortDate = '20120215';
+        $result = $this->util->generateSigningKey($shortDate, $this->region(), $this->service(), $this->secretKey());
         $this->assertEquals($this->signingKey(), bin2hex($result));
     }
 
@@ -45,7 +54,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignString()
     {
-        $result = $this->util->sign($this->stringToSign(), $this->date(), $this->region(), $this->service(), $this->secretKey());
+        $result = $this->util->sign($this->stringToSign(), $this->shortDate(), $this->region(), $this->service(), $this->secretKey());
         $this->assertEquals($this->signedRequest(), $result);
     }
 
@@ -108,7 +117,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @return string
      */
-    private function date()
+    private function shortDate()
     {
         return '20110909';
     }
@@ -145,6 +154,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     private function credentialScope()
     {
-        return implode('/', array($this->date(), $this->region(), $this->service(), 'aws4_request'));
+        return implode('/', array($this->shortDate(), $this->region(), $this->service(), 'aws4_request'));
     }
 }

@@ -15,13 +15,26 @@ class AsrUtil
         $this->algorithm = $algorithm;
     }
 
-    public function signRequest($stringToSign, $date, $region, $service, $secretKey)
+    public function signRequest($secretKey, $fullDate, $method, $url, $payload, $headers)
     {
-        $signingKey = $this->calculateSigningKey($date, $region, $service, $secretKey);
+        $region          = 'us-east-1';
+        $service         = 'iam';
+        $shortDate       = substr($fullDate, 0, 8);
+        $signedHeaders   = array_keys($headers);
+        $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
+        $credentialScope = $this->generateCredentialScope($shortDate, $region, $service);
+        $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
+        $signingKey      = $this->generateSigningKey($shortDate, $region, $service, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
-    public function calculateSigningKey($date, $region, $service, $secretKey)
+    public function sign($stringToSign, $date, $region, $service, $secretKey)
+    {
+        $signingKey = $this->generateSigningKey($date, $region, $service, $secretKey);
+        return $this->algorithm->hmac($stringToSign, $signingKey, false);
+    }
+
+    public function generateSigningKey($date, $region, $service, $secretKey)
     {
         $secret = 'AWS4' . $secretKey;
         $hashedDate    = $this->algorithm->hmac($date, $secret,true);
@@ -31,7 +44,7 @@ class AsrUtil
         return $signing;
     }
 
-    public function createStringToSign($date, $credentialScope, $canonicalHash)
+    public function generateStringToSign($date, $credentialScope, $canonicalHash)
     {
         return implode("\n", array($this->algorithm->getName(), $date, $credentialScope, $canonicalHash));
     }
@@ -78,6 +91,17 @@ class AsrUtil
     private function convertSignedHeaders(array $signedHeaders)
     {
         return implode(';', array_map('strtolower', $signedHeaders));
+    }
+
+    /**
+     * @param $fullDate
+     * @param $region
+     * @param $service
+     * @return string
+     */
+    private function generateCredentialScope($fullDate, $region, $service)
+    {
+        return $fullDate . '/' . $region . '/' . $service . '/' . 'aws4_request';
     }
 }
 
