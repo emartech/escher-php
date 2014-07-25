@@ -36,7 +36,8 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateStringToSign()
     {
-        $result = $this->util->generateStringToSign($this->fullDate(), $this->credentialScope($this->shortDate()), $this->canonicalHash());
+        $credentials = new AsrCredentials($this->fullDate(), $this->baseCredentials());
+        $result = $this->util->generateStringToSign($this->fullDate(), $credentials, $this->canonicalHash());
         $this->assertEquals($this->stringToSign(), $result);
     }
 
@@ -45,7 +46,8 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $result = $this->util->generateSigningKey($this->credentials('20120215'), $this->secretKey());
+        $credentials = new AsrCredentials('20120215TIRRELEVANT', $this->baseCredentials());
+        $result = $credentials->generateSigningKeyUsing(new SigningAlgorithm('sha256'), $this->secretKey());
         $this->assertEquals($this->signingKey(), bin2hex($result));
     }
 
@@ -54,7 +56,8 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignString()
     {
-        $result = $this->util->sign($this->stringToSign(), $this->credentials($this->shortDate()), $this->secretKey());
+        $credentials = new AsrCredentials($this->fullDate(), $this->baseCredentials());
+        $result = $this->util->sign($this->stringToSign(), $credentials, $this->secretKey());
         $this->assertEquals($this->signedRequest(), $result);
     }
 

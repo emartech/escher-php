@@ -23,8 +23,8 @@ class AsrUtil
 
         $canonicalHash   = $request->canonicalizeUsing($this->algorithm);
 
-        $stringToSign    = $this->generateStringToSign($fullDate, $credentials->toScopeString(), $canonicalHash);
-        $signingKey      = $this->generateSigningKey($credentials->toArray(), $secretKey);
+        $stringToSign    = $this->generateStringToSign($fullDate, $credentials, $canonicalHash);
+        $signingKey      = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
         $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
         $result          = array(
             'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $headers, $credentials->toScopeString(), $signature),
@@ -42,24 +42,15 @@ class AsrUtil
         // signature check:
     }
 
-    public function sign($stringToSign, array $credentials, $secretKey)
+    public function sign($stringToSign, AsrCredentials $credentials, $secretKey)
     {
-        $signingKey = $this->generateSigningKey($credentials, $secretKey);
+        $signingKey = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
-    public function generateSigningKey(array $credentials, $secretKey)
+    public function generateStringToSign($fullDate, AsrCredentials $credentials, $canonicalHash)
     {
-        $key = $secretKey;
-        foreach ($credentials as $data) {
-            $key = $this->algorithm->hmac($data, $key, true);
-        }
-        return $key;
-    }
-
-    public function generateStringToSign($fullDate, $credentialScope, $canonicalHash)
-    {
-        return implode("\n", array($this->algorithm->getName(), $fullDate, $credentialScope, $canonicalHash));
+        return implode("\n", array($this->algorithm->getName(), $fullDate, $credentials->toScopeString(), $canonicalHash));
     }
 
     public function generateCanonicalHash($method, $url, $payload, array $headers)
@@ -150,6 +141,15 @@ class AsrCredentials
     private function shortDate()
     {
         return substr($this->fullDate, 0, 8);
+    }
+
+    public function generateSigningKeyUsing(SigningAlgorithm $algorithm, $secretKey)
+    {
+        $key = $secretKey;
+        foreach ($this->toArray() as $data) {
+            $key = $algorithm->hmac($data, $key, true);
+        }
+        return $key;
     }
 }
 
