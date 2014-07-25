@@ -2,6 +2,8 @@
 
 class AsrUtil
 {
+    const SHA256 = 'sha256';
+
     public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
     {
         $algorithm     = new SigningAlgorithm($algorithmName);
@@ -16,7 +18,7 @@ class AsrUtil
         $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
 
         $result          = array(
-            'Authorization' => "{$algorithm->getName()} Credential=$accessKeyId/{$credentials->toScopeString()}, SignedHeaders={$headersObject->toSignedHeadersString()}, Signature=$signature",
+            'Authorization' => "{$algorithm->getNameForHeader()} Credential=$accessKeyId/{$credentials->toScopeString()}, SignedHeaders={$headersObject->toSignedHeadersString()}, Signature=$signature",
             'X-Amz-Date'    => $fullDate,
         );
         return $result;
@@ -34,8 +36,6 @@ class AsrUtil
 
 class SigningAlgorithm
 {
-    const SHA_256 = 'sha256';
-
     /**
      * @var string
      */
@@ -49,7 +49,7 @@ class SigningAlgorithm
         $this->algorithm = $algorithm;
     }
 
-    public function getName()
+    public function getNameForHeader()
     {
         return 'AWS4-HMAC-' . strtoupper($this->algorithm);
     }
@@ -112,7 +112,7 @@ class AsrCredentials
 
     public function generateStringToSignUsing(SigningAlgorithm $algorithm, $canonicalHash)
     {
-        return implode("\n", array($algorithm->getName(), $this->fullDate, $this->toScopeString(), $canonicalHash));
+        return implode("\n", array($algorithm->getNameForHeader(), $this->fullDate, $this->toScopeString(), $canonicalHash));
     }
 }
 
@@ -137,10 +137,6 @@ class AsrHeaders
         return $result;
     }
 
-    /**
-     * @param $value
-     * @return string
-     */
     private function trimHeaderValue($value)
     {
         return trim($value);
