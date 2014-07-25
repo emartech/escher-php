@@ -165,14 +165,17 @@ class AsrRequest
     {
         $urlParts = parse_url($this->url);
 
-        $path = $urlParts['path'];
-        $query = isset($urlParts['query']) ? $urlParts['query'] : '';
+        $lines = array();
+        $lines[] = strtoupper($this->method);
+        $lines[] = $urlParts['path'];
+        $lines[] = isset($urlParts['query']) ? $urlParts['query'] : '';
+        foreach ($this->headers->canonicalize() as $canonicalizedHeaderLine) {
+            $lines[] = $canonicalizedHeaderLine;
+        }
+        $lines[] = '';
+        $lines[] = $this->headers->toSignedHeadersString();
+        $lines[] = $algorithm->hash($this->payload);
 
-        $requestLines = array_merge(
-            array(strtoupper($this->method), $path, $query),
-            $this->headers->canonicalize(),
-            array('', $this->headers->toSignedHeadersString(), $algorithm->hash($this->payload))
-        );
-        return $algorithm->hash(implode("\n", $requestLines));
+        return $algorithm->hash(implode("\n", $lines));
     }
 }
