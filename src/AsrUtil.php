@@ -17,16 +17,14 @@ class AsrUtil
 
     public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
     {
-        $shortDate       = substr($fullDate, 0, 8);
-        $credentials     = array_merge(array($shortDate), $baseCredentials);
-        $credentialScope = implode('/', $credentials);
+        $credentials = new AsrCredentials($fullDate, $baseCredentials);
         $signedHeaders = array_keys($headers);
         $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
-        $stringToSign    = $this->generateStringToSign($fullDate, $credentialScope, $canonicalHash);
-        $signingKey      = $this->generateSigningKey($credentials, $secretKey);
+        $stringToSign    = $this->generateStringToSign($fullDate, $credentials->toScopeString(), $canonicalHash);
+        $signingKey      = $this->generateSigningKey($credentials->toArray(), $secretKey);
         $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
         $result          = array(
-            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $signedHeaders, $credentialScope, $signature),
+            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $signedHeaders, $credentials->toScopeString(), $signature),
             'X-Amz-Date'    => $fullDate,
         );
         return $result;
@@ -56,9 +54,9 @@ class AsrUtil
         return $key;
     }
 
-    public function generateStringToSign($date, $credentialScope, $canonicalHash)
+    public function generateStringToSign($fullDate, $credentialScope, $canonicalHash)
     {
-        return implode("\n", array($this->algorithm->getName(), $date, $credentialScope, $canonicalHash));
+        return implode("\n", array($this->algorithm->getName(), $fullDate, $credentialScope, $canonicalHash));
     }
 
     public function generateCanonicalHash($method, $url, $payload, array $headers)
@@ -147,5 +145,42 @@ class SigningAlgorithm
     public function hash($data, $raw = false)
     {
         return hash($this->algorithm, $data, $raw);
+    }
+}
+
+class AsrCredentials
+{
+    /**
+     * @var string
+     */
+    private $fullDate;
+
+    /**
+     * @var array
+     */
+    private $parts;
+
+    public function __construct($fullDate, array $parts)
+    {
+        if (count($parts) != 3) {
+            throw new InvalidArgumentException('Credentials should consist of exactly 3 parts');
+        }
+        $this->fullDate = $fullDate;
+        $this->parts = $parts;
+    }
+
+    public function toArray()
+    {
+        return array_merge(array($this->shortDate()), $this->parts);
+    }
+
+    public function toScopeString()
+    {
+        return implode('/', $this->toArray());
+    }
+
+    private function shortDate()
+    {
+        return substr($this->fullDate, 0, 8);
     }
 }
