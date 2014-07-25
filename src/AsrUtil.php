@@ -16,7 +16,7 @@ class AsrUtil
         $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
 
         $result          = array(
-            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $headers, $credentials->toScopeString(), $signature),
+            'Authorization' => "{$algorithm->getName()} Credential=$accessKeyId/{$credentials->toScopeString()}, SignedHeaders={$headersObject->toSignedHeadersString()}, Signature=$signature",
             'X-Amz-Date'    => $fullDate,
         );
         return $result;
@@ -29,19 +29,6 @@ class AsrUtil
         // credential scope date's day should equal to x-amz-date
         // x-amz-date should be within X minutes of server's time
         // signature check:
-    }
-
-    /**
-     * @param $accessKeyId
-     * @param array $headers
-     * @param $credentialScope
-     * @param $signature
-     * @return string
-     */
-    private function buildAuthorizationHeader($accessKeyId, array $headers, $credentialScope, $signature)
-    {
-        $headers = new AsrHeaders($headers);
-        return "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$headers->toSignedHeadersString()}, Signature=$signature";
     }
 }
 
