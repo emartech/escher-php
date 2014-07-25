@@ -9,7 +9,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
 
     protected function setUp()
     {
-        $this->util = new AsrUtil(new SigningAlgorithm(SigningAlgorithm::SHA_256));
+        $this->util = new AsrUtil();
     }
 
     /**
@@ -148,6 +148,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function callSignRequest()
     {
         return $this->util->signRequest(
+            SigningAlgorithm::SHA_256,
             $this->secretKey(),
             'AKIDEXAMPLE',
             $this->baseCredentials(),

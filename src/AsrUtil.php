@@ -2,30 +2,19 @@
 
 class AsrUtil
 {
-    /**
-     * @var SigningAlgorithm
-     */
-    private $algorithm;
-
-    /**
-     * @param SigningAlgorithm $algorithm
-     */
-    public function __construct(SigningAlgorithm $algorithm)
+    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
     {
-        $this->algorithm = $algorithm;
-    }
-
-    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
-    {
+        $algorithm     = new SigningAlgorithm($algorithmName);
         $credentials   = new AsrCredentials($fullDate, $baseCredentials);
         $headersObject = new AsrHeaders($headers);
         $request       = new AsrRequest($method, $url, $payload, $headersObject);
 
-        $canonicalHash   = $request->canonicalizeUsing($this->algorithm);
+        $canonicalHash   = $request->canonicalizeUsing($algorithm);
 
-        $stringToSign    = $credentials->generateStringToSignUsing($this->algorithm, $canonicalHash);
-        $signingKey      = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
-        $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
+        $stringToSign    = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
+        $signingKey      = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
+        $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
+
         $result          = array(
             'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $headers, $credentials->toScopeString(), $signature),
             'X-Amz-Date'    => $fullDate,
@@ -40,19 +29,6 @@ class AsrUtil
         // credential scope date's day should equal to x-amz-date
         // x-amz-date should be within X minutes of server's time
         // signature check:
-    }
-
-    public function sign($stringToSign, AsrCredentials $credentials, $secretKey)
-    {
-        $signingKey = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
-        return $this->algorithm->hmac($stringToSign, $signingKey, false);
-    }
-
-    public function generateCanonicalHash($method, $url, $payload, array $headers)
-    {
-        $headers = new AsrHeaders($headers);
-        $request = new AsrRequest($method, $url, $payload, $headers);
-        return $request->canonicalizeUsing($this->algorithm);
     }
 
     /**
