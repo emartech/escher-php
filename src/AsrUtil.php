@@ -17,14 +17,17 @@ class AsrUtil
 
     public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
     {
-        $credentials = new AsrCredentials($fullDate, $baseCredentials);
-        $signedHeaders = array_keys($headers);
-        $canonicalHash   = $this->generateCanonicalHash($method, $url, $payload, $headers, $signedHeaders);
+        $credentials   = new AsrCredentials($fullDate, $baseCredentials);
+        $headersObject = new AsrHeaders($headers);
+        $request       = new AsrRequest($method, $url, $payload, $headersObject);
+
+        $canonicalHash   = $request->canonicalizeUsing($this->algorithm);
+
         $stringToSign    = $this->generateStringToSign($fullDate, $credentials->toScopeString(), $canonicalHash);
         $signingKey      = $this->generateSigningKey($credentials->toArray(), $secretKey);
         $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
         $result          = array(
-            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $signedHeaders, $credentials->toScopeString(), $signature),
+            'Authorization' => $this->buildAuthorizationHeader($accessKeyId, $headers, $credentials->toScopeString(), $signature),
             'X-Amz-Date'    => $fullDate,
         );
         return $result;
@@ -61,57 +64,22 @@ class AsrUtil
 
     public function generateCanonicalHash($method, $url, $payload, array $headers)
     {
-        $urlParts = parse_url($url);
-
-        $path = $urlParts['path'];
-        $query = isset($urlParts['query']) ? $urlParts['query'] : '';
-
-        $requestLines = array_merge(
-            array(strtoupper($method), $path, $query),
-            $this->convertHeaders($headers),
-            array('', $this->convertSignedHeaders(array_keys($headers)), $this->algorithm->hash($payload))
-        );
-
-        return $this->algorithm->hash(implode("\n", $requestLines));
-    }
-
-    private function convertHeaders($headers)
-    {
-        $result = array();
-        foreach ($headers as $key => $value) {
-            $result []= strtolower($key) . ':' . $this->trimHeaderValue($value);
-        }
-        return $result;
-    }
-
-    /**
-     * @param $value
-     * @return string
-     */
-    private function trimHeaderValue($value)
-    {
-        return trim($value);
-    }
-
-    /**
-     * @param array $signedHeaders
-     * @return string
-     */
-    private function convertSignedHeaders(array $signedHeaders)
-    {
-        return implode(';', array_map('strtolower', $signedHeaders));
+        $headers = new AsrHeaders($headers);
+        $request = new AsrRequest($method, $url, $payload, $headers);
+        return $request->canonicalizeUsing($this->algorithm);
     }
 
     /**
      * @param $accessKeyId
-     * @param array $signedHeaders
+     * @param array $headers
      * @param $credentialScope
      * @param $signature
      * @return string
      */
-    private function buildAuthorizationHeader($accessKeyId, array $signedHeaders, $credentialScope, $signature)
+    private function buildAuthorizationHeader($accessKeyId, array $headers, $credentialScope, $signature)
     {
-        return "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$this->convertSignedHeaders($signedHeaders)}, Signature=$signature";
+        $headers = new AsrHeaders($headers);
+        return "{$this->algorithm->getName()} Credential=$accessKeyId/$credentialScope, SignedHeaders={$headers->toSignedHeadersString()}, Signature=$signature";
     }
 }
 
@@ -182,5 +150,66 @@ class AsrCredentials
     private function shortDate()
     {
         return substr($this->fullDate, 0, 8);
+    }
+}
+
+class AsrHeaders
+{
+    public function __construct($headers)
+    {
+        $this->headers = $headers;
+    }
+
+    public function toSignedHeadersString()
+    {
+        return implode(';', array_map('strtolower', array_keys($this->headers)));
+    }
+
+    public function canonicalize()
+    {
+        $result = array();
+        foreach ($this->headers as $key => $value) {
+            $result []= strtolower($key) . ':' . $this->trimHeaderValue($value);
+        }
+        return $result;
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    private function trimHeaderValue($value)
+    {
+        return trim($value);
+    }
+}
+
+class AsrRequest
+{
+    private $method;
+    private $url;
+    private $headers;
+
+    public function __construct($method, $url, $payload, AsrHeaders $headers)
+    {
+        $this->method = $method;
+        $this->url = $url;
+        $this->payload = $payload;
+        $this->headers = $headers;
+    }
+
+    public function canonicalizeUsing(SigningAlgorithm $algorithm)
+    {
+        $urlParts = parse_url($this->url);
+
+        $path = $urlParts['path'];
+        $query = isset($urlParts['query']) ? $urlParts['query'] : '';
+
+        $requestLines = array_merge(
+            array(strtoupper($this->method), $path, $query),
+            $this->headers->canonicalize(),
+            array('', $this->headers->toSignedHeadersString(), $algorithm->hash($this->payload))
+        );
+        return $algorithm->hash(implode("\n", $requestLines));
     }
 }

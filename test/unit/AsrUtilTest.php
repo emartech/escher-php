@@ -25,7 +25,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateCanonicalHash()
     {
-        $result = $this->util->generateCanonicalHash('POST', $this->url(), $this->payload(), $this->headers());
+        $headers = new AsrHeaders($this->headers());
+        $request = new AsrRequest('POST', $this->url(), $this->payload(), $headers);
+        $result = $request->canonicalizeUsing(new SigningAlgorithm('sha256'));
         $this->assertEquals($this->canonicalHash(), $result);
     }
 
