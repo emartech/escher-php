@@ -4,21 +4,20 @@ class AsrUtil
 {
     const SHA256 = 'sha256';
 
-    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headers)
+    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headerList)
     {
-        $algorithm     = new SigningAlgorithm($algorithmName);
-        $credentials   = new AsrCredentials($fullDate, $baseCredentials);
-        $headersObject = new AsrHeaders($headers);
-        $request       = new AsrRequest($method, $url, $payload, $headersObject);
+        $algorithm   = new SigningAlgorithm($algorithmName);
+        $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
+        $headers     = new AsrHeaders($headerList);
+        $request     = new AsrRequest($method, $url, $payload, $headers);
 
-        $canonicalHash   = $request->canonicalizeUsing($algorithm);
-
-        $stringToSign    = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
-        $signingKey      = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
-        $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
+        $canonicalHash   = $this->generateCanonicalizedHash($request, $algorithm);
+        $stringToSign    = $this->generateStringToSign($credentials, $algorithm, $canonicalHash);
+        $signingKey      = $this->generateSigningKey($secretKey, $credentials, $algorithm);
+        $signature       = $this->generateSignature($algorithm, $stringToSign, $signingKey);
 
         $result          = array(
-            'Authorization' => "{$algorithm->getNameForHeader()} Credential=$accessKeyId/{$credentials->toScopeString()}, SignedHeaders={$headersObject->toSignedHeadersString()}, Signature=$signature",
+            'Authorization' => "{$algorithm->getNameForHeader()} Credential={$credentials->toHeaderString()}, SignedHeaders={$headers->toHeaderString()}, Signature=$signature",
             'X-Amz-Date'    => $fullDate,
         );
         return $result;
@@ -31,6 +30,49 @@ class AsrUtil
         // credential scope date's day should equal to x-amz-date
         // x-amz-date should be within X minutes of server's time
         // signature check:
+    }
+
+    /**
+     * @param $request
+     * @param $algorithm
+     * @return mixed
+     */
+    private function generateCanonicalizedHash($request, $algorithm)
+    {
+        return $request->canonicalizeUsing($algorithm);
+    }
+
+    /**
+     * @param $credentials
+     * @param $algorithm
+     * @param $canonicalHash
+     * @return mixed
+     */
+    private function generateStringToSign($credentials, $algorithm, $canonicalHash)
+    {
+        return $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
+    }
+
+    /**
+     * @param $secretKey
+     * @param $credentials
+     * @param $algorithm
+     * @return mixed
+     */
+    private function generateSigningKey($secretKey, $credentials, $algorithm)
+    {
+        return $credentials->generateSigningKeyUsing($algorithm, $secretKey);
+    }
+
+    /**
+     * @param $algorithm
+     * @param $stringToSign
+     * @param $signingKey
+     * @return mixed
+     */
+    private function generateSignature($algorithm, $stringToSign, $signingKey)
+    {
+        return $algorithm->hmac($stringToSign, $signingKey, false);
     }
 }
 
@@ -72,17 +114,20 @@ class AsrCredentials
      */
     private $fullDate;
 
+    private $accessKeyId;
+
     /**
      * @var array
      */
     private $parts;
 
-    public function __construct($fullDate, array $parts)
+    public function __construct($fullDate, $accessKeyId, array $parts)
     {
         if (count($parts) != 3) {
             throw new InvalidArgumentException('Credentials should consist of exactly 3 parts');
         }
         $this->fullDate = $fullDate;
+        $this->accessKeyId = $accessKeyId;
         $this->parts = $parts;
     }
 
@@ -114,6 +159,11 @@ class AsrCredentials
     {
         return implode("\n", array($algorithm->getNameForHeader(), $this->fullDate, $this->toScopeString(), $canonicalHash));
     }
+
+    public function toHeaderString()
+    {
+        return $this->accessKeyId . '/' . $this->toScopeString();
+    }
 }
 
 class AsrHeaders
@@ -123,7 +173,7 @@ class AsrHeaders
         $this->headers = $headers;
     }
 
-    public function toSignedHeadersString()
+    public function toHeaderString()
     {
         return implode(';', array_map('strtolower', array_keys($this->headers)));
     }
@@ -169,7 +219,7 @@ class AsrRequest
             $lines[] = $canonicalizedHeaderLine;
         }
         $lines[] = '';
-        $lines[] = $this->headers->toSignedHeadersString();
+        $lines[] = $this->headers->toHeaderString();
         $lines[] = $algorithm->hash($this->payload);
 
         return $algorithm->hash(implode("\n", $lines));

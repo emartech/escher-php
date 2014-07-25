@@ -46,17 +46,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $credentials = new AsrCredentials('20120215TIRRELEVANT', $this->baseCredentials);
+        $credentials = new AsrCredentials('20120215TIRRELEVANT', $this->accessKeyId, $this->baseCredentials);
         $result = $credentials->generateSigningKeyUsing($this->algorithm, $this->secretKey);
         $this->assertEquals('f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d', bin2hex($result));
-    }
-
-    /**
-     * @return string
-     */
-    private function shortDate()
-    {
-        return '20110909';
     }
 
     /**
@@ -77,24 +69,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function payload()
     {
         return 'Action=ListUsers&Version=2010-05-08';
-    }
-
-    /**
-     * @param $shortDate
-     * @return string
-     */
-    private function credentialScope($shortDate)
-    {
-        return implode('/', $this->credentials($shortDate));
-    }
-
-    /**
-     * @param $shortDate
-     * @return array
-     */
-    private function credentials($shortDate)
-    {
-        return array_merge(array($shortDate), $this->baseCredentials);
     }
 
     /**
