@@ -16,11 +16,7 @@ class AsrUtil
         $signingKey      = $this->generateSigningKey($secretKey, $credentials, $algorithm);
         $signature       = $this->generateSignature($algorithm, $stringToSign, $signingKey);
 
-        $result          = array(
-            'Authorization' => "{$algorithm->getNameForHeader()} Credential={$credentials->toHeaderString()}, SignedHeaders={$headers->toHeaderString()}, Signature=$signature",
-            'X-Amz-Date'    => $fullDate,
-        );
-        return $result;
+        return $this->generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature);
     }
 
     public function validateSignature(array $request, array $headers)
@@ -37,7 +33,7 @@ class AsrUtil
      * @param $algorithm
      * @return mixed
      */
-    private function generateCanonicalizedHash($request, $algorithm)
+    private function generateCanonicalizedHash(AsrRequest $request, $algorithm)
     {
         return $request->canonicalizeUsing($algorithm);
     }
@@ -74,6 +70,38 @@ class AsrUtil
     {
         return $algorithm->hmac($stringToSign, $signingKey, false);
     }
+
+    /**
+     * @param $algorithm
+     * @param $credentials
+     * @param $headers
+     * @param $signature
+     * @return string
+     */
+    private function generateAuthorizationHeader($algorithm, $credentials, $headers, $signature)
+    {
+        return
+            $algorithm->toHeaderString() . ' ' .
+            "Credential={$credentials->toHeaderString()}, " .
+            "SignedHeaders={$headers->toHeaderString()}, ".
+            "Signature=$signature";
+    }
+
+    /**
+     * @param $fullDate
+     * @param $algorithm
+     * @param $credentials
+     * @param $headers
+     * @param $signature
+     * @return array
+     */
+    private function generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature)
+    {
+        return array(
+            'Authorization' => $this->generateAuthorizationHeader($algorithm, $credentials, $headers, $signature),
+            'X-Amz-Date' => $fullDate,
+        );
+    }
 }
 
 class SigningAlgorithm
@@ -91,7 +119,7 @@ class SigningAlgorithm
         $this->algorithm = $algorithm;
     }
 
-    public function getNameForHeader()
+    public function toHeaderString()
     {
         return 'AWS4-HMAC-' . strtoupper($this->algorithm);
     }
@@ -157,7 +185,7 @@ class AsrCredentials
 
     public function generateStringToSignUsing(SigningAlgorithm $algorithm, $canonicalHash)
     {
-        return implode("\n", array($algorithm->getNameForHeader(), $this->fullDate, $this->toScopeString(), $canonicalHash));
+        return implode("\n", array($algorithm->toHeaderString(), $this->fullDate, $this->toScopeString(), $canonicalHash));
     }
 
     public function toHeaderString()
