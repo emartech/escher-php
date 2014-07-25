@@ -23,7 +23,7 @@ class AsrUtil
 
         $canonicalHash   = $request->canonicalizeUsing($this->algorithm);
 
-        $stringToSign    = $this->generateStringToSign($fullDate, $credentials, $canonicalHash);
+        $stringToSign    = $credentials->generateStringToSignUsing($this->algorithm, $canonicalHash);
         $signingKey      = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
         $signature       = $this->algorithm->hmac($stringToSign, $signingKey, false);
         $result          = array(
@@ -46,11 +46,6 @@ class AsrUtil
     {
         $signingKey = $credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
-    }
-
-    public function generateStringToSign($fullDate, AsrCredentials $credentials, $canonicalHash)
-    {
-        return implode("\n", array($this->algorithm->getName(), $fullDate, $credentials->toScopeString(), $canonicalHash));
     }
 
     public function generateCanonicalHash($method, $url, $payload, array $headers)
@@ -150,6 +145,11 @@ class AsrCredentials
             $key = $algorithm->hmac($data, $key, true);
         }
         return $key;
+    }
+
+    public function generateStringToSignUsing(SigningAlgorithm $algorithm, $canonicalHash)
+    {
+        return implode("\n", array($algorithm->getName(), $this->fullDate, $this->toScopeString(), $canonicalHash));
     }
 }
 

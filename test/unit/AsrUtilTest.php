@@ -34,39 +34,11 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
-    public function itShouldGenerateStringToSign()
-    {
-        $credentials = new AsrCredentials($this->fullDate(), $this->baseCredentials());
-        $result = $this->util->generateStringToSign($this->fullDate(), $credentials, $this->canonicalHash());
-        $this->assertEquals($this->stringToSign(), $result);
-    }
-
-    /**
-     * @test
-     */
     public function itShouldCalculateSigningKey()
     {
         $credentials = new AsrCredentials('20120215TIRRELEVANT', $this->baseCredentials());
         $result = $credentials->generateSigningKeyUsing(new SigningAlgorithm('sha256'), $this->secretKey());
         $this->assertEquals($this->signingKey(), bin2hex($result));
-    }
-
-    /**
-     * @test
-     */
-    public function itShouldSignString()
-    {
-        $credentials = new AsrCredentials($this->fullDate(), $this->baseCredentials());
-        $result = $this->util->sign($this->stringToSign(), $credentials, $this->secretKey());
-        $this->assertEquals($this->signedRequest(), $result);
-    }
-
-    /**
-     * @return string
-     */
-    private function stringToSign()
-    {
-        return implode("\n", array('AWS4-HMAC-SHA256', $this->fullDate(), $this->credentialScope($this->shortDate()), $this->canonicalHash()));
     }
 
     /**
