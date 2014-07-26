@@ -138,6 +138,9 @@ class AsrSigningAlgorithm
      */
     public function __construct($algorithm)
     {
+        if (!in_array($algorithm, hash_algos())) {
+            throw new AsrException("Invalid algorithm: '$algorithm'");
+        }
         $this->algorithm = $algorithm;
     }
 
@@ -174,7 +177,7 @@ class AsrCredentials
     public function __construct($fullDate, $accessKeyId, array $parts)
     {
         if (count($parts) != 3) {
-            throw new InvalidArgumentException('Credentials should consist of exactly 3 parts');
+            throw new AsrException('Credentials should consist of exactly 3 parts');
         }
         $this->fullDate = $fullDate;
         $this->accessKeyId = $accessKeyId;
@@ -293,4 +296,8 @@ class AsrRequest
 
         return $algorithm->hash(implode("\n", $lines));
     }
+}
+
+class AsrException extends Exception
+{
 }
