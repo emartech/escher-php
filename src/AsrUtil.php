@@ -8,7 +8,7 @@ class AsrUtil
     {
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
-        $headers     = new AsrHeaders($headerList);
+        $headers     = AsrHeaders::createFrom($headerList);
         $request     = new AsrRequest($method, $url, $payload, $headers);
 
         $canonicalHash   = $this->generateCanonicalizedHash($request, $algorithm);
@@ -184,28 +184,47 @@ class AsrCredentials
 
 class AsrHeaders
 {
-    public function __construct($headers)
+    /**
+     * @var array
+     */
+    private $headers;
+
+    public function __construct(array $headers)
     {
         $this->headers = $headers;
     }
 
+    public static function createFrom($headers)
+    {
+        ksort($headers);
+        return new AsrHeaders(array_combine(
+            array_map('strtolower', array_keys($headers)),
+            array_map('self::trimHeaderValue', array_values($headers))
+        ));
+    }
+
+    public static function trimHeaderValue($value)
+    {
+        return trim($value);
+    }
+
     public function toHeaderString()
     {
-        return implode(';', array_map('strtolower', array_keys($this->headers)));
+        return implode(';', array_keys($this->headers));
     }
 
     public function canonicalize()
     {
-        $result = array();
-        foreach ($this->headers as $key => $value) {
-            $result []= strtolower($key) . ':' . $this->trimHeaderValue($value);
-        }
-        return $result;
+        return array_map(
+            array($this, 'collapseLine'),
+            array_keys($this->headers),
+            array_values($this->headers)
+        );
     }
 
-    private function trimHeaderValue($value)
+    public function collapseLine($headerKey, $headerValue)
     {
-        return trim($value);
+        return $headerKey.':'.$headerValue;
     }
 }
 

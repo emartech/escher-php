@@ -35,7 +35,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateCanonicalHash()
     {
-        $headers = new AsrHeaders($this->headers());
+        $headers = AsrHeaders::createFrom($this->headers());
         $request = new AsrRequest('POST', $this->url(), $this->payload(), $headers);
         $result = $request->canonicalizeUsing($this->algorithm);
         $this->assertEquals('3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2', $result);
