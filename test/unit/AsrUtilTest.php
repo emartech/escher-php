@@ -65,6 +65,26 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @test
+     */
+    public function itShouldThrowExceptionIfDatesAreTooFarApart()
+    {
+        $validator = new AsrValidator();
+        $actual = $validator->validateDates('20110909T233600Z', '20110909T232500Z', '20110909');
+        $this->assertFalse($actual);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldNotThrowExceptionsIfDatesAreAcceptable()
+    {
+        $validator = new AsrValidator();
+        $actual = $validator->validateDates('20110909T233600Z', '20110909T233200Z', '20110909');
+        $this->assertTrue($actual);
+    }
+
+    /**
      * @return array
      */
     private function headers()

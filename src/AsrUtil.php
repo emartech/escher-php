@@ -322,6 +322,22 @@ class AsrRequest
     }
 }
 
+class AsrValidator
+{
+    const ACCEPTABLE_TIME_INTERVAL_IN_SECONDS = 600;
+
+    public function validateCredentials(array $credentialParts)
+    {
+        return 5 === count($credentialParts);
+    }
+
+    public function validateDates($serverDateString, $fullDateString, $shortDateString)
+    {
+        return substr($fullDateString, 0, 8) == $shortDateString
+            && abs(strtotime($serverDateString) - strtotime($fullDateString)) < self::ACCEPTABLE_TIME_INTERVAL_IN_SECONDS;
+    }
+}
+
 class AsrException extends Exception
 {
 }
