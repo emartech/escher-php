@@ -81,14 +81,48 @@ class AsrUtil
      */
     private function generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature)
     {
+        $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
         return array(
             'X-Amz-Date' => $fullDate,
-            'Authorization' =>
-                $algorithm->toHeaderString() . ' ' .
-                "Credential={$credentials->toHeaderString()}, " .
-                "SignedHeaders={$headers->toHeaderString()}, ".
-                "Signature=$signature",
+            'Authorization' => $authHeader->toHeaderString(),
         );
+    }
+}
+
+class AsrAuthHeader
+{
+    /**
+     * @var AsrSigningAlgorithm
+     */
+    private $algorithm;
+    /**
+     * @var AsrCredentials
+     */
+    private $credentials;
+    /**
+     * @var AsrHeaders
+     */
+    private $headers;
+
+    /**
+     * @var string
+     */
+    private $signature;
+
+    public function __construct($algorithm, $credentials, $headers, $signature)
+    {
+        $this->algorithm = $algorithm;
+        $this->credentials = $credentials;
+        $this->headers = $headers;
+        $this->signature = $signature;
+    }
+
+    public function toHeaderString()
+    {
+        return $this->algorithm->toHeaderString() . ' ' .
+                "Credential={$this->credentials->toHeaderString()}, " .
+                "SignedHeaders={$this->headers->toHeaderString()}, ".
+                "Signature=$this->signature";
     }
 }
 
