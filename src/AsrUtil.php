@@ -6,7 +6,7 @@ class AsrUtil
 
     public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headerList)
     {
-        $algorithm   = new SigningAlgorithm($algorithmName);
+        $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
         $headers     = new AsrHeaders($headerList);
         $request     = new AsrRequest($method, $url, $payload, $headers);
@@ -104,7 +104,7 @@ class AsrUtil
     }
 }
 
-class SigningAlgorithm
+class AsrSigningAlgorithm
 {
     /**
      * @var string
@@ -174,7 +174,7 @@ class AsrCredentials
         return substr($this->fullDate, 0, 8);
     }
 
-    public function generateSigningKeyUsing(SigningAlgorithm $algorithm, $secretKey)
+    public function generateSigningKeyUsing(AsrSigningAlgorithm $algorithm, $secretKey)
     {
         $key = $secretKey;
         foreach ($this->toArray() as $data) {
@@ -183,7 +183,7 @@ class AsrCredentials
         return $key;
     }
 
-    public function generateStringToSignUsing(SigningAlgorithm $algorithm, $canonicalHash)
+    public function generateStringToSignUsing(AsrSigningAlgorithm $algorithm, $canonicalHash)
     {
         return implode("\n", array($algorithm->toHeaderString(), $this->fullDate, $this->toScopeString(), $canonicalHash));
     }
@@ -235,7 +235,7 @@ class AsrRequest
         $this->headers = $headers;
     }
 
-    public function canonicalizeUsing(SigningAlgorithm $algorithm)
+    public function canonicalizeUsing(AsrSigningAlgorithm $algorithm)
     {
         $urlParts = parse_url($this->url);
 
