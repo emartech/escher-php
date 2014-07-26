@@ -19,7 +19,7 @@ class AsrUtil
         return $this->generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature);
     }
 
-    public function validateSignature(array $request, array $headers)
+    public function validateSignature(array $request, array $headerList)
     {
         // parse authorization header
         // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
@@ -243,19 +243,19 @@ class AsrHeaders
     /**
      * @var array
      */
-    private $headers;
+    private $headerList;
 
-    public function __construct(array $headers)
+    public function __construct(array $headerList)
     {
-        $this->headers = $headers;
+        $this->headerList = $headerList;
     }
 
-    public static function createFrom($headers)
+    public static function createFrom($headerList)
     {
-        ksort($headers);
+        ksort($headerList);
         return new AsrHeaders(array_combine(
-            array_map('strtolower', array_keys($headers)),
-            array_map('self::trimHeaderValue', array_values($headers))
+            array_map('strtolower', array_keys($headerList)),
+            array_map('self::trimHeaderValue', array_values($headerList))
         ));
     }
 
@@ -266,20 +266,20 @@ class AsrHeaders
 
     public function get($headerKey)
     {
-        return isset($this->headers[$headerKey]) ? $this->headers[$headerKey] : '';
+        return isset($this->headerList[$headerKey]) ? $this->headerList[$headerKey] : '';
     }
 
     public function toHeaderString()
     {
-        return implode(';', array_keys($this->headers));
+        return implode(';', array_keys($this->headerList));
     }
 
     public function canonicalize()
     {
         return array_map(
             array($this, 'collapseLine'),
-            array_keys($this->headers),
-            array_values($this->headers)
+            array_keys($this->headerList),
+            array_values($this->headerList)
         );
     }
 
