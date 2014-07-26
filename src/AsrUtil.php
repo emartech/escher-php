@@ -117,6 +117,25 @@ class AsrAuthHeader
         $this->signature = $signature;
     }
 
+    public static function parse($authHeaderString)
+    {
+        $matches = array();
+        if (1 !== preg_match(self::regex(), $authHeaderString, $matches)) {
+            throw new AsrException('Could not parse authorization header.');
+        }
+        return $matches;
+    }
+
+    private static function regex()
+    {
+        return '/'.
+            '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
+            'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
+            'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
+            'Signature=(?P<signature>[0-9a-f]{64})'.
+        '$/';
+    }
+
     public function toHeaderString()
     {
         return $this->algorithm->toHeaderString() . ' ' .
@@ -243,6 +262,11 @@ class AsrHeaders
     public static function trimHeaderValue($value)
     {
         return trim($value);
+    }
+
+    public function get($headerKey)
+    {
+        return isset($this->headers[$headerKey]) ? $this->headers[$headerKey] : '';
     }
 
     public function toHeaderString()

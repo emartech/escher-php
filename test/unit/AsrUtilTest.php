@@ -52,6 +52,19 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @test
+     */
+    public function itShouldParseAuthorizationHeader()
+    {
+        $headerList = $this->authorizationHeader();
+        $actual = AsrAuthHeader::parse($headerList['Authorization']);
+        $this->assertEquals('SHA256', $actual['algorithm']);
+        $this->assertEquals('AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request', $actual['credentials']);
+        $this->assertEquals('content-type;host;x-amz-date', $actual['signed_headers']);
+        $this->assertEquals('ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c', $actual['signature']);
+    }
+
+    /**
      * @return array
      */
     private function headers()
