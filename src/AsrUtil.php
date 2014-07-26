@@ -72,22 +72,6 @@ class AsrUtil
     }
 
     /**
-     * @param $algorithm
-     * @param $credentials
-     * @param $headers
-     * @param $signature
-     * @return string
-     */
-    private function generateAuthorizationHeader($algorithm, $credentials, $headers, $signature)
-    {
-        return
-            $algorithm->toHeaderString() . ' ' .
-            "Credential={$credentials->toHeaderString()}, " .
-            "SignedHeaders={$headers->toHeaderString()}, ".
-            "Signature=$signature";
-    }
-
-    /**
      * @param $fullDate
      * @param $algorithm
      * @param $credentials
@@ -98,8 +82,12 @@ class AsrUtil
     private function generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature)
     {
         return array(
-            'Authorization' => $this->generateAuthorizationHeader($algorithm, $credentials, $headers, $signature),
             'X-Amz-Date' => $fullDate,
+            'Authorization' =>
+                $algorithm->toHeaderString() . ' ' .
+                "Credential={$credentials->toHeaderString()}, " .
+                "SignedHeaders={$headers->toHeaderString()}, ".
+                "Signature=$signature",
         );
     }
 }
