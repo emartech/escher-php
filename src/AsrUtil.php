@@ -11,10 +11,7 @@ class AsrUtil
         $headers     = AsrHeaders::createFrom($headerList);
         $request     = new AsrRequest($method, $url, $payload, $headers);
 
-        $canonicalHash   = $request->canonicalizeUsing($algorithm);
-        $stringToSign    = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
-        $signingKey      = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
-        $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
+        $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
 
         $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
         return array('X-Amz-Date' => $fullDate, 'Authorization' => $authHeader->toHeaderString());
@@ -27,6 +24,22 @@ class AsrUtil
         // credential scope date's day should equal to x-amz-date
         // x-amz-date should be within X minutes of server's time
         // signature check:
+    }
+
+    /**
+     * @param $algorithm
+     * @param $secretKey
+     * @param $credentials
+     * @param $request
+     * @return mixed
+     */
+    public function calculateSignature($algorithm, $secretKey, $credentials, $request)
+    {
+        $canonicalHash = $request->canonicalizeUsing($algorithm);
+        $stringToSign = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
+        $signingKey = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
+        $signature = $algorithm->hmac($stringToSign, $signingKey, false);
+        return $signature;
     }
 }
 
