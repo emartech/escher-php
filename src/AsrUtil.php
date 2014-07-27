@@ -4,12 +4,12 @@ class AsrUtil
 {
     const SHA256 = 'sha256';
 
-    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $payload, array $headerList)
+    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList)
     {
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
         $headers     = AsrHeaders::createFrom($headerList);
-        $request     = new AsrRequest($method, $url, $payload, $headers);
+        $request     = new AsrRequest($method, $url, $requestBody, $headers);
 
         $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
 
@@ -17,13 +17,32 @@ class AsrUtil
         return array('X-Amz-Date' => $fullDate, 'Authorization' => $authHeader->toHeaderString());
     }
 
-    public function validateSignature(array $request, array $headerList)
+    public function validateSignature($serverDate, $method, $url, $requestBody, array $headerList)
     {
-        // parse authorization header
+        $validator = new AsrValidator();
+        $headers = AsrHeaders::createFrom($headerList);
+        $authHeaderParts = AsrAuthHeader::parse($headers->get('authorization'));
+        $credentialParts = explode('/', $authHeaderParts['credentials']);
+        if (!$validator->validateCredentials($credentialParts)) {
+            return false;
+        }
+        $accessKeyId = array_shift($credentialParts);
+        $shortDate   = array_shift($credentialParts);
+        $fullDate    = $headers->get('x-amz-date');
+        if (!$validator->validateDates($serverDate, $fullDate, $shortDate)) {
+            return false;
+        }
+
+        // look up secret key for access key id
         // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
-        // credential scope date's day should equal to x-amz-date
-        // x-amz-date should be within X minutes of server's time
-        // signature check:
+        $secretKey = 'TODO-ADD-LOOKUP';
+
+        $algorithm   = new AsrSigningAlgorithm(strtolower($authHeaderParts['algorithm']));
+        $credentials = new AsrCredentials($fullDate, $accessKeyId, $credentialParts);
+        $request     = new AsrRequest($method, $url, $requestBody, $headers);
+
+        $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
+        return $authHeaderParts['signature'] == $signature;
     }
 
     /**
