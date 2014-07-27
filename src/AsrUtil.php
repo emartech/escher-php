@@ -11,12 +11,13 @@ class AsrUtil
         $headers     = AsrHeaders::createFrom($headerList);
         $request     = new AsrRequest($method, $url, $payload, $headers);
 
-        $canonicalHash   = $this->generateCanonicalizedHash($request, $algorithm);
-        $stringToSign    = $this->generateStringToSign($credentials, $algorithm, $canonicalHash);
-        $signingKey      = $this->generateSigningKey($secretKey, $credentials, $algorithm);
-        $signature       = $this->generateSignature($algorithm, $stringToSign, $signingKey);
+        $canonicalHash   = $request->canonicalizeUsing($algorithm);
+        $stringToSign    = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
+        $signingKey      = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
+        $signature       = $algorithm->hmac($stringToSign, $signingKey, false);
 
-        return $this->generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature);
+        $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
+        return array('X-Amz-Date' => $fullDate, 'Authorization' => $authHeader->toHeaderString());
     }
 
     public function validateSignature(array $request, array $headerList)
@@ -26,66 +27,6 @@ class AsrUtil
         // credential scope date's day should equal to x-amz-date
         // x-amz-date should be within X minutes of server's time
         // signature check:
-    }
-
-    /**
-     * @param $request
-     * @param $algorithm
-     * @return mixed
-     */
-    private function generateCanonicalizedHash(AsrRequest $request, $algorithm)
-    {
-        return $request->canonicalizeUsing($algorithm);
-    }
-
-    /**
-     * @param $credentials
-     * @param $algorithm
-     * @param $canonicalHash
-     * @return mixed
-     */
-    private function generateStringToSign($credentials, $algorithm, $canonicalHash)
-    {
-        return $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
-    }
-
-    /**
-     * @param $secretKey
-     * @param $credentials
-     * @param $algorithm
-     * @return mixed
-     */
-    private function generateSigningKey($secretKey, $credentials, $algorithm)
-    {
-        return $credentials->generateSigningKeyUsing($algorithm, $secretKey);
-    }
-
-    /**
-     * @param $algorithm
-     * @param $stringToSign
-     * @param $signingKey
-     * @return mixed
-     */
-    private function generateSignature($algorithm, $stringToSign, $signingKey)
-    {
-        return $algorithm->hmac($stringToSign, $signingKey, false);
-    }
-
-    /**
-     * @param $fullDate
-     * @param $algorithm
-     * @param $credentials
-     * @param $headers
-     * @param $signature
-     * @return array
-     */
-    private function generateHeaders($fullDate, $algorithm, $credentials, $headers, $signature)
-    {
-        $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
-        return array(
-            'X-Amz-Date' => $fullDate,
-            'Authorization' => $authHeader->toHeaderString(),
-        );
     }
 }
 
