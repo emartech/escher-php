@@ -260,14 +260,15 @@ class AsrRequest
     private $method;
     private $path;
     private $query;
+    private $requestBody;
     private $headers;
 
-    public function __construct($method, $path, $query, $payload, AsrHeaders $headers)
+    public function __construct($method, $path, $query, $requestBody, AsrHeaders $headers)
     {
         $this->method = $method;
         $this->path = $path;
         $this->query = $query;
-        $this->payload = $payload;
+        $this->requestBody = $requestBody;
         $this->headers = $headers;
     }
 
@@ -287,7 +288,7 @@ class AsrRequest
         }
         $lines[] = '';
         $lines[] = $this->headers->toHeaderString();
-        $lines[] = $algorithm->hash($this->payload);
+        $lines[] = $algorithm->hash($this->requestBody);
 
         return $algorithm->hash(implode("\n", $lines));
     }
