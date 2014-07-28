@@ -10,8 +10,7 @@ class AsrUtil
         $host     = $urlParts['host'];
         $path     = $urlParts['path'];
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
-        return AsrAuthHeader::create()
-            ->useAlgorithm($algorithmName)
+        return AsrAuthHeader::create($algorithmName)
             ->useTimestamp(strtotime($fullDate))
             ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
@@ -40,8 +39,7 @@ class AsrUtil
         // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        return AsrAuthHeader::create()
-            ->useAlgorithm($authHeaderParts['algorithm'])
+        return AsrAuthHeader::create($authHeaderParts['algorithm'])
             ->useAmazonTime($headerList['x-amz-date'])
             ->useCredentials($accessKeyId, $credentialParts)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
@@ -77,9 +75,14 @@ class AsrAuthHeader
      */
     private $request;
 
-    public static function create()
+    public static function create($algorithmName = AsrUtil::SHA256)
     {
-        return new AsrAuthHeader();
+        return new AsrAuthHeader(new AsrSigningAlgorithm(strtolower($algorithmName)));
+    }
+
+    public function __construct(AsrSigningAlgorithm $algorithm)
+    {
+        $this->algorithm = $algorithm;
     }
 
     public static function createDefault()
@@ -119,16 +122,6 @@ class AsrAuthHeader
     public function validate($secretKey, $signature)
     {
         return $signature == $this->calculateSignature($secretKey);
-    }
-
-    /**
-     * @param $algorithmName
-     * @return AsrAuthHeader
-     */
-    public function useAlgorithm($algorithmName)
-    {
-        $this->algorithm = new AsrSigningAlgorithm(strtolower($algorithmName));
-        return $this;
     }
 
     /**

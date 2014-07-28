@@ -25,7 +25,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
         return AsrAuthHeader::create()
-            ->useAlgorithm(AsrUtil::SHA256)
             ->useAmazonTime('20110909T233600Z')
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
@@ -70,6 +69,22 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
         );
         $headersToSign = array('Content-Type');
         $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldUseSha256AsDefaultAlgorithm()
+    {
+        $headerList = $this->headers();
+        $headersToSign = array('Content-Type');
+        $actual = AsrAuthHeader::create()
+            ->useAmazonTime('20110909T233600Z')
+            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useHeaders($this->host, $headerList, $headersToSign)
+            ->useRequest('POST', '/', '', $this->payload())
+            ->build($this->secretKey);
+        $this->assertEquals($this->authorizationHeader(), $actual);
     }
 
     /**
