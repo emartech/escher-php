@@ -6,21 +6,10 @@ class AsrUtil
 
     public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        $dateHeader  = array('X-Amz-Date' => $fullDate);
-        $algorithm   = new AsrSigningAlgorithm($algorithmName);
-        $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
-        $urlParts    = parse_url($url);
-        $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
-        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headerList, $headersToSign);
-        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
-
-        $signature = $request->signWith($algorithm, $credentials, $secretKey);
-
-        $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
-        return $dateHeader + array('Authorization' => $authHeader->toHeaderString());
+        return AsrAuthHeader::create()->build($algorithmName, $secretKey, $accessKeyId, $baseCredentials, $fullDate, $method, $url, $requestBody, $headerList, $headersToSign);
     }
 
-    public function validateSignature($serverDate, $method, $url, $requestBody, array $headerList)
+    public function checkSignature($serverDate, $method, $url, $requestBody, array $headerList)
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $fullDate        = $headerList['x-amz-date'];
@@ -54,30 +43,9 @@ class AsrUtil
 
 class AsrAuthHeader
 {
-    /**
-     * @var AsrSigningAlgorithm
-     */
-    private $algorithm;
-    /**
-     * @var AsrCredentials
-     */
-    private $credentials;
-    /**
-     * @var AsrHeaders
-     */
-    private $headers;
-
-    /**
-     * @var string
-     */
-    private $signature;
-
-    public function __construct($algorithm, $credentials, $headers, $signature)
+    public static function create()
     {
-        $this->algorithm = $algorithm;
-        $this->credentials = $credentials;
-        $this->headers = $headers;
-        $this->signature = $signature;
+        return new AsrAuthHeader();
     }
 
     public static function parse($authHeaderString)
@@ -99,12 +67,21 @@ class AsrAuthHeader
         '$/';
     }
 
-    public function toHeaderString()
+    public function build($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        return $this->algorithm->toHeaderString() . ' ' .
-                "Credential={$this->credentials->toHeaderString()}, " .
-                "SignedHeaders={$this->headers->toHeaderString()}, ".
-                "Signature=$this->signature";
+        $dateHeader  = array('X-Amz-Date' => $fullDate);
+        $algorithm   = new AsrSigningAlgorithm($algorithmName);
+        $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
+        $urlParts    = parse_url($url);
+        $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
+        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headerList, $headersToSign);
+        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
+        $signature = $request->signWith($algorithm, $credentials, $secretKey);
+
+        return $dateHeader + array('Authorization' => $algorithm->toHeaderString() . ' ' .
+            "Credential={$credentials->toHeaderString()}, " .
+            "SignedHeaders={$headers->toHeaderString()}, ".
+            "Signature=$signature");
     }
 }
 
