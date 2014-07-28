@@ -223,15 +223,20 @@ class AsrHeaders
 
         sort($headersToSign);
         ksort($headerList);
-        return new AsrHeaders(array_combine(
-            array_map('strtolower', array_keys($headerList)),
-            array_map('self::trimHeaderValue', array_values($headerList))
-        ), $headersToSign);
+        return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
     }
 
     public static function trimHeaderValue($value)
     {
         return trim($value);
+    }
+
+    public static function canonicalize($headerList)
+    {
+        return array_combine(
+            array_map('strtolower', array_keys($headerList)),
+            array_map('self::trimHeaderValue', array_values($headerList))
+        );
     }
 
     public function get($headerKey)
