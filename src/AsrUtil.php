@@ -22,16 +22,17 @@ class AsrUtil
 
     public function validateSignature($serverDate, $method, $url, $requestBody, array $headerList)
     {
-        $validator = new AsrValidator();
-        $headers = AsrHeaders::createFrom($headerList);
-        $authHeaderParts = AsrAuthHeader::parse($headers->get('authorization'));
+        $headerList      = AsrHeaders::canonicalize($headerList);
+        $fullDate        = $headerList['x-amz-date'];
+        $authHeaderParts = AsrAuthHeader::parse($headerList['authorization']);
         $credentialParts = explode('/', $authHeaderParts['credentials']);
+
+        $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
             return false;
         }
         $accessKeyId = array_shift($credentialParts);
         $shortDate   = array_shift($credentialParts);
-        $fullDate    = $headers->get('x-amz-date');
         if (!$validator->validateDates($serverDate, $fullDate, $shortDate)) {
             return false;
         }
@@ -43,6 +44,7 @@ class AsrUtil
         $algorithm   = new AsrSigningAlgorithm(strtolower($authHeaderParts['algorithm']));
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $credentialParts);
         $urlParts    = parse_url($url);
+        $headers     = AsrHeaders::createFrom($headerList, $authHeaderParts['signed_headers']);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
         $signature = $request->signWith($algorithm, $credentials, $secretKey);
