@@ -19,7 +19,7 @@ class AsrUtil
             ->build($secretKey);
     }
 
-    public function checkSignature($serverDate, $method, $path, $query, $requestBody, array $headerList)
+    public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $fullDate        = $headerList['x-amz-date'];
@@ -40,13 +40,13 @@ class AsrUtil
         // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        $algorithm   = new AsrSigningAlgorithm(strtolower($authHeaderParts['algorithm']));
-        $credentials = new AsrCredentials($fullDate, $accessKeyId, $credentialParts);
-        $headers     = AsrHeaders::createFrom($headerList, $authHeaderParts['signed_headers']);
-        $request     = new AsrRequest($algorithm, $credentials, $method, $path, $query, $requestBody, $headers);
-
-        $signature = $request->signWith($algorithm, $credentials, $secretKey);
-        return $authHeaderParts['signature'] == $signature;
+        return AsrAuthHeader::create()
+            ->useAlgorithm($authHeaderParts['algorithm'])
+            ->useAmazonTime($headerList['x-amz-date'])
+            ->useCredentials($accessKeyId, $credentialParts)
+            ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
+            ->useRequest($method, $path, $query, $requestBody)
+            ->validate($secretKey, $authHeaderParts['signature']);
     }
 }
 
@@ -116,13 +116,18 @@ class AsrAuthHeader
             "Signature=$signature");
     }
 
+    public function validate($secretKey, $signature)
+    {
+        return $signature == $this->request->signWith($secretKey);
+    }
+
     /**
      * @param $algorithmName
      * @return AsrAuthHeader
      */
     public function useAlgorithm($algorithmName)
     {
-        $this->algorithm = new AsrSigningAlgorithm($algorithmName);
+        $this->algorithm = new AsrSigningAlgorithm(strtolower($algorithmName));
         return $this;
     }
 
