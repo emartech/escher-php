@@ -16,6 +16,27 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private $accessKeyId = 'AKIDEXAMPLE';
     private $baseCredentials = array('us-east-1', 'iam', 'aws4_request');
 
+    /**
+     * @param $headerList
+     * @param $headersToSign
+     * @return array
+     */
+    public function callSignRequest($headerList, $headersToSign)
+    {
+        return $this->util->signRequest(
+            AsrUtil::SHA256,
+            $this->secretKey,
+            $this->accessKeyId,
+            $this->baseCredentials,
+            '20110909T233600Z',
+            'POST',
+            $this->url(),
+            $this->payload(),
+            $headerList,
+            $headersToSign
+        );
+    }
+
     protected function setUp()
     {
         $this->util = new AsrUtil();
@@ -27,18 +48,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
-            AsrUtil::SHA256,
-            $this->secretKey,
-            $this->accessKeyId,
-            $this->baseCredentials,
-            '20110909T233600Z',
-            'POST',
-            $this->url(),
-            $this->payload(),
-            $this->headers(),
-            array('Content-Type')
-        ));
+        $headersToSign = array('Content-Type');
+        $headerList = $this->headers();
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
     }
 
     /**
@@ -46,18 +58,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldAutomagicallyAddDateAndHostHeader()
     {
-        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
-            AsrUtil::SHA256,
-            $this->secretKey,
-            $this->accessKeyId,
-            $this->baseCredentials,
-            '20110909T233600Z',
-            'POST',
-            $this->url(),
-            $this->payload(),
-            array('Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8'),
-            array('Content-Type')
-        ));
+        $headerList = array('Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8');
+        $headersToSign = array('Content-Type');
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
     }
 
     /**
@@ -65,21 +68,12 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldOnlySignHeadersExplicitlySetToBeSigned()
     {
-        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
-            AsrUtil::SHA256,
-            $this->secretKey,
-            $this->accessKeyId,
-            $this->baseCredentials,
-            '20110909T233600Z',
-            'POST',
-            $this->url(),
-            $this->payload(),
-            array(
-                'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
-                'X-A-Header' => 'that/should/not/be/signed'
-            ),
-            array('Content-Type')
-        ));
+        $headerList = array(
+            'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'X-A-Header' => 'that/should/not/be/signed'
+        );
+        $headersToSign = array('Content-Type');
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
     }
 
     /**
