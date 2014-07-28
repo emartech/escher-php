@@ -8,8 +8,9 @@ class AsrUtil
     {
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
+        $urlParts    = parse_url($url);
         $headers     = AsrHeaders::createFrom($headersToSign);
-        $request     = new AsrRequest($method, $url, $requestBody, $headers);
+        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
         $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
 
@@ -39,7 +40,8 @@ class AsrUtil
 
         $algorithm   = new AsrSigningAlgorithm(strtolower($authHeaderParts['algorithm']));
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $credentialParts);
-        $request     = new AsrRequest($method, $url, $requestBody, $headers);
+        $urlParts    = parse_url($url);
+        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
         $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
         return $authHeaderParts['signature'] == $signature;
@@ -270,25 +272,25 @@ class AsrHeaders
 class AsrRequest
 {
     private $method;
-    private $url;
+    private $path;
+    private $query;
     private $headers;
 
-    public function __construct($method, $url, $payload, AsrHeaders $headers)
+    public function __construct($method, $path, $query, $payload, AsrHeaders $headers)
     {
         $this->method = $method;
-        $this->url = $url;
+        $this->path = $path;
+        $this->query = $query;
         $this->payload = $payload;
         $this->headers = $headers;
     }
 
     public function canonicalizeUsing(AsrSigningAlgorithm $algorithm)
     {
-        $urlParts = parse_url($this->url);
-
         $lines = array();
         $lines[] = strtoupper($this->method);
-        $lines[] = $urlParts['path'];
-        $lines[] = isset($urlParts['query']) ? $urlParts['query'] : '';
+        $lines[] = $this->path;
+        $lines[] = $this->query;
         foreach ($this->headers->canonicalize() as $canonicalizedHeaderLine) {
             $lines[] = $canonicalizedHeaderLine;
         }
