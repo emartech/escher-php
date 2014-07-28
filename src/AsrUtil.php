@@ -72,6 +72,11 @@ class AsrAuthHeader
      */
     private $headers;
 
+    /**
+     * @var AsrRequest
+     */
+    private $request;
+
     public static function create()
     {
         return new AsrAuthHeader();
@@ -128,6 +133,17 @@ class AsrAuthHeader
     public function useTimeStamp($timeStamp)
     {
         $this->fullDate = AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
+        return $this;
+    }
+
+    /**
+     * @param string $fullDate
+     * @return AsrAuthHeader
+     * @todo validation
+     */
+    public function useAmazonTime($fullDate)
+    {
+        $this->fullDate = $fullDate;
         return $this;
     }
 

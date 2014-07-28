@@ -15,6 +15,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private $secretKey = 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
     private $accessKeyId = 'AKIDEXAMPLE';
     private $baseCredentials = array('us-east-1', 'iam', 'aws4_request');
+    private $host = 'iam.amazonaws.com';
 
     /**
      * @param $headerList
@@ -23,18 +24,13 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequest($headerList, $headersToSign)
     {
-        return $this->util->signRequest(
-            AsrUtil::SHA256,
-            $this->secretKey,
-            $this->accessKeyId,
-            $this->baseCredentials,
-            '20110909T233600Z',
-            'POST',
-            $this->url(),
-            $this->payload(),
-            $headerList,
-            $headersToSign
-        );
+        return AsrAuthHeader::create()
+            ->useAlgorithm(AsrUtil::SHA256)
+            ->useAmazonTime('20110909T233600Z')
+            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useHeaders($this->host, $headerList, $headersToSign)
+            ->useRequest('POST', '/', '', $this->payload())
+            ->build($this->secretKey);
     }
 
     protected function setUp()
@@ -138,7 +134,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         return array(
             'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
-            'Host' => 'iam.amazonaws.com',
+            'Host' => $this->host,
             'X-Amz-Date' => '20110909T233600Z',
         );
     }
@@ -149,14 +145,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function payload()
     {
         return 'Action=ListUsers&Version=2010-05-08';
-    }
-
-    /**
-     * @return string
-     */
-    private function url()
-    {
-        return 'http://iam.amazonaws.com/';
     }
 
     /**
