@@ -43,6 +43,24 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
+    public function itShouldAutomagicallyAddDateAndHostHeader()
+    {
+        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
+            AsrUtil::SHA256,
+            $this->secretKey,
+            $this->accessKeyId,
+            $this->baseCredentials,
+            '20110909T233600Z',
+            'POST',
+            $this->url(),
+            $this->payload(),
+            array('Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8')
+        ));
+    }
+
+    /**
+     * @test
+     */
     public function itShouldGenerateCanonicalHash()
     {
         $headers = AsrHeaders::createFrom($this->headers());

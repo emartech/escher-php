@@ -6,16 +6,18 @@ class AsrUtil
 
     public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headersToSign)
     {
+        $dateHeader  = array('X-Amz-Date' => $fullDate);
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
         $urlParts    = parse_url($url);
-        $headers     = AsrHeaders::createFrom($headersToSign);
+        $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
+        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headersToSign);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
         $signature = $request->signWith($algorithm, $credentials, $secretKey);
 
         $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
-        return array('X-Amz-Date' => $fullDate, 'Authorization' => $authHeader->toHeaderString());
+        return $dateHeader + array('Authorization' => $authHeader->toHeaderString());
     }
 
     public function validateSignature($serverDate, $method, $url, $requestBody, array $headerList)
