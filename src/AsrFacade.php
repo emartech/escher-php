@@ -1,6 +1,6 @@
 <?php
 
-class AsrUtil
+class AsrFacade
 {
     const SHA256 = 'sha256';
 
@@ -79,7 +79,7 @@ class AsrAuthHeader
         $this->algorithm = $algorithm;
     }
 
-    public static function create($timeStamp = null, $algorithmName = AsrUtil::SHA256)
+    public static function create($timeStamp = null, $algorithmName = AsrFacade::SHA256)
     {
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
         return new AsrAuthHeader(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
