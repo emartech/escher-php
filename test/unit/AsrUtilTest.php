@@ -17,20 +17,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private $baseCredentials = array('us-east-1', 'iam', 'aws4_request');
     private $host = 'iam.amazonaws.com';
 
-    /**
-     * @param $headerList
-     * @param $headersToSign
-     * @return array
-     */
-    public function callSignRequestWithDefaultParams($headerList, $headersToSign)
-    {
-        return AsrAuthHeader::create(strtotime('20110909T233600Z'))
-            ->useCredentials($this->accessKeyId, $this->baseCredentials)
-            ->useHeaders($this->host, $headerList, $headersToSign)
-            ->useRequest('POST', '/', '', $this->payload())
-            ->build($this->secretKey);
-    }
-
     protected function setUp()
     {
         $this->util = new AsrUtil();
@@ -71,6 +57,20 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @param $headerList
+     * @param $headersToSign
+     * @return array
+     */
+    public function callSignRequestWithDefaultParams($headerList, $headersToSign)
+    {
+        return AsrAuthHeader::create(strtotime('20110909T233600Z'))
+            ->useRequest('POST', '/', '', $this->payload())
+            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useHeaders($this->host, $headerList, $headersToSign)
+            ->build($this->secretKey);
+    }
+
+    /**
      * @test
      */
     public function itShouldUseSha256AsDefaultAlgorithm()
@@ -78,9 +78,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
         $actual = AsrAuthHeader::create(strtotime('20110909T233600Z'))
+            ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
-            ->useRequest('POST', '/', '', $this->payload())
             ->build($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
     }
@@ -94,9 +94,9 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
         $headersToSign = array('Content-Type');
         $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
         $actual = AsrAuthHeader::create()
+            ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
-            ->useRequest('POST', '/', '', $this->payload())
             ->build($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
     }

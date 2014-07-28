@@ -11,9 +11,9 @@ class AsrUtil
         $path     = $urlParts['path'];
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
         return AsrAuthHeader::create($algorithmName)
+            ->useRequest($method, $path, $query, $requestBody)
             ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->useRequest($method, $path, $query, $requestBody)
             ->build($secretKey);
     }
 
@@ -39,9 +39,9 @@ class AsrUtil
         $secretKey = 'TODO-ADD-LOOKUP';
 
         return AsrAuthHeader::create(strtotime($headerList['x-amz-date']), $authHeaderParts['algorithm'])
+            ->useRequest($method, $path, $query, $requestBody)
             ->useCredentials($accessKeyId, $credentialParts)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
-            ->useRequest($method, $path, $query, $requestBody)
             ->validate($secretKey, $authHeaderParts['signature']);
     }
 }
