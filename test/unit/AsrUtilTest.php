@@ -22,7 +22,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      * @param $headersToSign
      * @return array
      */
-    public function callSignRequest($headerList, $headersToSign)
+    public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
         return AsrAuthHeader::create()
             ->useAlgorithm(AsrUtil::SHA256)
@@ -46,7 +46,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         $headersToSign = array('Content-Type');
         $headerList = $this->headers();
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -56,7 +56,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         $headerList = array('Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8');
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -69,7 +69,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
             'X-A-Header' => 'that/should/not/be/signed'
         );
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
