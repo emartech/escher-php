@@ -63,6 +63,28 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
+    public function itShouldOnlySignHeadersExplicitlySetToBeSigned()
+    {
+        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
+            AsrUtil::SHA256,
+            $this->secretKey,
+            $this->accessKeyId,
+            $this->baseCredentials,
+            '20110909T233600Z',
+            'POST',
+            $this->url(),
+            $this->payload(),
+            array(
+                'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
+                'X-A-Header' => 'that/should/not/be/signed'
+            ),
+            array('Content-Type')
+        ));
+    }
+
+    /**
+     * @test
+     */
     public function itShouldGenerateCanonicalHash()
     {
         $headers = AsrHeaders::createFrom($this->headers(), array_keys($this->headers()));

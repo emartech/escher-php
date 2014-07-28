@@ -251,10 +251,11 @@ class AsrHeaders
 
     public function collapse()
     {
+        $headersToSign = array_intersect_key($this->headerList, array_flip($this->headersToSign));
         return array_map(
             array($this, 'collapseLine'),
-            array_keys($this->headerList),
-            array_values($this->headerList)
+            array_keys($headersToSign),
+            array_values($headersToSign)
         );
     }
 
