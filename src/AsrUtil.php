@@ -14,7 +14,9 @@ class AsrUtil
             ->useAlgorithm($algorithmName)
             ->useTimestamp(strtotime($fullDate))
             ->useCredentials($accessKeyId, $baseCredentials)
-            ->build($secretKey, $method, $host, $path, $query, $requestBody, $headerList, $headersToSign);
+            ->useHeaders($host, $headerList, $headersToSign)
+            ->useRequest($method, $path, $query, $requestBody)
+            ->build($secretKey);
     }
 
     public function checkSignature($serverDate, $method, $path, $query, $requestBody, array $headerList)
@@ -65,6 +67,11 @@ class AsrAuthHeader
      */
     private $credentials;
 
+    /**
+     * @var AsrHeaders
+     */
+    private $headers;
+
     public static function create()
     {
         return new AsrAuthHeader();
@@ -94,17 +101,13 @@ class AsrAuthHeader
         '$/';
     }
 
-    public function build($secretKey, $method, $host, $path, $query, $requestBody, array $headerList, array $headersToSign = array())
+    public function build($secretKey)
     {
-        $hostHeader  = array('Host' => $host); //TODO; handle port
-        $headers     = AsrHeaders::createFrom($this->dateHeader() + $hostHeader + $headerList, $headersToSign);
-        $request     = new AsrRequest($this->algorithm, $this->credentials, $method, $path, $query, $requestBody, $headers);
-
-        $signature = $request->signWith($secretKey);
+        $signature = $this->request->signWith($secretKey);
 
         return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
             "Credential={$this->credentials->toHeaderString()}, " .
-            "SignedHeaders={$headers->toHeaderString()}, ".
+            "SignedHeaders={$this->headers->toHeaderString()}, ".
             "Signature=$signature");
     }
 
@@ -129,13 +132,39 @@ class AsrAuthHeader
     }
 
     /**
-     * @param $accessKeyId
+     * @param string $accessKeyId
      * @param array $baseCredentials
      * @return AsrAuthHeader
      */
     public function useCredentials($accessKeyId, array $baseCredentials)
     {
         $this->credentials = new AsrCredentials($this->fullDate, $accessKeyId, $baseCredentials);
+        return $this;
+    }
+
+    /**
+     * @param string $host
+     * @param array $headerList
+     * @param array $headersToSign
+     * @return AsrAuthHeader
+     */
+    public function useHeaders($host, array $headerList, array $headersToSign)
+    {
+        $hostHeader = array('Host' => $host); //TODO; handle port
+        $this->headers = AsrHeaders::createFrom($this->dateHeader() + $hostHeader + $headerList, $headersToSign);
+        return $this;
+    }
+
+    /**
+     * @param string $method
+     * @param string $path
+     * @param string $query
+     * @param string $requestBody
+     * @return AsrAuthHeader
+     */
+    public function useRequest($method, $path, $query, $requestBody)
+    {
+        $this->request = new AsrRequest($this->algorithm, $this->credentials, $method, $path, $query, $requestBody, $this->headers);
         return $this;
     }
 
