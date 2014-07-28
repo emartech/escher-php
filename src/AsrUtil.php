@@ -13,7 +13,7 @@ class AsrUtil
             ->build($secretKey, $method, $url, $requestBody, $headerList, $headersToSign);
     }
 
-    public function checkSignature($serverDate, $method, $url, $requestBody, array $headerList)
+    public function checkSignature($serverDate, $method, $path, $query, $requestBody, array $headerList)
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $fullDate        = $headerList['x-amz-date'];
@@ -36,9 +36,8 @@ class AsrUtil
 
         $algorithm   = new AsrSigningAlgorithm(strtolower($authHeaderParts['algorithm']));
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $credentialParts);
-        $urlParts    = parse_url($url);
         $headers     = AsrHeaders::createFrom($headerList, $authHeaderParts['signed_headers']);
-        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
+        $request     = new AsrRequest($algorithm, $credentials, $method, $path, $query, $requestBody, $headers);
 
         $signature = $request->signWith($algorithm, $credentials, $secretKey);
         return $authHeaderParts['signature'] == $signature;
@@ -96,9 +95,9 @@ class AsrAuthHeader
         $urlParts    = parse_url($url);
         $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
         $headers     = AsrHeaders::createFrom($this->dateHeader() + $hostHeader + $headerList, $headersToSign);
-        $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
+        $request     = new AsrRequest($this->algorithm, $this->credentials, $method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
-        $signature = $request->signWith($this->algorithm, $this->credentials, $secretKey);
+        $signature = $request->signWith($secretKey);
 
         return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
             "Credential={$this->credentials->toHeaderString()}, " .
@@ -314,8 +313,10 @@ class AsrRequest
     private $requestBody;
     private $headers;
 
-    public function __construct($method, $path, $query, $requestBody, AsrHeaders $headers)
+    public function __construct(AsrSigningAlgorithm $algorithm, AsrCredentials $credentials, $method, $path, $query, $requestBody, AsrHeaders $headers)
     {
+        $this->algorithm = $algorithm;
+        $this->credentials = $credentials;
         $this->method = $method;
         $this->path = $path;
         $this->query = $query;
@@ -345,17 +346,15 @@ class AsrRequest
     }
 
     /**
-     * @param AsrSigningAlgorithm $algorithm
-     * @param AsrCredentials $credentials
      * @param string $secretKey
      * @return mixed
      */
-    public function signWith($algorithm, $credentials, $secretKey)
+    public function signWith($secretKey)
     {
-        $canonicalHash = $this->canonicalizeUsing($algorithm);
-        $stringToSign = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
-        $signingKey = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
-        $signature = $algorithm->hmac($stringToSign, $signingKey, false);
+        $canonicalHash = $this->canonicalizeUsing($this->algorithm);
+        $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash);
+        $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
+        $signature = $this->algorithm->hmac($stringToSign, $signingKey, false);
         return $signature;
     }
 }
