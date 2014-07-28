@@ -316,6 +316,32 @@ class AsrValidator
     }
 }
 
+class AsrDateHelper
+{
+    private static function createDateTimeFrom($timeStamp)
+    {
+        $result = new DateTime();
+        $result->setTimezone(new DateTimeZone('UTC'));
+        $result->setTimestamp($timeStamp);
+        return $result;
+    }
+
+    public static function fromTimeStamp($timeStamp)
+    {
+        return self::fromDateTime(self::createDateTimeFrom($timeStamp));
+    }
+
+    public function useRequestTime()
+    {
+        return self::useTimeStamp($_SERVER['REQUEST_TIME']);
+    }
+
+    public function fromAuthorizationHeader($dateTimeString)
+    {
+        return new DateTime($dateTimeString);
+    }
+}
+
 class AsrException extends Exception
 {
 }
