@@ -4,11 +4,11 @@ class AsrUtil
 {
     const SHA256 = 'sha256';
 
-    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList)
+    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headersToSign)
     {
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
-        $headers     = AsrHeaders::createFrom($headerList);
+        $headers     = AsrHeaders::createFrom($headersToSign);
         $request     = new AsrRequest($method, $url, $requestBody, $headers);
 
         $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
