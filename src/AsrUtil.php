@@ -244,7 +244,7 @@ class AsrHeaders
         return implode(';', $this->headersToSign);
     }
 
-    public function canonicalize()
+    public function collapse()
     {
         return array_map(
             array($this, 'collapseLine'),
@@ -287,8 +287,8 @@ class AsrRequest
         $lines[] = strtoupper($this->method);
         $lines[] = $this->path;
         $lines[] = $this->query;
-        foreach ($this->headers->canonicalize() as $canonicalizedHeaderLine) {
-            $lines[] = $canonicalizedHeaderLine;
+        foreach ($this->headers->collapse() as $headerLine) {
+            $lines[] = $headerLine;
         }
         $lines[] = '';
         $lines[] = $this->headers->toHeaderString();
