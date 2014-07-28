@@ -27,7 +27,17 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequest());
+        $this->assertEquals($this->authorizationHeader(), $this->util->signRequest(
+            AsrUtil::SHA256,
+            $this->secretKey,
+            $this->accessKeyId,
+            $this->baseCredentials,
+            '20110909T233600Z',
+            'POST',
+            $this->url(),
+            $this->payload(),
+            $this->headers()
+        ));
     }
 
     /**
@@ -120,24 +130,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     private function url()
     {
         return 'http://iam.amazonaws.com/';
-    }
-
-    /**
-     * @return array
-     */
-    private function callSignRequest()
-    {
-        return $this->util->signRequest(
-            AsrUtil::SHA256,
-            $this->secretKey,
-            $this->accessKeyId,
-            $this->baseCredentials,
-            '20110909T233600Z',
-            'POST',
-            $this->url(),
-            $this->payload(),
-            $this->headers()
-        );
     }
 
     /**
