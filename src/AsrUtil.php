@@ -12,7 +12,7 @@ class AsrUtil
         $headers     = AsrHeaders::createFrom($headersToSign);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
-        $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
+        $signature = $request->signWith($algorithm, $credentials, $secretKey);
 
         $authHeader = new AsrAuthHeader($algorithm, $credentials, $headers, $signature);
         return array('X-Amz-Date' => $fullDate, 'Authorization' => $authHeader->toHeaderString());
@@ -43,24 +43,8 @@ class AsrUtil
         $urlParts    = parse_url($url);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
-        $signature = $this->calculateSignature($algorithm, $secretKey, $credentials, $request);
+        $signature = $request->signWith($algorithm, $credentials, $secretKey);
         return $authHeaderParts['signature'] == $signature;
-    }
-
-    /**
-     * @param $algorithm
-     * @param $secretKey
-     * @param $credentials
-     * @param $request
-     * @return mixed
-     */
-    public function calculateSignature($algorithm, $secretKey, $credentials, $request)
-    {
-        $canonicalHash = $request->canonicalizeUsing($algorithm);
-        $stringToSign = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
-        $signingKey = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
-        $signature = $algorithm->hmac($stringToSign, $signingKey, false);
-        return $signature;
     }
 }
 
@@ -285,6 +269,11 @@ class AsrRequest
         $this->headers = $headers;
     }
 
+    /**
+     * Visibility is public only for testing
+     * @param AsrSigningAlgorithm $algorithm
+     * @return string
+     */
     public function canonicalizeUsing(AsrSigningAlgorithm $algorithm)
     {
         $lines = array();
@@ -299,6 +288,21 @@ class AsrRequest
         $lines[] = $algorithm->hash($this->payload);
 
         return $algorithm->hash(implode("\n", $lines));
+    }
+
+    /**
+     * @param AsrSigningAlgorithm $algorithm
+     * @param AsrCredentials $credentials
+     * @param string $secretKey
+     * @return mixed
+     */
+    public function signWith($algorithm, $credentials, $secretKey)
+    {
+        $canonicalHash = $this->canonicalizeUsing($algorithm);
+        $stringToSign = $credentials->generateStringToSignUsing($algorithm, $canonicalHash);
+        $signingKey = $credentials->generateSigningKeyUsing($algorithm, $secretKey);
+        $signature = $algorithm->hmac($stringToSign, $signingKey, false);
+        return $signature;
     }
 }
 
