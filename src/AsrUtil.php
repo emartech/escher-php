@@ -11,7 +11,6 @@ class AsrUtil
         $path     = $urlParts['path'];
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
         return AsrAuthHeader::create($algorithmName)
-            ->useTimestamp(strtotime($fullDate))
             ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
             ->useRequest($method, $path, $query, $requestBody)
@@ -39,8 +38,7 @@ class AsrUtil
         // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        return AsrAuthHeader::create($authHeaderParts['algorithm'])
-            ->useAmazonTime($headerList['x-amz-date'])
+        return AsrAuthHeader::create(strtotime($headerList['x-amz-date']), $authHeaderParts['algorithm'])
             ->useCredentials($accessKeyId, $credentialParts)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
             ->useRequest($method, $path, $query, $requestBody)
@@ -75,19 +73,21 @@ class AsrAuthHeader
      */
     private $request;
 
-    public static function create($algorithmName = AsrUtil::SHA256)
+    public function __construct($fullDate, AsrSigningAlgorithm $algorithm)
     {
-        return new AsrAuthHeader(new AsrSigningAlgorithm(strtolower($algorithmName)));
-    }
-
-    public function __construct(AsrSigningAlgorithm $algorithm)
-    {
+        $this->fullDate = $fullDate;
         $this->algorithm = $algorithm;
     }
 
-    public static function createDefault()
+    public static function create($timeStamp = null, $algorithmName = AsrUtil::SHA256)
     {
-        return self::create()->useAlgorithm(AsrUtil::SHA256)->useTimeStamp($_SERVER['REQUEST_TIME']);
+        $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
+        return new AsrAuthHeader(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
+    }
+
+    public static function format($timeStamp)
+    {
+        return AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
     }
 
     public static function parse($authHeaderString)
@@ -122,27 +122,6 @@ class AsrAuthHeader
     public function validate($secretKey, $signature)
     {
         return $signature == $this->calculateSignature($secretKey);
-    }
-
-    /**
-     * @param int $timeStamp
-     * @return AsrAuthHeader
-     */
-    public function useTimeStamp($timeStamp)
-    {
-        $this->fullDate = AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
-        return $this;
-    }
-
-    /**
-     * @param string $fullDate
-     * @return AsrAuthHeader
-     * @todo validation
-     */
-    public function useAmazonTime($fullDate)
-    {
-        $this->fullDate = $fullDate;
-        return $this;
     }
 
     /**

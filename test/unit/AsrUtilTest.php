@@ -24,8 +24,7 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return AsrAuthHeader::create()
-            ->useAmazonTime('20110909T233600Z')
+        return AsrAuthHeader::create(strtotime('20110909T233600Z'))
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->useRequest('POST', '/', '', $this->payload())
@@ -78,8 +77,23 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     {
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
+        $actual = AsrAuthHeader::create(strtotime('20110909T233600Z'))
+            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useHeaders($this->host, $headerList, $headersToSign)
+            ->useRequest('POST', '/', '', $this->payload())
+            ->build($this->secretKey);
+        $this->assertEquals($this->authorizationHeader(), $actual);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldUseTheServersRequestTimeAsTheFullDate()
+    {
+        $headerList = $this->headers();
+        $headersToSign = array('Content-Type');
+        $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
         $actual = AsrAuthHeader::create()
-            ->useAmazonTime('20110909T233600Z')
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->useRequest('POST', '/', '', $this->payload())
