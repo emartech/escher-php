@@ -115,6 +115,7 @@ class AsrSigningAlgorithm
 
     /**
      * @param string $algorithm
+     * @throws AsrException
      */
     public function __construct($algorithm)
     {
