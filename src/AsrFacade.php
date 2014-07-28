@@ -20,7 +20,7 @@ class AsrFacade
     public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
-        $fullDate        = $headerList['x-amz-date'];
+        $amazonDateTime  = $headerList['x-amz-date'];
         $authHeaderParts = AsrAuthHeader::parse($headerList['authorization']);
         $credentialParts = explode('/', $authHeaderParts['credentials']);
 
@@ -29,13 +29,13 @@ class AsrFacade
             return false;
         }
         $accessKeyId = array_shift($credentialParts);
-        $shortDate   = array_shift($credentialParts);
-        if (!$validator->validateDates($serverDate, $fullDate, $shortDate)) {
+        $amazonDate  = array_shift($credentialParts);
+        if (!$validator->validateDates($serverDate, $amazonDateTime, $amazonDate)) {
             return false;
         }
 
         // look up secret key for access key id
-        // credential scope check: {accessKeyId}/{shortDate}/{region:eu}/{service:ac-export|suite}/ems_request
+        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
         return AsrAuthHeader::create(strtotime($headerList['x-amz-date']), $authHeaderParts['algorithm'])
@@ -114,7 +114,7 @@ class AsrAuthHeader
         $signature = $this->calculateSignature($secretKey);
 
         return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
-            "Credential={$this->credentials->toHeaderString()}, " .
+            "Credential={$this->credentials->toHeaderString($this->fullDate)}, " .
             "SignedHeaders={$this->headers->toHeaderString()}, ".
             "Signature=$signature");
     }
@@ -131,7 +131,7 @@ class AsrAuthHeader
      */
     public function useCredentials($accessKeyId, array $baseCredentials)
     {
-        $this->credentials = new AsrCredentials($this->fullDate, $accessKeyId, $baseCredentials);
+        $this->credentials = new AsrCredentials($accessKeyId, $baseCredentials);
         return $this;
     }
 
@@ -176,8 +176,8 @@ class AsrAuthHeader
     public function calculateSignature($secretKey)
     {
         $canonicalHash = $this->request->canonicalizeUsing($this->algorithm, $this->headers);
-        $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash);
-        $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey);
+        $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash, $this->fullDate);
+        $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey, $this->fullDate);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 }
@@ -222,8 +222,6 @@ class AsrCredentials
     /**
      * @var string
      */
-    private $fullDate;
-
     private $accessKeyId;
 
     /**
@@ -231,48 +229,52 @@ class AsrCredentials
      */
     private $parts;
 
-    public function __construct($fullDate, $accessKeyId, array $parts)
+    public function __construct($accessKeyId, array $parts)
     {
         if (count($parts) != 3) {
             throw new AsrException('Credentials should consist of exactly 3 parts');
         }
-        $this->fullDate = $fullDate;
         $this->accessKeyId = $accessKeyId;
         $this->parts = $parts;
     }
 
-    public function toArray()
+    public function toArray($amazonDateTime)
     {
-        return array_merge(array($this->shortDate()), $this->parts);
+        return array_merge(array($this->shorten($amazonDateTime)), $this->parts);
     }
 
-    public function toScopeString()
+    public function toScopeString($amazonDateTime)
     {
-        return implode('/', $this->toArray());
+        return implode('/', $this->toArray($amazonDateTime));
     }
 
-    private function shortDate()
+    private function shorten($amazonDateTime)
     {
-        return substr($this->fullDate, 0, 8);
+        return substr($amazonDateTime, 0, 8);
     }
 
-    public function generateSigningKeyUsing(AsrSigningAlgorithm $algorithm, $secretKey)
+    public function generateSigningKeyUsing(AsrSigningAlgorithm $algorithm, $secretKey, $amazonDateTime)
     {
         $key = $secretKey;
-        foreach ($this->toArray() as $data) {
+        foreach ($this->toArray($amazonDateTime) as $data) {
             $key = $algorithm->hmac($data, $key, true);
         }
         return $key;
     }
 
-    public function generateStringToSignUsing(AsrSigningAlgorithm $algorithm, $canonicalHash)
+    public function generateStringToSignUsing(AsrSigningAlgorithm $algorithm, $canonicalHash, $amazonDateTime)
     {
-        return implode("\n", array($algorithm->toHeaderString(), $this->fullDate, $this->toScopeString(), $canonicalHash));
+        return implode("\n", array(
+            $algorithm->toHeaderString(),
+            $amazonDateTime,
+            $this->toScopeString($amazonDateTime),
+            $canonicalHash
+        ));
     }
 
-    public function toHeaderString()
+    public function toHeaderString($amazonDateTime)
     {
-        return $this->accessKeyId . '/' . $this->toScopeString();
+        return $this->accessKeyId . '/' . $this->toScopeString($amazonDateTime);
     }
 }
 
@@ -388,10 +390,11 @@ class AsrValidator
         return 5 === count($credentialParts);
     }
 
-    public function validateDates($serverDateString, $fullDateString, $shortDateString)
+    public function validateDates($serverDateString, $amazonDateTime, $amazonDate)
     {
-        return substr($fullDateString, 0, 8) == $shortDateString
-            && abs(strtotime($serverDateString) - strtotime($fullDateString)) < self::ACCEPTABLE_TIME_INTERVAL_IN_SECONDS;
+        //TODO: validate date format
+        return substr($amazonDateTime, 0, 8) == $amazonDate
+            && abs(strtotime($serverDateString) - strtotime($amazonDateTime)) < self::ACCEPTABLE_TIME_INTERVAL_IN_SECONDS;
     }
 }
 

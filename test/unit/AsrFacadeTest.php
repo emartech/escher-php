@@ -117,8 +117,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $credentials = new AsrCredentials('20120215TIRRELEVANT', $this->accessKeyId, $this->baseCredentials);
-        $result = $credentials->generateSigningKeyUsing($this->algorithm, $this->secretKey);
+        $credentials = new AsrCredentials($this->accessKeyId, $this->baseCredentials);
+        $result = $credentials->generateSigningKeyUsing($this->algorithm, $this->secretKey, '20120215TIRRELEVANT');
         $this->assertEquals('f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d', bin2hex($result));
     }
 
