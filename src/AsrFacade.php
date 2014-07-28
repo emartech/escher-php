@@ -12,8 +12,8 @@ class AsrFacade
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
         return AsrAuthHeader::create()
             ->useRequest($method, $path, $query, $requestBody)
-            ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
+            ->useCredentials($accessKeyId, $baseCredentials)
             ->buildAuthHeaders($secretKey);
     }
 
@@ -40,8 +40,8 @@ class AsrFacade
 
         return AsrAuthHeader::create(strtotime($headerList['x-amz-date']), $authHeaderParts['algorithm'])
             ->useRequest($method, $path, $query, $requestBody)
-            ->useCredentials($accessKeyId, $credentialParts)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
+            ->useCredentials($accessKeyId, $credentialParts)
             ->validate($secretKey, $authHeaderParts['signature']);
     }
 }
@@ -56,7 +56,7 @@ class AsrAuthHeader
     /**
      * @var string
      */
-    private $fullDate;
+    private $amazonDateTime;
 
     /**
      * @var AsrCredentials
@@ -73,9 +73,9 @@ class AsrAuthHeader
      */
     private $request;
 
-    public function __construct($fullDate, AsrSigningAlgorithm $algorithm)
+    public function __construct($amazonDateTime, AsrSigningAlgorithm $algorithm)
     {
-        $this->fullDate = $fullDate;
+        $this->amazonDateTime = $amazonDateTime;
         $this->algorithm = $algorithm;
     }
 
@@ -114,7 +114,7 @@ class AsrAuthHeader
         $signature = $this->calculateSignature($secretKey);
 
         return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
-            "Credential={$this->credentials->toHeaderString($this->fullDate)}, " .
+            "Credential={$this->credentials->toHeaderString($this->amazonDateTime)}, " .
             "SignedHeaders={$this->headers->toHeaderString()}, ".
             "Signature=$signature");
     }
@@ -166,7 +166,7 @@ class AsrAuthHeader
      */
     public function dateHeader()
     {
-        return array('X-Amz-Date' => $this->fullDate);
+        return array('X-Amz-Date' => $this->amazonDateTime);
     }
 
     /**
@@ -176,8 +176,8 @@ class AsrAuthHeader
     public function calculateSignature($secretKey)
     {
         $canonicalHash = $this->request->canonicalizeUsing($this->algorithm, $this->headers);
-        $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash, $this->fullDate);
-        $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey, $this->fullDate);
+        $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash, $this->amazonDateTime);
+        $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey, $this->amazonDateTime);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 }
