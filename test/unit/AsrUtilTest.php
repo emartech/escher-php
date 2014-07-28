@@ -113,16 +113,6 @@ class AsrUtilTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @test
-     */
-    public function itShouldRestrictToSignedHeaders()
-    {
-        $srcHeaders = new AsrHeaders(array('foo' => 'bar', 'hello' => 'world'));
-        $tgtHeaders = new AsrHeaders(array('hello' => 'world'));
-        $this->assertEquals($tgtHeaders, $srcHeaders->restrictToOnly(array('hello')));
-    }
-
-    /**
      * @return array
      */
     private function headers()

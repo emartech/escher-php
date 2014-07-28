@@ -248,11 +248,6 @@ class AsrHeaders
     {
         return $headerKey.':'.$headerValue;
     }
-
-    public function restrictToOnly($signedHeaders)
-    {
-        return new AsrHeaders(array_intersect_key($this->headerList, array_flip($signedHeaders)));
-    }
 }
 
 class AsrRequest
