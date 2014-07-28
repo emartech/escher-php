@@ -4,13 +4,13 @@ class AsrFacade
 {
     const SHA256 = 'sha256';
 
-    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
+    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
         $urlParts = parse_url($url);
         $host     = $urlParts['host'];
         $path     = $urlParts['path'];
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
-        return AsrAuthHeader::create($algorithmName)
+        return AsrAuthHeader::create()
             ->useRequest($method, $path, $query, $requestBody)
             ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
