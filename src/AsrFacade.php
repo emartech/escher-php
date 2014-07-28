@@ -14,7 +14,7 @@ class AsrFacade
             ->useRequest($method, $path, $query, $requestBody)
             ->useCredentials($accessKeyId, $baseCredentials)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->build($secretKey);
+            ->buildAuthHeaders($secretKey);
     }
 
     public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
@@ -109,7 +109,7 @@ class AsrAuthHeader
         '$/';
     }
 
-    public function build($secretKey)
+    public function buildAuthHeaders($secretKey)
     {
         $signature = $this->calculateSignature($secretKey);
 

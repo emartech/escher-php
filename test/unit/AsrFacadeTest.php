@@ -67,7 +67,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
-            ->build($this->secretKey);
+            ->buildAuthHeaders($this->secretKey);
     }
 
     /**
@@ -81,7 +81,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
-            ->build($this->secretKey);
+            ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
     }
 
@@ -97,7 +97,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
-            ->build($this->secretKey);
+            ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
     }
 
