@@ -4,14 +4,14 @@ class AsrUtil
 {
     const SHA256 = 'sha256';
 
-    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headersToSign)
+    public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
         $dateHeader  = array('X-Amz-Date' => $fullDate);
         $algorithm   = new AsrSigningAlgorithm($algorithmName);
         $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
         $urlParts    = parse_url($url);
         $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
-        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headersToSign);
+        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headerList, $headersToSign);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
 
         $signature = $request->signWith($algorithm, $credentials, $secretKey);
@@ -206,18 +206,27 @@ class AsrHeaders
      */
     private $headerList;
 
-    public function __construct(array $headerList)
+    /**
+     * @var array
+     */
+    private $headersToSign;
+
+    public function __construct(array $headerList, array $headersToSign)
     {
         $this->headerList = $headerList;
+        $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($headerList)
+    public static function createFrom($headerList, $headersToSign = array())
     {
+        $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
+
+        sort($headersToSign);
         ksort($headerList);
         return new AsrHeaders(array_combine(
             array_map('strtolower', array_keys($headerList)),
             array_map('self::trimHeaderValue', array_values($headerList))
-        ));
+        ), $headersToSign);
     }
 
     public static function trimHeaderValue($value)
@@ -232,7 +241,7 @@ class AsrHeaders
 
     public function toHeaderString()
     {
-        return implode(';', array_keys($this->headerList));
+        return implode(';', $this->headersToSign);
     }
 
     public function canonicalize()
