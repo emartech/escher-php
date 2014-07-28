@@ -6,7 +6,11 @@ class AsrUtil
 
     public function signRequest($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        return AsrAuthHeader::create()->build($algorithmName, $secretKey, $accessKeyId, $baseCredentials, $fullDate, $method, $url, $requestBody, $headerList, $headersToSign);
+        return AsrAuthHeader::create()
+            ->useAlgorithm($algorithmName)
+            ->useTimestamp(strtotime($fullDate))
+            ->useCredentials($accessKeyId, $baseCredentials)
+            ->build($secretKey, $method, $url, $requestBody, $headerList, $headersToSign);
     }
 
     public function checkSignature($serverDate, $method, $url, $requestBody, array $headerList)
@@ -43,9 +47,29 @@ class AsrUtil
 
 class AsrAuthHeader
 {
+    /**
+     * @var AsrSigningAlgorithm
+     */
+    private $algorithm;
+
+    /**
+     * @var string
+     */
+    private $fullDate;
+
+    /**
+     * @var AsrCredentials
+     */
+    private $credentials;
+
     public static function create()
     {
         return new AsrAuthHeader();
+    }
+
+    public static function createDefault()
+    {
+        return self::create()->useAlgorithm(AsrUtil::SHA256)->useTimeStamp($_SERVER['REQUEST_TIME']);
     }
 
     public static function parse($authHeaderString)
@@ -67,21 +91,58 @@ class AsrAuthHeader
         '$/';
     }
 
-    public function build($algorithmName, $secretKey, $accessKeyId, array $baseCredentials, $fullDate, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
+    public function build($secretKey, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        $dateHeader  = array('X-Amz-Date' => $fullDate);
-        $algorithm   = new AsrSigningAlgorithm($algorithmName);
-        $credentials = new AsrCredentials($fullDate, $accessKeyId, $baseCredentials);
         $urlParts    = parse_url($url);
         $hostHeader  = array('Host' => $urlParts['host']); //TODO; handle port
-        $headers     = AsrHeaders::createFrom($dateHeader + $hostHeader + $headerList, $headersToSign);
+        $headers     = AsrHeaders::createFrom($this->dateHeader() + $hostHeader + $headerList, $headersToSign);
         $request     = new AsrRequest($method, $urlParts['path'], isset($urlParts['query']) ? $urlParts['query'] : '', $requestBody, $headers);
-        $signature = $request->signWith($algorithm, $credentials, $secretKey);
 
-        return $dateHeader + array('Authorization' => $algorithm->toHeaderString() . ' ' .
-            "Credential={$credentials->toHeaderString()}, " .
+        $signature = $request->signWith($this->algorithm, $this->credentials, $secretKey);
+
+        return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
+            "Credential={$this->credentials->toHeaderString()}, " .
             "SignedHeaders={$headers->toHeaderString()}, ".
             "Signature=$signature");
+    }
+
+    /**
+     * @param $algorithmName
+     * @return AsrAuthHeader
+     */
+    public function useAlgorithm($algorithmName)
+    {
+        $this->algorithm = new AsrSigningAlgorithm($algorithmName);
+        return $this;
+    }
+
+    /**
+     * @param int $timeStamp
+     * @return AsrAuthHeader
+     */
+    public function useTimeStamp($timeStamp)
+    {
+        $this->fullDate = AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
+        return $this;
+    }
+
+    /**
+     * @param $accessKeyId
+     * @param array $baseCredentials
+     * @return AsrAuthHeader
+     */
+    public function useCredentials($accessKeyId, array $baseCredentials)
+    {
+        $this->credentials = new AsrCredentials($this->fullDate, $accessKeyId, $baseCredentials);
+        return $this;
+    }
+
+    /**
+     * @return array
+     */
+    public function dateHeader()
+    {
+        return array('X-Amz-Date' => $this->fullDate);
     }
 }
 
@@ -317,6 +378,13 @@ class AsrValidator
 
 class AsrDateHelper
 {
+    const AMAZON_DATE_FORMAT = self::ISO8601;
+    const ISO8601 = 'Ymd\THis\Z';
+
+    /**
+     * @param $timeStamp
+     * @return DateTime
+     */
     private static function createDateTimeFrom($timeStamp)
     {
         $result = new DateTime();
@@ -325,16 +393,27 @@ class AsrDateHelper
         return $result;
     }
 
+    /**
+     * @param $timeStamp
+     * @return DateTime
+     */
     public static function fromTimeStamp($timeStamp)
     {
-        return self::fromDateTime(self::createDateTimeFrom($timeStamp));
+        return self::createDateTimeFrom($timeStamp);
     }
 
+    /**
+     * @return DateTime
+     */
     public function useRequestTime()
     {
         return self::useTimeStamp($_SERVER['REQUEST_TIME']);
     }
 
+    /**
+     * @param $dateTimeString
+     * @return DateTime
+     */
     public function fromAuthorizationHeader($dateTimeString)
     {
         return new DateTime($dateTimeString);
