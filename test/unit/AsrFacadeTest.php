@@ -135,7 +135,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
         $this->assertEquals(array('AKIDEXAMPLE', '20110909', 'us-east-1', 'iam', 'aws4_request'), $authHeader->getCredentialParts());
-        $this->assertEquals('content-type;host;x-amz-date', $actual['signed_headers']);
+        $this->assertEquals(array('content-type', 'host', 'x-amz-date'), $authHeader->getSignedHeaders());
         $this->assertEquals('ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c', $actual['signature']);
     }
 

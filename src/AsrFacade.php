@@ -28,6 +28,7 @@ class AsrFacade
         $accessKeyId     = $authHeader->getAccessKeyId();
         $amazonShortDate = $authHeader->getShortDate();
         $algorithmName   = $authHeader->getAlgorithm();
+        $signedHeaders   = $authHeader->getSignedHeaders();
 
         $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
@@ -43,7 +44,7 @@ class AsrFacade
 
         return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
             ->useRequest($method, $path, $query, $requestBody)
-            ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
+            ->useHeaders($host, $headerList, $signedHeaders)
             ->useCredentials($accessKeyId, $credentialParts)
             ->validate($secretKey, $authHeaderParts['signature']);
     }
@@ -229,6 +230,11 @@ class AsrAuthHeader
     public function getAlgorithm()
     {
         return $this->headerParts['algorithm'];
+    }
+
+    public function getSignedHeaders()
+    {
+        return explode(';', $this->headerParts['signed_headers']);
     }
 }
 
