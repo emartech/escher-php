@@ -38,7 +38,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function requestHeadersToValidate($requestTime)
     {
-        $request = AsrRequestToValidate::create(array(
+        $request = AsrServer::createRequest(array(
             'REQUEST_METHOD' => 'GET',
             'REQUEST_URI' => '/',
             'REQUEST_TIME' => strtotime($requestTime),
@@ -140,7 +140,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldParseHeaders()
     {
-        $request = AsrRequestToValidate::create(
+        $request = AsrServer::createRequest(
             array(
                 'REQUEST_TIME' => time(),
                 'REQUEST_METHOD' => 'GET',

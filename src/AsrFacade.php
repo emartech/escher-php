@@ -115,9 +115,12 @@ class AsrServer
         $this->keyDB = $keyDB;
     }
 
-    public function validateRequest()
+    public function validateRequest(array $serverVars = null, array $requestBody = null)
     {
-        $request = AsrRequestToValidate::create();
+        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
+        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
+
+        $request = $this->createRequest($serverVars, $requestBody);
         $authHeader = $request->getAuthHeaders();
 
         if (!$this->checkDates($request)) {
@@ -131,7 +134,7 @@ class AsrServer
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
-            ->useRequest(new AsrRequestToSign($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody()))
+            ->useRequest($request->asRequestToSign())
             ->useHeaders($request->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
@@ -169,70 +172,18 @@ class AsrServer
             && $authHeader->getService() == $this->party->getService()
             && $authHeader->getRequestType() == $this->party->getRequestType();
     }
-}
-
-class AsrRequestToValidate
-{
-    /**
-     * @var array
-     */
-    private $headerList;
-
-    /**
-     * @var int
-     */
-    private $requestTime;
-
-    /**
-     * @var string
-     */
-    private $requestBody;
-
-    /**
-     * @var string
-     */
-    private $path;
-
-    /**
-     * @var string
-     */
-    private $query;
-
-    /**
-     * @var string
-     */
-    private $method;
-
-    /**
-     * @param array $headerList
-     * @param int $requestTime
-     * @param string $method
-     * @param string $path
-     * @param string $query
-     * @param string $requestBody
-     */
-    public function __construct(array $headerList, $requestTime, $method, $path, $query, $requestBody)
-    {
-        $this->headerList  = $headerList;
-        $this->requestTime = $requestTime;
-        $this->method      = $method;
-        $this->path        = $path;
-        $this->query       = $query;
-        $this->requestBody = $requestBody;
-    }
 
     /**
      * @param array $serverVars
-     * @param string $requestBody
+     * @param array $requestBody
      * @return AsrRequestToValidate
      */
-    public static function create($serverVars = null, $requestBody = null)
+    public static function createRequest(array $serverVars, $requestBody)
     {
-        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
-        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $headerList = self::fetchHeaders($serverVars);
         list ($path, $query) = array_pad(explode('?', $serverVars['REQUEST_URI'], 2), 2, '');
-        return new AsrRequestToValidate($headerList, $serverVars['REQUEST_TIME'], $serverVars['REQUEST_METHOD'], $path, $query, $requestBody);
+        $request = new AsrRequestToSign($serverVars['REQUEST_METHOD'], $path, $query, $requestBody);
+        return new AsrRequestToValidate($headerList, $serverVars['REQUEST_TIME'], $request);
     }
 
     /**
@@ -249,6 +200,36 @@ class AsrRequestToValidate
         }
         $headerList['content-type'] = isset($serverVars['CONTENT_TYPE']) ? $serverVars['CONTENT_TYPE'] : '';
         return AsrHeaders::canonicalize($headerList);
+    }
+}
+
+class AsrRequestToValidate
+{
+    /**
+     * @var array
+     */
+    private $headerList;
+
+    /**
+     * @var int
+     */
+    private $requestTime;
+
+    /**
+     * @var AsrRequestToSign
+     */
+    private $requestToSign;
+
+    /**
+     * @param array $headerList
+     * @param int $requestTime
+     * @param AsrRequestToSign $request
+     */
+    public function __construct(array $headerList, $requestTime, AsrRequestToSign $request)
+    {
+        $this->headerList  = $headerList;
+        $this->requestTime = $requestTime;
+        $this->request     = $request;
     }
 
     /**
@@ -276,7 +257,7 @@ class AsrRequestToValidate
 
     public function asRequestToSign()
     {
-        return new AsrRequestToSign($this->method, $this->path, $this->query, $this->requestBody);
+        return $this->request;
     }
 }
 
