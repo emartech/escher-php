@@ -57,6 +57,9 @@ class AsrFacade
 
 class AsrBuilder
 {
+    const AMAZON_DATE_FORMAT = self::ISO8601;
+    const ISO8601 = 'Ymd\THis\Z';
+
     /**
      * @var AsrSigningAlgorithm
      */
@@ -96,7 +99,10 @@ class AsrBuilder
 
     public static function format($timeStamp)
     {
-        return AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
+        $result = new DateTime();
+        $result->setTimezone(new DateTimeZone('UTC'));
+        $result->setTimestamp($timeStamp);
+        return $result->format(self::AMAZON_DATE_FORMAT);
     }
 
     public function validate($secretKey, $signature)
@@ -494,50 +500,6 @@ class AsrRequest
         $lines[] = $algorithm->hash($this->requestBody);
 
         return $algorithm->hash(implode("\n", $lines));
-    }
-}
-
-class AsrDateHelper
-{
-    const AMAZON_DATE_FORMAT = self::ISO8601;
-    const ISO8601 = 'Ymd\THis\Z';
-
-    /**
-     * @param $timeStamp
-     * @return DateTime
-     */
-    private static function createDateTimeFrom($timeStamp)
-    {
-        $result = new DateTime();
-        $result->setTimezone(new DateTimeZone('UTC'));
-        $result->setTimestamp($timeStamp);
-        return $result;
-    }
-
-    /**
-     * @param $timeStamp
-     * @return DateTime
-     */
-    public static function fromTimeStamp($timeStamp)
-    {
-        return self::createDateTimeFrom($timeStamp);
-    }
-
-    /**
-     * @return DateTime
-     */
-    public function useRequestTime()
-    {
-        return self::useTimeStamp($_SERVER['REQUEST_TIME']);
-    }
-
-    /**
-     * @param $dateTimeString
-     * @return DateTime
-     */
-    public function fromAuthorizationHeader($dateTimeString)
-    {
-        return new DateTime($dateTimeString);
     }
 }
 
