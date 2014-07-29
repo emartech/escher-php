@@ -28,6 +28,9 @@ class AsrFacade
         $signedHeaders   = $authHeader->getSignedHeaders();
         $signature       = $authHeader->getSignature();
         $amazonDateTime  = $authHeader->getLongDate();
+        $region          = $authHeader->getRegion();
+        $service         = $authHeader->getService();
+        $requestType     = $authHeader->getRequestType();
 
         if (!$this->validateDates($serverDate, $amazonDateTime, $amazonShortDate)) {
             return false;
@@ -37,9 +40,6 @@ class AsrFacade
         // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        $region = $authHeader->getRegion();
-        $service = $authHeader->getService();
-        $requestType = $authHeader->getRequestType();
         return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $signedHeaders)
