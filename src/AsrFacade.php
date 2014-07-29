@@ -118,9 +118,6 @@ class AsrServer
     public function validateRequest(array $serverVars = null, array $requestBody = null)
     {
         $helper = $this->createRequestHelper($serverVars, $requestBody);
-        $headerList = $helper->getHeaderList();
-        $request = $helper->createRequest();
-
         $authHeader = $helper->getAuthHeaders();
 
         if (!$this->checkDates($authHeader->getLongDate(), $authHeader->getShortDate(), $helper->getTimeStamp())) {
@@ -134,8 +131,8 @@ class AsrServer
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
-            ->useRequest($request)
-            ->useHeaders($helper->getHost(), $headerList, $authHeader->getSignedHeaders())
+            ->useRequest($helper->createRequest())
+            ->useHeaders($helper->getHost(), $helper->getHeaderList(), $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
@@ -203,25 +200,9 @@ class AsrRequestHelper
         return $request;
     }
 
-    /**
-     * @param $serverVars
-     * @return array
-     */
-    private function fetchHeaders($serverVars)
-    {
-        $headerList = array();
-        foreach ($serverVars as $key => $value) {
-            if (substr($key, 0, 5) == 'HTTP_') {
-                $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
-            }
-        }
-        $headerList['content-type'] = isset($serverVars['CONTENT_TYPE']) ? $serverVars['CONTENT_TYPE'] : '';
-        return AsrHeaders::canonicalize($headerList);
-    }
-
     public function getAuthHeaders($authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
-        return AsrAuthHeader::parse($this->fetchHeaders($this->serverVars), strtolower($authHeaderKey));
+        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($authHeaderKey));
     }
 
     public function getTimeStamp()
@@ -236,7 +217,19 @@ class AsrRequestHelper
 
     public function getHeaderList()
     {
-        return $this->fetchHeaders($this->serverVars);
+        $headerList = array();
+        foreach ($this->serverVars as $key => $value) {
+            if (substr($key, 0, 5) == 'HTTP_') {
+                $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
+            }
+        }
+        $headerList['content-type'] = $this->getContentType();
+        return AsrHeaders::canonicalize($headerList);
+    }
+
+    protected function getContentType()
+    {
+        return isset($this->serverVars['CONTENT_TYPE']) ? $this->serverVars['CONTENT_TYPE'] : '';
     }
 }
 
