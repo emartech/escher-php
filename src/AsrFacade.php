@@ -120,7 +120,9 @@ class AsrServer
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
 
-        $request = $this->createRequest($serverVars, $requestBody);
+        $helper = $this->createRequestHelper($serverVars, $requestBody);
+        $request = $helper->createRequest();
+
         $authHeader = $request->getAuthHeaders();
 
         if (!$this->checkDates($request)) {
@@ -176,21 +178,39 @@ class AsrServer
     /**
      * @param array $serverVars
      * @param array $requestBody
-     * @return AsrRequestToValidate
+     * @return AsrRequestHelper
      */
-    public static function createRequest(array $serverVars, $requestBody)
+    private function createRequestHelper(array $serverVars, $requestBody)
     {
-        $headerList = self::fetchHeaders($serverVars);
-        list ($path, $query) = array_pad(explode('?', $serverVars['REQUEST_URI'], 2), 2, '');
-        $request = new AsrRequestToSign($serverVars['REQUEST_METHOD'], $path, $query, $requestBody);
-        return new AsrRequestToValidate($headerList, $serverVars['REQUEST_TIME'], $request);
+        $factory = new AsrRequestHelper($serverVars, $requestBody);
+        return $factory;
+    }
+}
+
+class AsrRequestHelper
+{
+    private $serverVars;
+    private $requestBody;
+
+    public function __construct(array $serverVars, $requestBody)
+    {
+        $this->serverVars = $serverVars;
+        $this->requestBody = $requestBody;
+    }
+
+    public function createRequest()
+    {
+        $headerList = $this->fetchHeaders($this->serverVars);
+        list ($path, $query) = array_pad(explode('?', $this->serverVars['REQUEST_URI'], 2), 2, '');
+        $request = new AsrRequestToSign($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
+        return new AsrRequestToValidate($headerList, $this->serverVars['REQUEST_TIME'], $request);
     }
 
     /**
      * @param $serverVars
      * @return array
      */
-    private static function fetchHeaders($serverVars)
+    private function fetchHeaders($serverVars)
     {
         $headerList = array();
         foreach ($serverVars as $key => $value) {

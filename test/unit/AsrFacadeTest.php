@@ -38,13 +38,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function requestHeadersToValidate($requestTime)
     {
-        $request = AsrServer::createRequest(array(
+        $serverVars = array(
             'REQUEST_METHOD' => 'GET',
             'REQUEST_URI' => '/',
             'REQUEST_TIME' => strtotime($requestTime),
             'HTTP_X_AMZ_DATE' => $this->defaultAmzDate,
             'HTTP_X_AMZ_AUTH' => $this->authorizationHeader()
-        ), '');
+        );
+        $requestBody = 'BODY';
+        $request = $this->createRequestHelper($serverVars, $requestBody)->createRequest($serverVars, $requestBody);
         return $request;
     }
 
@@ -101,7 +103,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate));
+        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate), 'SHA256', 'Authorization');
     }
 
     /**
@@ -113,7 +115,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headersToSign = array('Content-Type');
         $_SERVER['REQUEST_TIME'] = strtotime($this->defaultAmzDate);
         $actual = $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign);
-        $this->assertEquals($this->authorizationHeaders(), $actual);
+        $this->assertEquals($this->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY), $actual);
     }
 
     /**
@@ -122,7 +124,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldParseAuthorizationHeader()
     {
         $headerList = $this->authorizationHeaders();
-        $authHeader = AsrAuthHeader::parse($headerList, 'X-Amz-Auth');
+        $authHeader = AsrAuthHeader::parse($headerList, 'authorization');
 
         $this->assertEquals($this->defaultAmzDate, $authHeader->getLongDate());
         $this->assertEquals('SHA256', $authHeader->getAlgorithm());
@@ -140,14 +142,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldParseHeaders()
     {
-        $request = AsrServer::createRequest(
-            array(
-                'REQUEST_TIME' => time(),
-                'REQUEST_METHOD' => 'GET',
-                'HTTP_HOST' => $this->host,
-                'CONTENT_TYPE' => $this->contentType,
-                'REQUEST_URI' => '/path?query=string'
-        ), 'BODY');
+        $serverVars = array(
+            'REQUEST_TIME' => time(),
+            'REQUEST_METHOD' => 'GET',
+            'HTTP_HOST' => $this->host,
+            'CONTENT_TYPE' => $this->contentType,
+            'REQUEST_URI' => '/path?query=string'
+        );
+        $requestBody = 'BODY';
+        $request = $this->createRequestHelper($serverVars, $requestBody)->createRequest();
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());
         $this->assertEquals('/path', $request->asRequestToSign()->getPath());
         $this->assertEquals('query=string', $request->asRequestToSign()->getQuery());
@@ -197,13 +200,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @param string $headerKey
      * @return array
      */
-    private function authorizationHeaders()
+    private function authorizationHeaders($headerKey = 'Authorization')
     {
         return array(
-            'X-Amz-Auth' => $this->authorizationHeader(),
-            'X-Amz-Date'    => $this->defaultAmzDate,
+            $headerKey   => $this->authorizationHeader(),
+            'X-Amz-Date' => $this->defaultAmzDate,
         );
     }
 
@@ -214,5 +218,16 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
             'SignedHeaders=content-type;host;x-amz-date, '.
             'Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c';
+    }
+
+    /**
+     * @param $serverVars
+     * @param $requestBody
+     * @return AsrRequestHelper
+     */
+    protected function createRequestHelper($serverVars, $requestBody)
+    {
+        $requestFactory = new AsrRequestHelper($serverVars, $requestBody);
+        return $requestFactory;
     }
 }
