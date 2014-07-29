@@ -19,9 +19,7 @@ class AsrFacade
 
     public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
     {
-        $headerList      = AsrHeaders::canonicalize($headerList);
-        $amazonDateTime  = $headerList['x-amz-date'];
-        $authHeader      = AsrBuilder::parseAuthHeader($headerList['authorization']);
+        $authHeader      = AsrBuilder::parseHeaders($headerList);
 
         $credentialParts = $authHeader->getCredentialParts();
         $accessKeyId     = $authHeader->getAccessKeyId();
@@ -29,6 +27,7 @@ class AsrFacade
         $algorithmName   = $authHeader->getAlgorithm();
         $signedHeaders   = $authHeader->getSignedHeaders();
         $signature       = $authHeader->getSignature();
+        $amazonDateTime  = $authHeader->getLongDate();
 
         $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
@@ -94,13 +93,20 @@ class AsrBuilder
         return AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
     }
 
-    public static function parseAuthHeader($authHeaderString)
+    public static function parseHeaders(array $headerList)
     {
+        $headerList      = AsrHeaders::canonicalize($headerList);
+        if (!isset($headerList['x-amz-date'])) {
+            throw new AsrException('The X-Amz-Date header is missing');
+        }
+        if (!isset($headerList['authorization'])) {
+            throw new AsrException('The Authorization header is missing');
+        }
         $matches = array();
-        if (1 !== preg_match(self::regex(), $authHeaderString, $matches)) {
+        if (1 !== preg_match(self::regex(), $headerList['authorization'], $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
-        return new AsrAuthHeader($matches);
+        return new AsrAuthHeader($matches, $headerList['x-amz-date']);
     }
 
     private static function regex()
@@ -193,9 +199,15 @@ class AsrAuthHeader
      */
     private $headerParts;
 
-    public function __construct(array $headerParts)
+    /**
+     * @var string
+     */
+    private $amazonDateTime;
+
+    public function __construct(array $headerParts, $amazonDateTime)
     {
         $this->headerParts = $headerParts;
+        $this->amazonDateTime = $amazonDateTime;
     }
 
     public function getCredentialParts()
@@ -235,6 +247,11 @@ class AsrAuthHeader
     public function getSignature()
     {
         return $this->headerParts['signature'];
+    }
+
+    public function getLongDate()
+    {
+        return $this->amazonDateTime;
     }
 }
 
