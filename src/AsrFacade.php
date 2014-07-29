@@ -129,7 +129,7 @@ class AsrServer implements AsrRequestValidator
 
         $signature = AsrBuilder::create($authHeader->getLongDate(), $authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
-            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), strtotime($authHeader->getLongDate()), $helper->getHeaderList(), $authHeader->getSignedHeaders()))
+            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), $authHeader->getLongDate(), $helper->getHeaderList(), $authHeader->getSignedHeaders()))
             ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
@@ -314,11 +314,13 @@ class AsrBuilder
      */
     public function calculateSignature($secretKey)
     {
-        $canonicalizedRequest = $this->canonicalizeRequest();
+        $requestBodyHash      = $this->algorithm->hash($this->request->getBody());
+        $canonicalizedRequest = $this->canonicalizeRequest($requestBodyHash);
         $canonicalHash        = $this->algorithm->hash($canonicalizedRequest);
         $stringToSign         = $this->generateStringToSign($canonicalHash, $this->amazonDateTime);
         $signingKey           = $this->generateSigningKey($secretKey, $this->amazonDateTime);
-        return $this->algorithm->hmac($stringToSign, $signingKey, false);
+        $signature            = $this->algorithm->hmac($stringToSign, $signingKey, false);
+        return $signature;
     }
 
     public function buildAuthHeaders($secretKey, $authHeaderKey)
@@ -351,7 +353,7 @@ class AsrBuilder
         return $key;
     }
 
-    private function canonicalizeRequest()
+    private function canonicalizeRequest($requestBodyHash)
     {
         $lines = array();
         $lines[] = strtoupper($this->request->getMethod());
@@ -362,7 +364,7 @@ class AsrBuilder
         }
         $lines[] = '';
         $lines[] = $this->headers->toHeaderString();
-        $lines[] = $this->algorithm->hash($this->request->getBody());
+        $lines[] = $requestBodyHash;
 
         return implode("\n", $lines);
     }

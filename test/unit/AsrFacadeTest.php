@@ -79,16 +79,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @param $headerList
-     * @param $headersToSign
-     * @return array
-     */
-    public function callSignRequestWithDefaultParams($headerList, $headersToSign)
-    {
-        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate), 'SHA256', 'Authorization');
-    }
-
-    /**
      * @test
      */
     public function itShouldUseTheServersRequestTimeAsTheFullDate()
@@ -141,6 +131,23 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     }
 
     /**
+     * @test
+     */
+    public function itShouldValidateRequest()
+    {
+        $serverVars = array(
+            'HTTP_X_AMZ_DATE' => $this->defaultAmzDate,
+            'HTTP_X_AMZ_AUTH' => $this->authorizationHeader(),
+            'REQUEST_TIME' => strtotime($this->defaultAmzDate) + rand(0, 100),
+            'REQUEST_METHOD' => 'POST',
+            'HTTP_HOST' => $this->host,
+            'CONTENT_TYPE' => $this->contentType,
+            'REQUEST_URI' => '/'
+        );
+        $this->defaultServer()->validateRequest($serverVars, $this->requestBody());
+    }
+
+    /**
      * @return array
      */
     private function headers()
@@ -190,5 +197,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $requestFactory = new AsrRequestHelper($serverVars, $requestBody);
         return $requestFactory;
+    }
+
+    /**
+     * @param $headerList
+     * @param $headersToSign
+     * @return array
+     */
+    public function callSignRequestWithDefaultParams($headerList, $headersToSign)
+    {
+        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate), 'SHA256', 'Authorization');
     }
 }
