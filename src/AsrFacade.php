@@ -117,7 +117,7 @@ class AsrServer implements AsrRequestValidator
         $this->keyDB = $keyDB;
     }
 
-    public function validateRequest(array $serverVars = null, array $requestBody = null)
+    public function validateRequest(array $serverVars = null, $requestBody = null)
     {
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $authHeader = $helper->getAuthHeaders();
