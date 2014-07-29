@@ -25,14 +25,15 @@ class AsrFacade
         $authHeaderParts = $authHeader->getParts();
 
         $credentialParts = $authHeader->getCredentialParts();
+        $accessKeyId     = $authHeader->getAccessKeyId();
+        $amazonShortDate = $authHeader->getShortDate();
+        $algorithmName   = $authHeader->getAlgorithm();
 
         $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
             return false;
         }
-        $accessKeyId = $authHeader->getAccessKeyId();
-        $amazonDate  = array_shift($credentialParts);
-        if (!$validator->validateDates($serverDate, $amazonDateTime, $amazonDate)) {
+        if (!$validator->validateDates($serverDate, $amazonDateTime, $amazonShortDate)) {
             return false;
         }
 
@@ -40,7 +41,7 @@ class AsrFacade
         // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        return AsrBuilder::create(strtotime($amazonDateTime), $authHeaderParts['algorithm'])
+        return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
             ->useCredentials($accessKeyId, $credentialParts)
@@ -218,6 +219,16 @@ class AsrAuthHeader
     public function getAccessKeyId()
     {
         return $this->getCredentialPart(0, 'access key id');
+    }
+
+    public function getShortDate()
+    {
+        return $this->getCredentialPart(1, 'credential date');
+    }
+
+    public function getAlgorithm()
+    {
+        return $this->headerParts['algorithm'];
     }
 }
 
