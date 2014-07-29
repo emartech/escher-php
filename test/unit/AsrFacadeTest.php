@@ -2,11 +2,7 @@
 
 class AsrFacadeTest extends PHPUnit_Framework_TestCase
 {
-    /**
-     * @var AsrFacade
-     */
-    private $util;
-
+    private $defaultAmzDate = '20110909T233600Z';
     /**
      * @var AsrSigningAlgorithm
      */
@@ -36,9 +32,23 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return AsrFacade::createClient($this->secretKey, $this->accessKeyId, $this->region, $this->service, $this->requestType);
     }
 
+    /**
+     * @param $requestTime
+     * @return AsrRequestToValidate
+     */
+    public function requestHeadersToValidate($requestTime)
+    {
+        $request = AsrRequestToValidate::create(array(
+            'REQUEST_URI' => '/',
+            'REQUEST_TIME' => strtotime($requestTime),
+            'HTTP_X_AMZ_DATE' => $this->defaultAmzDate,
+            'HTTP_AUTHORIZATION' => $this->authorizationHeader()
+        ), '');
+        return $request;
+    }
+
     protected function setUp()
     {
-        $this->util = new AsrFacade();
         $this->algorithm = new AsrSigningAlgorithm(AsrFacade::SHA256);
     }
 
@@ -49,7 +59,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headersToSign = array('Content-Type');
         $headerList = $this->headers();
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -59,7 +69,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headerList = array('Content-Type' => $this->contentType);
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -72,7 +82,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'X-A-Header' => 'that/should/not/be/signed'
         );
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -82,7 +92,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime('20110909T233600Z'));
+        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate));
     }
 
     /**
@@ -92,9 +102,9 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
-        $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
+        $_SERVER['REQUEST_TIME'] = strtotime($this->defaultAmzDate);
         $actual = $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign);
-        $this->assertEquals($this->authorizationHeader(), $actual);
+        $this->assertEquals($this->authorizationHeaders(), $actual);
     }
 
     /**
@@ -123,10 +133,10 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldParseAuthorizationHeader()
     {
-        $headerList = $this->authorizationHeader();
+        $headerList = $this->authorizationHeaders();
         $authHeader = AsrAuthHeader::parse($headerList);
 
-        $this->assertEquals('20110909T233600Z', $authHeader->getLongDate());
+        $this->assertEquals($this->defaultAmzDate, $authHeader->getLongDate());
         $this->assertEquals('SHA256', $authHeader->getAlgorithm());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
@@ -154,18 +164,24 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
-    public function itShouldThrowExceptionIfDatesAreTooFarApart()
+    public function itShouldNotAllowTimeDifferencesLargerThanFifteenMinutes()
     {
-        $actual = $this->util->validateDates('20110909T233600Z', '20110909T231500Z', '20110909');
+        $requestTime = '20110909T235300Z';
+        $request = $this->requestHeadersToValidate($requestTime);
+        $server = new AsrServer();
+        $actual = $server->validateDates($request);
         $this->assertFalse($actual);
     }
 
     /**
      * @test
      */
-    public function itShouldNotThrowExceptionsIfDatesAreAcceptable()
+    public function itShouldAllowTimeDifferencesSmallerThanFifteenMinutes()
     {
-        $actual = $this->util->validateDates('20110909T233600Z', '20110909T233200Z', '20110909');
+        $requestTime = '20110909T233200Z';
+        $request = $this->requestHeadersToValidate($requestTime);
+        $server = new AsrServer();
+        $actual = $server->validateDates($request);
         $this->assertTrue($actual);
     }
 
@@ -177,7 +193,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return array(
             'Content-Type' => $this->contentType,
             'Host' => $this->host,
-            'X-Amz-Date' => '20110909T233600Z',
+            'X-Amz-Date' => $this->defaultAmzDate,
         );
     }
 
@@ -192,15 +208,20 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     /**
      * @return array
      */
-    private function authorizationHeader()
+    private function authorizationHeaders()
     {
         return array(
-            'Authorization' =>
-                'AWS4-HMAC-SHA256 '.
-                'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
-                'SignedHeaders=content-type;host;x-amz-date, '.
-                'Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c',
-            'X-Amz-Date'    => '20110909T233600Z',
+            'Authorization' => $this->authorizationHeader(),
+            'X-Amz-Date'    => $this->defaultAmzDate,
         );
+    }
+
+    private function authorizationHeader()
+    {
+        return
+            'AWS4-HMAC-SHA256 '.
+            'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
+            'SignedHeaders=content-type;host;x-amz-date, '.
+            'Signature=ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c';
     }
 }

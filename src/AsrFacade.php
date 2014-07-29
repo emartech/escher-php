@@ -3,11 +3,18 @@
 class AsrFacade
 {
     const SHA256 = 'sha256';
-    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900; // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
+    // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
+    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
         return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId);
+    }
+
+    private static function createServer($region, $service, $requestType, $keyDB)
+    {
+        $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : array());
+        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB);
     }
 
     public function signRequest($secretKey, $accessKeyId, $region, $service, $requestType, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
@@ -15,48 +22,10 @@ class AsrFacade
         return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
     }
 
-    public function checkSignature()
+    public function checkSignature($region, $service, $requestType, $keyDB)
     {
-        $request         = AsrRequestToValidate::create();
-        $serverTimeStamp = $request->getTimeStamp();
-        $host            = $request->getHost();
-        $method          = $request->getMethod();
-        $path            = $request->getPath();
-        $query           = $request->getQuery();
-        $requestBody     = $request->getBody();
-        $headerList      = $request->getHeaderList();
-        $authHeader      = AsrAuthHeader::parse($headerList);
-
-        $accessKeyId     = $authHeader->getAccessKeyId();
-        $amazonShortDate = $authHeader->getShortDate();
-        $algorithmName   = $authHeader->getAlgorithm();
-        $signedHeaders   = $authHeader->getSignedHeaders();
-        $signature       = $authHeader->getSignature();
-        $amazonDateTime  = $authHeader->getLongDate();
-        $region          = $authHeader->getRegion();
-        $service         = $authHeader->getService();
-        $requestType     = $authHeader->getRequestType();
-
-        if (!$this->validateDates($serverTimeStamp, $amazonDateTime, $amazonShortDate)) {
-            return false;
-        }
-
-        // look up secret key for access key id
-        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
-        $secretKey = 'TODO-ADD-LOOKUP';
-
-        return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
-            ->useRequest($method, $path, $query, $requestBody)
-            ->useHeaders($host, $headerList, $signedHeaders)
-            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
-            ->validate($secretKey, $signature);
-    }
-
-    public function validateDates($serverDateString, $amazonDateTime, $amazonDate)
-    {
-        //TODO: validate date format
-        return substr($amazonDateTime, 0, 8) == $amazonDate
-        && abs(strtotime($serverDateString) - strtotime($amazonDateTime)) < self::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+        self::createServer($region, $service, $requestType, $keyDB)
+            ->validate(AsrRequestToValidate::create());
     }
 }
 
@@ -121,6 +90,48 @@ class AsrClient
     }
 }
 
+class AsrServer
+{
+    public function validate(AsrRequestToValidate $request)
+    {
+        $headerList      = $request->getHeaderList();
+        $authHeader      = $request->getAuthHeaders();
+
+        $accessKeyId     = $authHeader->getAccessKeyId();
+        $amazonShortDate = $authHeader->getShortDate();
+        $algorithmName   = $authHeader->getAlgorithm();
+        $signedHeaders   = $authHeader->getSignedHeaders();
+        $signature       = $authHeader->getSignature();
+        $amazonDateTime  = $authHeader->getLongDate();
+        $region          = $authHeader->getRegion();
+        $service         = $authHeader->getService();
+        $requestType     = $authHeader->getRequestType();
+
+        if (!$this->validateDates($request)) {
+            return false;
+        }
+
+        // look up secret key for access key id
+        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
+        $secretKey = 'TODO-ADD-LOOKUP';
+
+        return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
+            ->useRequest($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody())
+            ->useHeaders($request->getHost(), $headerList, $signedHeaders)
+            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
+            ->validate($secretKey, $signature);
+    }
+
+    public function validateDates(AsrRequestToValidate $request)
+    {
+        $amazonDateTime = $request->getAuthHeaders()->getLongDate();
+        $amazonShortDate = $request->getAuthHeaders()->getShortDate();
+        //TODO: validate date format
+        return substr($amazonDateTime, 0, 8) == $amazonShortDate
+        && abs($request->getTimeStamp() - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+    }
+}
+
 class AsrRequestToValidate
 {
     /**
@@ -174,7 +185,7 @@ class AsrRequestToValidate
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $headerList = self::normalizeHeaders($serverVars);
-        list ($path, $query) = explode('?', $serverVars['REQUEST_URI'], 2);
+        list ($path, $query) = array_pad(explode('?', $serverVars['REQUEST_URI'], 2), 2, '');
         return new AsrRequestToValidate($serverVars, $headerList, $path, $query, $requestBody);
     }
 
@@ -229,6 +240,11 @@ class AsrRequestToValidate
     public function getBody()
     {
         return $this->requestBody;
+    }
+
+    public function getAuthHeaders()
+    {
+        return AsrAuthHeader::parse($this->headerList);
     }
 }
 
