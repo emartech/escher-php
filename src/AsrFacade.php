@@ -15,8 +15,10 @@ class AsrFacade
         return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
     }
 
-    public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
+    public function checkSignature($host, $method, $path, $query, $requestBody, array $headerList)
     {
+        $request         = AsrRequestToValidate::create();
+        $serverTimeStamp = $request->getTimeStamp();
         $authHeader      = AsrAuthHeader::parse($headerList);
 
         $accessKeyId     = $authHeader->getAccessKeyId();
@@ -29,7 +31,7 @@ class AsrFacade
         $service         = $authHeader->getService();
         $requestType     = $authHeader->getRequestType();
 
-        if (!$this->validateDates($serverDate, $amazonDateTime, $amazonShortDate)) {
+        if (!$this->validateDates($serverTimeStamp, $amazonDateTime, $amazonShortDate)) {
             return false;
         }
 
@@ -177,6 +179,11 @@ class AsrRequestToValidate
     public function getHeaderList()
     {
         return $this->headerList;
+    }
+
+    public function getTimeStamp()
+    {
+        return $this->serverVars['REQUEST_TIME'];
     }
 }
 
