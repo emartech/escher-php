@@ -171,8 +171,7 @@ class AsrBuilder
 
     public function buildAuthHeaders($secretKey)
     {
-        return AsrAuthHeader::build(
-            $this->dateHeader(),
+        return $this->dateHeader() + AsrAuthHeader::build(
             $this->algorithm,
             $this->credentials->createScope($this->amazonDateTime),
             $this->headers,
@@ -235,9 +234,9 @@ class AsrAuthHeader
         '$/';
     }
 
-    public static function build($dateHeader, AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature)
+    public static function build(AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature)
     {
-        return $dateHeader + array('Authorization' => $algorithm->toHeaderString() . ' ' .
+        return array('Authorization' => $algorithm->toHeaderString() . ' ' .
             "Credential={$credentialScope->toHeaderString()}, " .
             "SignedHeaders={$headers->toHeaderString()}, ".
             "Signature=$signature");
