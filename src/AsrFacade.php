@@ -6,6 +6,8 @@ class AsrFacade
     // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Amz-Auth';
+    const AMAZON_DATE_FORMAT = self::ISO8601;
+    const ISO8601 = 'Ymd\THis\Z';
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
@@ -72,7 +74,7 @@ class AsrClient
         $request = new AsrRequest($method, $path, $query, $requestBody);
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
-        $amazonDateTime = AsrBuilder::format($timeStamp);
+        $amazonDateTime = $this->format($timeStamp);
         return AsrBuilder::create($algorithmName)
             ->useRequest($request)
             ->useHeaders(AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign))
@@ -91,6 +93,14 @@ class AsrClient
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
+    }
+
+    private function format($timeStamp)
+    {
+        $result = new DateTime();
+        $result->setTimezone(new DateTimeZone('UTC'));
+        $result->setTimestamp($timeStamp);
+        return $result->format(AsrFacade::AMAZON_DATE_FORMAT);
     }
 }
 
@@ -233,9 +243,6 @@ class AsrRequestHelper
 
 class AsrBuilder
 {
-    const AMAZON_DATE_FORMAT = self::ISO8601;
-    const ISO8601 = 'Ymd\THis\Z';
-
     /**
      * @var AsrHashAlgorithm
      */
@@ -264,14 +271,6 @@ class AsrBuilder
     public static function create($algorithmName = AsrFacade::SHA256)
     {
         return new AsrBuilder(new AsrHashAlgorithm(strtolower($algorithmName)));
-    }
-
-    public static function format($timeStamp)
-    {
-        $result = new DateTime();
-        $result->setTimezone(new DateTimeZone('UTC'));
-        $result->setTimestamp($timeStamp);
-        return $result->format(self::AMAZON_DATE_FORMAT);
     }
 
     /**
