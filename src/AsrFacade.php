@@ -30,7 +30,7 @@ class AsrFacade
         if (!$validator->validateCredentials($credentialParts)) {
             return false;
         }
-        $accessKeyId = array_shift($credentialParts);
+        $accessKeyId = $authHeader->getAccessKeyId();
         $amazonDate  = array_shift($credentialParts);
         if (!$validator->validateDates($serverDate, $amazonDateTime, $amazonDate)) {
             return false;
@@ -204,6 +204,20 @@ class AsrAuthHeader
     public function getCredentialParts()
     {
         return explode('/', $this->headerParts['credentials']);
+    }
+
+    private function getCredentialPart($index, $name)
+    {
+        $credentialParts = $this->getCredentialParts();
+        if (!isset($credentialParts[$index])) {
+            throw new AsrException('Invalid credential scope in the authorization header: missing '.$name);
+        }
+        return $credentialParts[$index];
+    }
+
+    public function getAccessKeyId()
+    {
+        return $this->getCredentialPart(0, 'access key id');
     }
 }
 
