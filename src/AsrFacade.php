@@ -5,7 +5,7 @@ class AsrFacade
     const SHA256 = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900; // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
 
-    public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
+    public function signRequest($secretKey, $accessKeyId, $region, $service, $requestType, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
         $urlParts = parse_url($url);
         $host     = $urlParts['host'];
@@ -14,7 +14,7 @@ class AsrFacade
         return AsrBuilder::create()
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->useCredentials($accessKeyId, $baseCredentials[0], $baseCredentials[1], $baseCredentials[2])
+            ->useCredentials($accessKeyId, $region, $service, $requestType)
             ->buildAuthHeaders($secretKey);
     }
 
