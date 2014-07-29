@@ -22,7 +22,6 @@ class AsrFacade
     {
         $authHeader      = AsrBuilder::parseHeaders($headerList);
 
-        $credentialParts = $authHeader->getCredentialParts();
         $accessKeyId     = $authHeader->getAccessKeyId();
         $amazonShortDate = $authHeader->getShortDate();
         $algorithmName   = $authHeader->getAlgorithm();
@@ -219,7 +218,7 @@ class AsrAuthHeader
         $this->amazonDateTime = $amazonDateTime;
     }
 
-    public function getCredentialParts()
+    private function getCredentialParts()
     {
         return explode('/', $this->headerParts['credentials']);
     }
