@@ -505,12 +505,12 @@ class AsrAuthHeader
 
     public function getRegion()
     {
-        return $this->getCredentialPart(3, 'region');
+        return $this->getCredentialPart(2, 'region');
     }
 
     public function getService()
     {
-        return $this->getCredentialPart(4, 'service');
+        return $this->getCredentialPart(3, 'service');
     }
 
     public function getRequestType()
