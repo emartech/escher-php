@@ -22,13 +22,13 @@ class AsrFacade
         $headerList      = AsrHeaders::canonicalize($headerList);
         $amazonDateTime  = $headerList['x-amz-date'];
         $authHeader      = AsrBuilder::parseAuthHeader($headerList['authorization']);
-        $authHeaderParts = $authHeader->getParts();
 
         $credentialParts = $authHeader->getCredentialParts();
         $accessKeyId     = $authHeader->getAccessKeyId();
         $amazonShortDate = $authHeader->getShortDate();
         $algorithmName   = $authHeader->getAlgorithm();
         $signedHeaders   = $authHeader->getSignedHeaders();
+        $signature       = $authHeader->getSignature();
 
         $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
@@ -46,7 +46,7 @@ class AsrFacade
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $signedHeaders)
             ->useCredentials($accessKeyId, $credentialParts)
-            ->validate($secretKey, $authHeaderParts['signature']);
+            ->validate($secretKey, $signature);
     }
 }
 
@@ -198,11 +198,6 @@ class AsrAuthHeader
         $this->headerParts = $headerParts;
     }
 
-    public function getParts()
-    {
-        return $this->headerParts;
-    }
-
     public function getCredentialParts()
     {
         return explode('/', $this->headerParts['credentials']);
@@ -235,6 +230,11 @@ class AsrAuthHeader
     public function getSignedHeaders()
     {
         return explode(';', $this->headerParts['signed_headers']);
+    }
+
+    public function getSignature()
+    {
+        return $this->headerParts['signature'];
     }
 }
 
