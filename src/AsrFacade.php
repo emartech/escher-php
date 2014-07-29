@@ -11,7 +11,7 @@ class AsrFacade
         return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId);
     }
 
-    private static function createServer($region, $service, $requestType, $keyDB)
+    public static function createServer($region, $service, $requestType, $keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : array());
         return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB);
@@ -19,7 +19,8 @@ class AsrFacade
 
     public function signRequest($secretKey, $accessKeyId, $region, $service, $requestType, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
+        return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)
+            ->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
     }
 
     public function checkSignature($region, $service, $requestType, $keyDB)
@@ -50,6 +51,21 @@ class AsrParty
     public function toArray()
     {
         return array($this->region, $this->service, $this->requestType);
+    }
+
+    public function getRegion()
+    {
+        return $this->region;
+    }
+
+    public function getService()
+    {
+        return $this->service;
+    }
+
+    public function getRequestType()
+    {
+        return $this->requestType;
     }
 }
 
@@ -92,43 +108,70 @@ class AsrClient
 
 class AsrServer
 {
-    public function validate(AsrRequestToValidate $request)
+    /**
+     * @var AsrParty
+     */
+    private $party;
+
+    /**
+     * @var ArrayAccess
+     */
+    private $keyDB;
+
+    public function __construct(AsrParty $party, ArrayAccess $keyDB)
     {
-        $headerList      = $request->getHeaderList();
-        $authHeader      = $request->getAuthHeaders();
-
-        $accessKeyId     = $authHeader->getAccessKeyId();
-        $amazonShortDate = $authHeader->getShortDate();
-        $algorithmName   = $authHeader->getAlgorithm();
-        $signedHeaders   = $authHeader->getSignedHeaders();
-        $signature       = $authHeader->getSignature();
-        $amazonDateTime  = $authHeader->getLongDate();
-        $region          = $authHeader->getRegion();
-        $service         = $authHeader->getService();
-        $requestType     = $authHeader->getRequestType();
-
-        if (!$this->validateDates($request)) {
-            return false;
-        }
-
-        // look up secret key for access key id
-        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
-        $secretKey = 'TODO-ADD-LOOKUP';
-
-        return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
-            ->useRequest($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody())
-            ->useHeaders($request->getHost(), $headerList, $signedHeaders)
-            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
-            ->validate($secretKey, $signature);
+        $this->party = $party;
+        $this->keyDB = $keyDB;
     }
 
-    public function validateDates(AsrRequestToValidate $request)
+    public function validate(AsrRequestToValidate $request)
+    {
+        $authHeader = $request->getAuthHeaders();
+
+        if (!$this->checkDates($request)) {
+            throw new AsrException('One of the date headers are invalid');
+        }
+
+        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
+        if (!$this->checkCredentials($authHeader)) {
+            throw new AsrException('Invalid credentials');
+        }
+        $accessKeyId = $authHeader->getAccessKeyId();
+
+        return AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
+            ->useRequest($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody())
+            ->useHeaders($request->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
+            ->useCredentials($accessKeyId, $authHeader->getParty())
+            ->validate($this->lookupSecretKey($accessKeyId), $authHeader->getSignature());
+    }
+
+    public function checkDates(AsrRequestToValidate $request)
     {
         $amazonDateTime = $request->getAuthHeaders()->getLongDate();
         $amazonShortDate = $request->getAuthHeaders()->getShortDate();
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
         && abs($request->getTimeStamp() - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+    }
+
+    /**
+     * @param string $accessKeyId
+     * @return string
+     * @throws AsrException
+     */
+    public function lookupSecretKey($accessKeyId)
+    {
+        if (!isset($this->keyDB[$accessKeyId])) {
+            throw new AsrException('Invalid access key id');
+        }
+        return $this->keyDB[$accessKeyId];
+    }
+
+    private function checkCredentials(AsrAuthHeader $authHeader)
+    {
+        return $authHeader->getRegion() == $this->party->getRegion()
+            && $authHeader->getService() == $this->party->getService()
+            && $authHeader->getRequestType() == $this->party->getRequestType();
     }
 }
 
@@ -484,6 +527,11 @@ class AsrAuthHeader
     public function getRequestType()
     {
         return $this->getCredentialPart(4, 'request type');
+    }
+
+    public function getParty()
+    {
+        return new AsrParty($this->getRegion(), $this->getService(), $this->getRequestType());
     }
 }
 

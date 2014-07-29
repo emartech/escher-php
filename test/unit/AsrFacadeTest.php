@@ -47,6 +47,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return $request;
     }
 
+    /**
+     * @return AsrServer
+     */
+    public function defaultServer()
+    {
+        return AsrFacade::createServer($this->region, $this->service, $this->requestType, array($this->accessKeyId => $this->secretKey));
+    }
+
     protected function setUp()
     {
         $this->algorithm = new AsrSigningAlgorithm(AsrFacade::SHA256);
@@ -168,8 +176,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $requestTime = '20110909T235300Z';
         $request = $this->requestHeadersToValidate($requestTime);
-        $server = new AsrServer();
-        $actual = $server->validateDates($request);
+        $actual = $this->defaultServer()->checkDates($request);
         $this->assertFalse($actual);
     }
 
@@ -180,8 +187,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $requestTime = '20110909T233200Z';
         $request = $this->requestHeadersToValidate($requestTime);
-        $server = new AsrServer();
-        $actual = $server->validateDates($request);
+        $actual = $this->defaultServer()->checkDates($request);
         $this->assertTrue($actual);
     }
 
