@@ -296,8 +296,7 @@ class AsrBuilder
      */
     public function useHeaders($host, array $headerList, array $headersToSign)
     {
-        $hostHeader = array('Host' => $host); //TODO; handle port
-        $this->headers = AsrHeaders::createFrom($this->dateHeader() + $hostHeader + $headerList, $headersToSign);
+        $this->headers = AsrHeaders::createFrom($host, $this->dateHeader() + $headerList, $headersToSign);
         return $this;
     }
 
@@ -643,12 +642,13 @@ class AsrHeaders implements AuthHeaderPart
         $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($headerList, $headersToSign = array())
+    public static function createFrom($host, $headerList, $headersToSign = array())
     {
+        $hostHeader = array('Host' => $host); //TODO; handle port
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
 
         sort($headersToSign);
-        return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
+        return new AsrHeaders(self::canonicalize($hostHeader + $headerList), $headersToSign);
     }
 
     public static function trimHeaderValue($value)
