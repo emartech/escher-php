@@ -97,7 +97,13 @@ class AsrClient
     }
 }
 
-class AsrServer
+interface AsrRequestValidator
+{
+    public function checkDates($amazonDateTime, $amazonShortDate, $serverTime);
+    public function checkCredentials($region, $service, $requestType);
+}
+
+class AsrServer implements AsrRequestValidator
 {
     /**
      * @var AsrParty
@@ -120,14 +126,9 @@ class AsrServer
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $authHeader = $helper->getAuthHeaders();
 
-        if (!$this->checkDates($authHeader->getLongDate(), $authHeader->getShortDate(), $helper->getTimeStamp())) {
-            throw new AsrException('One of the date headers are invalid');
-        }
+        $authHeader->validateDates($this, $helper->getTimeStamp());
+        $authHeader->validateCredentials($this);
 
-        // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
-        if (!$this->checkCredentials($authHeader)) {
-            throw new AsrException('Invalid credentials');
-        }
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
@@ -161,11 +162,11 @@ class AsrServer
         return $this->keyDB[$accessKeyId];
     }
 
-    private function checkCredentials(AsrAuthHeader $authHeader)
+    public function checkCredentials($region, $service, $requestType)
     {
-        return $authHeader->getRegion() == $this->party->getRegion()
-            && $authHeader->getService() == $this->party->getService()
-            && $authHeader->getRequestType() == $this->party->getRequestType();
+        return $region == $this->party->getRegion()
+            && $service == $this->party->getService()
+            && $requestType == $this->party->getRequestType();
     }
 
     /**
@@ -179,8 +180,7 @@ class AsrServer
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $factory = new AsrRequestHelper($serverVars, $requestBody);
         return $factory;
-    }
-}
+    }}
 
 class AsrRequestHelper
 {
@@ -503,6 +503,20 @@ class AsrAuthHeader
     public function getParty()
     {
         return new AsrParty($this->getRegion(), $this->getService(), $this->getRequestType());
+    }
+
+    public function validateDates(AsrRequestValidator $validator, $serverTime)
+    {
+        if (!$validator->checkDates($this->amazonDateTime, $this->getShortDate(), $serverTime)) {
+            throw new AsrException('One of the date headers are invalid');
+        }
+    }
+
+    public function validateCredentials(AsrRequestValidator $validator)
+    {
+        if (!$validator->checkCredentials($this->getRegion(), $this->getService(), $this->getRequestType())) {
+            throw new AsrException('Invalid credentials');
+        }
     }
 }
 
