@@ -20,7 +20,7 @@ class AsrFacade
 
     public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)
     {
-        $authHeader      = AsrBuilder::parseHeaders($headerList);
+        $authHeader      = AsrAuthHeader::parse($headerList);
 
         $accessKeyId     = $authHeader->getAccessKeyId();
         $amazonShortDate = $authHeader->getShortDate();
