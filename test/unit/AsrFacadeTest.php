@@ -14,7 +14,9 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     private $secretKey = 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
     private $accessKeyId = 'AKIDEXAMPLE';
-    private $baseCredentials = array('us-east-1', 'iam', 'aws4_request');
+    private $region = 'us-east-1';
+    private $service = 'iam';
+    private $requestType = 'aws4_request';
     private $host = 'iam.amazonaws.com';
 
     protected function setUp()
@@ -65,7 +67,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         return AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
     }
@@ -79,7 +81,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headersToSign = array('Content-Type');
         $actual = AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
@@ -95,7 +97,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
         $actual = AsrBuilder::create()
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->baseCredentials)
+            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
@@ -117,7 +119,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldCalculateSigningKey()
     {
-        $credentials = new AsrCredentials($this->accessKeyId, $this->baseCredentials);
+        $credentials = new AsrCredentials($this->accessKeyId, array($this->region, $this->service, $this->requestType));
         $result = $credentials->generateSigningKeyUsing($this->algorithm, $this->secretKey, '20120215TIRRELEVANT');
         $this->assertEquals('f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d', bin2hex($result));
     }

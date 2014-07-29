@@ -13,7 +13,7 @@ class AsrFacade
         return AsrBuilder::create()
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->useCredentials($accessKeyId, $baseCredentials)
+            ->useCredentials($accessKeyId, $baseCredentials[0], $baseCredentials[1], $baseCredentials[2])
             ->buildAuthHeaders($secretKey);
     }
 
@@ -41,10 +41,13 @@ class AsrFacade
         // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
+        $region = $authHeader->getRegion();
+        $service = $authHeader->getService();
+        $requestType = $authHeader->getRequestType();
         return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $signedHeaders)
-            ->useCredentials($accessKeyId, $credentialParts)
+            ->useCredentials($accessKeyId, $region, $service, $requestType)
             ->validate($secretKey, $signature);
     }
 }
@@ -135,13 +138,15 @@ class AsrBuilder
     }
 
     /**
-     * @param string $accessKeyId
-     * @param array $baseCredentials
+     * @param $accessKeyId
+     * @param $region
+     * @param $service
+     * @param $requestType
      * @return AsrBuilder
      */
-    public function useCredentials($accessKeyId, array $baseCredentials)
+    public function useCredentials($accessKeyId, $region, $service, $requestType)
     {
-        $this->credentials = new AsrCredentials($accessKeyId, $baseCredentials);
+        $this->credentials = new AsrCredentials($accessKeyId, array($region, $service, $requestType));
         return $this;
     }
 
@@ -252,6 +257,21 @@ class AsrAuthHeader
     public function getLongDate()
     {
         return $this->amazonDateTime;
+    }
+
+    public function getRegion()
+    {
+        return $this->getCredentialPart(3, 'region');
+    }
+
+    public function getService()
+    {
+        return $this->getCredentialPart(4, 'service');
+    }
+
+    public function getRequestType()
+    {
+        return $this->getCredentialPart(4, 'request type');
     }
 }
 
