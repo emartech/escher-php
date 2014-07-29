@@ -73,11 +73,11 @@ class AsrClient
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
         $amazonDateTime = AsrBuilder::format($timeStamp);
-        return AsrBuilder::create($amazonDateTime, $algorithmName)
+        return AsrBuilder::create($algorithmName)
             ->useRequest($request)
             ->useHeaders(AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign))
             ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
-            ->buildAuthHeaders($this->secretKey, $authHeaderKey);
+            ->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
     }
 
     /**
@@ -129,11 +129,11 @@ class AsrServer implements AsrRequestValidator
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $amazonDateTime = $authHeader->getLongDate();
-        $signature = AsrBuilder::create($amazonDateTime, $authHeader->getAlgorithm())
+        $signature = AsrBuilder::create($authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
             ->useHeaders(AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()))
             ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
-            ->calculateSignature($this->lookupSecretKey($accessKeyId));
+            ->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
 
         if ($signature != $authHeader->getSignature()) {
             throw new AsrException('The signatures do not match');
@@ -242,11 +242,6 @@ class AsrBuilder
     private $algorithm;
 
     /**
-     * @var string
-     */
-    private $amazonDateTime;
-
-    /**
      * @var AsrCredentials
      */
     private $credentials;
@@ -261,15 +256,14 @@ class AsrBuilder
      */
     private $request;
 
-    public function __construct($amazonDateTime, AsrHashAlgorithm $algorithm)
+    public function __construct(AsrHashAlgorithm $algorithm)
     {
-        $this->amazonDateTime = $amazonDateTime;
         $this->algorithm = $algorithm;
     }
 
-    public static function create($amazonDateTime, $algorithmName = AsrFacade::SHA256)
+    public static function create($algorithmName = AsrFacade::SHA256)
     {
-        return new AsrBuilder($amazonDateTime, new AsrHashAlgorithm(strtolower($algorithmName)));
+        return new AsrBuilder(new AsrHashAlgorithm(strtolower($algorithmName)));
     }
 
     public static function format($timeStamp)
@@ -311,27 +305,28 @@ class AsrBuilder
     }
 
     /**
-     * @param $secretKey
+     * @param string $secretKey
+     * @param string $amazonDateTime
      * @return string
      */
-    public function calculateSignature($secretKey)
+    public function calculateSignature($secretKey, $amazonDateTime)
     {
         $requestBodyHash      = $this->algorithm->hash($this->request->getBody());
         $canonicalizedRequest = $this->canonicalizeRequest($requestBodyHash);
         $canonicalHash        = $this->algorithm->hash($canonicalizedRequest);
-        $stringToSign         = $this->generateStringToSign($canonicalHash, $this->amazonDateTime);
-        $signingKey           = $this->generateSigningKey($secretKey, $this->amazonDateTime);
+        $stringToSign         = $this->generateStringToSign($canonicalHash, $amazonDateTime);
+        $signingKey           = $this->generateSigningKey($secretKey, $amazonDateTime);
         $signature            = $this->algorithm->hmac($stringToSign, $signingKey, false);
         return $signature;
     }
 
-    public function buildAuthHeaders($secretKey, $authHeaderKey)
+    public function buildAuthHeaders($secretKey, $authHeaderKey, $amazonDateTime)
     {
-        return array('X-Amz-Date' => $this->amazonDateTime) + AsrAuthHeader::build(
+        return array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
             $this->algorithm,
-            $this->credentials->createScope($this->amazonDateTime),
+            $this->credentials->createScope($amazonDateTime),
             $this->headers,
-            $this->calculateSignature($secretKey),
+            $this->calculateSignature($secretKey, $amazonDateTime),
             $authHeaderKey
         );
     }
