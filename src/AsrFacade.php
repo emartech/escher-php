@@ -127,11 +127,15 @@ class AsrServer
         }
         $accessKeyId = $authHeader->getAccessKeyId();
 
-        return AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
+        $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
             ->useRequest($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody())
             ->useHeaders($request->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
-            ->validate($this->lookupSecretKey($accessKeyId), $authHeader->getSignature());
+            ->calculateSignature($this->lookupSecretKey($accessKeyId));
+
+        if ($signature != $authHeader->getSignature()) {
+            throw new AsrException('The signatures do not match');
+        }
     }
 
     public function checkDates(AsrRequestToValidate $request)
@@ -328,11 +332,6 @@ class AsrBuilder
         $result->setTimezone(new DateTimeZone('UTC'));
         $result->setTimestamp($timeStamp);
         return $result->format(self::AMAZON_DATE_FORMAT);
-    }
-
-    public function validate($secretKey, $signature)
-    {
-        return $signature == $this->calculateSignature($secretKey);
     }
 
     /**
@@ -760,7 +759,8 @@ class AsrRequestToSign
         $lines[] = $headers->toHeaderString();
         $lines[] = $algorithm->hash($this->requestBody);
 
-        return $algorithm->hash(implode("\n", $lines));
+        $canonicalizedRequest = implode("\n", $lines);
+        return $algorithm->hash($canonicalizedRequest);
     }
 }
 
