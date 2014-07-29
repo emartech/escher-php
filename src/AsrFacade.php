@@ -14,7 +14,7 @@ class AsrFacade
         return AsrBuilder::create()
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->useCredentials($accessKeyId, $region, $service, $requestType)
+            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
             ->buildAuthHeaders($secretKey);
     }
 
@@ -43,7 +43,7 @@ class AsrFacade
         return AsrBuilder::create(strtotime($amazonDateTime), $algorithmName)
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $signedHeaders)
-            ->useCredentials($accessKeyId, $region, $service, $requestType)
+            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
             ->validate($secretKey, $signature);
     }
 
@@ -52,6 +52,30 @@ class AsrFacade
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonDate
         && abs(strtotime($serverDateString) - strtotime($amazonDateTime)) < self::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+    }
+}
+
+class AsrParty
+{
+    protected $region;
+    protected $service;
+    protected $requestType;
+
+    public function __construct($region, $service, $requestType)
+    {
+        $this->region = $region;
+        $this->service = $service;
+        $this->requestType = $requestType;
+    }
+
+    public function createCredentials($accessKeyId)
+    {
+        return new AsrCredentials($accessKeyId, $this->toArray());
+    }
+
+    public function toArray()
+    {
+        return array($this->region, $this->service, $this->requestType);
     }
 }
 
@@ -111,15 +135,13 @@ class AsrBuilder
     }
 
     /**
-     * @param $accessKeyId
-     * @param $region
-     * @param $service
-     * @param $requestType
+     * @param string $accessKeyId
+     * @param AsrParty $party
      * @return AsrBuilder
      */
-    public function useCredentials($accessKeyId, $region, $service, $requestType)
+    public function useCredentials($accessKeyId, AsrParty $party)
     {
-        $this->credentials = new AsrCredentials($accessKeyId, array($region, $service, $requestType));
+        $this->credentials = new AsrCredentials($accessKeyId, $party->toArray());
         return $this;
     }
 

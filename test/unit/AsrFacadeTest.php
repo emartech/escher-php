@@ -67,7 +67,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         return AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
+            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
     }
@@ -81,7 +81,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headersToSign = array('Content-Type');
         $actual = AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
+            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
@@ -97,7 +97,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
         $actual = AsrBuilder::create()
             ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, $this->region, $this->service, $this->requestType)
+            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
             ->useHeaders($this->host, $headerList, $headersToSign)
             ->buildAuthHeaders($this->secretKey);
         $this->assertEquals($this->authorizationHeader(), $actual);
