@@ -32,11 +32,6 @@ class AsrParty
         $this->requestType = $requestType;
     }
 
-    public function createCredentials($accessKeyId)
-    {
-        return new AsrCredentials($accessKeyId, $this->toArray());
-    }
-
     public function toArray()
     {
         return array($this->region, $this->service, $this->requestType);
@@ -290,7 +285,7 @@ class AsrBuilder
      */
     public function useCredentials($accessKeyId, AsrParty $party)
     {
-        $this->credentials = new AsrCredentials($accessKeyId, $party->toArray());
+        $this->credentials = new AsrCredentials($accessKeyId, $party);
         return $this;
     }
 
@@ -568,22 +563,19 @@ class AsrCredentials
     private $accessKeyId;
 
     /**
-     * @var array
+     * @var AsrParty
      */
-    private $parts;
+    private $party;
 
-    public function __construct($accessKeyId, array $parts)
+    public function __construct($accessKeyId, AsrParty $party)
     {
-        if (count($parts) != 3) {
-            throw new AsrException('Credentials should consist of exactly 3 parts');
-        }
         $this->accessKeyId = $accessKeyId;
-        $this->parts = $parts;
+        $this->party = $party;
     }
 
     public function toArray($amazonDateTime)
     {
-        return array_merge(array($this->shorten($amazonDateTime)), $this->parts);
+        return array_merge(array($this->shorten($amazonDateTime)), $this->party->toArray());
     }
 
     private function shorten($amazonDateTime)
@@ -591,10 +583,6 @@ class AsrCredentials
         return substr($amazonDateTime, 0, 8);
     }
 
-    /**
-     * @param $amazonDateTime
-     * @return string
-     */
     public function scopeToSign($amazonDateTime)
     {
         return implode('/', $this->toArray($amazonDateTime));
