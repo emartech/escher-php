@@ -74,7 +74,7 @@ class AsrClient
     {
         list($host, $path, $query) = $this->parseUrl($url);
         return AsrBuilder::create($timeStamp, $algorithmName)
-            ->useRequest($method, $path, $query, $requestBody)
+            ->useRequest(new AsrRequestToSign($method, $path, $query, $requestBody))
             ->useHeaders($host, $headerList, $headersToSign)
             ->useCredentials($this->accessKeyId, $this->party)
             ->buildAuthHeaders($this->secretKey);
@@ -128,7 +128,7 @@ class AsrServer
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
-            ->useRequest($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody())
+            ->useRequest(new AsrRequestToSign($request->getMethod(), $request->getPath(), $request->getQuery(), $request->getBody()))
             ->useHeaders($request->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
@@ -360,15 +360,12 @@ class AsrBuilder
     }
 
     /**
-     * @param string $method
-     * @param string $path
-     * @param string $query
-     * @param string $requestBody
+     * @param AsrRequestToSign $request
      * @return AsrBuilder
      */
-    public function useRequest($method, $path, $query, $requestBody)
+    public function useRequest(AsrRequestToSign $request)
     {
-        $this->request = new AsrRequestToSign($method, $path, $query, $requestBody);
+        $this->request = $request;
         return $this;
     }
 
