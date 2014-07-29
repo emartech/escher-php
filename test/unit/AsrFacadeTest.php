@@ -33,24 +33,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @param $requestTime
-     * @return AsrRequestToValidate
-     */
-    public function requestHeadersToValidate($requestTime)
-    {
-        $serverVars = array(
-            'REQUEST_METHOD' => 'GET',
-            'REQUEST_URI' => '/',
-            'REQUEST_TIME' => strtotime($requestTime),
-            'HTTP_X_AMZ_DATE' => $this->defaultAmzDate,
-            'HTTP_X_AMZ_AUTH' => $this->authorizationHeader()
-        );
-        $requestBody = 'BODY';
-        $request = $this->createRequestHelper($serverVars, $requestBody)->createRequest($serverVars, $requestBody);
-        return $request;
-    }
-
-    /**
      * @return AsrServer
      */
     public function defaultServer()
@@ -150,11 +132,12 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'REQUEST_URI' => '/path?query=string'
         );
         $requestBody = 'BODY';
-        $request = $this->createRequestHelper($serverVars, $requestBody)->createRequest();
-        $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());
-        $this->assertEquals('/path', $request->asRequestToSign()->getPath());
-        $this->assertEquals('query=string', $request->asRequestToSign()->getQuery());
-        $this->assertEquals('BODY', $request->asRequestToSign()->getBody());
+        $helper = $this->createRequestHelper($serverVars, $requestBody);
+        $request = $helper->createRequest();
+        $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $helper->getHeaderList());
+        $this->assertEquals('/path', $request->getPath());
+        $this->assertEquals('query=string', $request->getQuery());
+        $this->assertEquals('BODY', $request->getBody());
     }
 
     /**

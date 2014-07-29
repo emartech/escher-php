@@ -118,6 +118,7 @@ class AsrServer
     public function validateRequest(array $serverVars = null, array $requestBody = null)
     {
         $helper = $this->createRequestHelper($serverVars, $requestBody);
+        $headerList = $helper->getHeaderList();
         $request = $helper->createRequest();
 
         $authHeader = $helper->getAuthHeaders();
@@ -133,8 +134,8 @@ class AsrServer
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
-            ->useRequest($request->asRequestToSign())
-            ->useHeaders($helper->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
+            ->useRequest($request)
+            ->useHeaders($helper->getHost(), $headerList, $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
@@ -197,10 +198,9 @@ class AsrRequestHelper
 
     public function createRequest()
     {
-        $headerList = $this->fetchHeaders($this->serverVars);
         list ($path, $query) = array_pad(explode('?', $this->serverVars['REQUEST_URI'], 2), 2, '');
         $request = new AsrRequestToSign($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
-        return new AsrRequestToValidate($headerList, $request);
+        return $request;
     }
 
     /**
@@ -233,36 +233,10 @@ class AsrRequestHelper
     {
         return $this->serverVars['HTTP_HOST'];
     }
-}
 
-class AsrRequestToValidate
-{
-    /**
-     * @var array
-     */
-    private $headerList;
-
-    /**
-     * @param array $headerList
-     * @param AsrRequestToSign $request
-     */
-    public function __construct(array $headerList, AsrRequestToSign $request)
-    {
-        $this->headerList  = $headerList;
-        $this->request     = $request;
-    }
-
-    /**
-     * @return array
-     */
     public function getHeaderList()
     {
-        return $this->headerList;
-    }
-
-    public function asRequestToSign()
-    {
-        return $this->request;
+        return $this->fetchHeaders($this->serverVars);
     }
 }
 
