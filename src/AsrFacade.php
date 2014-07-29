@@ -3,6 +3,7 @@
 class AsrFacade
 {
     const SHA256 = 'sha256';
+    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 600;
 
     public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
@@ -29,11 +30,7 @@ class AsrFacade
         $signature       = $authHeader->getSignature();
         $amazonDateTime  = $authHeader->getLongDate();
 
-        $validator = new AsrValidator();
-        if (!$validator->validateCredentials($credentialParts)) {
-            return false;
-        }
-        if (!$validator->validateDates($serverDate, $amazonDateTime, $amazonShortDate)) {
+        if (!$this->validateDates($serverDate, $amazonDateTime, $amazonShortDate)) {
             return false;
         }
 
@@ -49,6 +46,13 @@ class AsrFacade
             ->useHeaders($host, $headerList, $signedHeaders)
             ->useCredentials($accessKeyId, $region, $service, $requestType)
             ->validate($secretKey, $signature);
+    }
+
+    public function validateDates($serverDateString, $amazonDateTime, $amazonDate)
+    {
+        //TODO: validate date format
+        return substr($amazonDateTime, 0, 8) == $amazonDate
+        && abs(strtotime($serverDateString) - strtotime($amazonDateTime)) < self::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 }
 
@@ -471,23 +475,6 @@ class AsrRequest
         $lines[] = $algorithm->hash($this->requestBody);
 
         return $algorithm->hash(implode("\n", $lines));
-    }
-}
-
-class AsrValidator
-{
-    const ACCEPTABLE_TIME_INTERVAL_IN_SECONDS = 600;
-
-    public function validateCredentials(array $credentialParts)
-    {
-        return 5 === count($credentialParts);
-    }
-
-    public function validateDates($serverDateString, $amazonDateTime, $amazonDate)
-    {
-        //TODO: validate date format
-        return substr($amazonDateTime, 0, 8) == $amazonDate
-            && abs(strtotime($serverDateString) - strtotime($amazonDateTime)) < self::ACCEPTABLE_TIME_INTERVAL_IN_SECONDS;
     }
 }
 

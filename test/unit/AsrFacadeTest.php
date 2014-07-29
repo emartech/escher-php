@@ -146,8 +146,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldThrowExceptionIfDatesAreTooFarApart()
     {
-        $validator = new AsrValidator();
-        $actual = $validator->validateDates('20110909T233600Z', '20110909T232500Z', '20110909');
+        $actual = $this->util->validateDates('20110909T233600Z', '20110909T232500Z', '20110909');
         $this->assertFalse($actual);
     }
 
@@ -156,8 +155,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldNotThrowExceptionsIfDatesAreAcceptable()
     {
-        $validator = new AsrValidator();
-        $actual = $validator->validateDates('20110909T233600Z', '20110909T233200Z', '20110909');
+        $actual = $this->util->validateDates('20110909T233600Z', '20110909T233200Z', '20110909');
         $this->assertTrue($actual);
     }
 
