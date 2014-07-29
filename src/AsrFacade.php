@@ -70,6 +70,7 @@ class AsrClient
     {
         list($host, $path, $query) = $this->parseUrl($url);
         $request = new AsrRequest($method, $path, $query, $requestBody);
+        $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
         return AsrBuilder::create($timeStamp, $algorithmName)
             ->useRequest($request)
@@ -264,9 +265,8 @@ class AsrBuilder
         $this->algorithm = $algorithm;
     }
 
-    public static function create($timeStamp = null, $algorithmName = AsrFacade::SHA256)
+    public static function create($timeStamp, $algorithmName = AsrFacade::SHA256)
     {
-        $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
         return new AsrBuilder(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
     }
 
