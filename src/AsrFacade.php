@@ -16,18 +16,6 @@ class AsrFacade
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : array());
         return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB);
     }
-
-    public function signRequest($secretKey, $accessKeyId, $region, $service, $requestType, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
-    {
-        return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)
-            ->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
-    }
-
-    public function checkSignature($region, $service, $requestType, $keyDB)
-    {
-        self::createServer($region, $service, $requestType, $keyDB)
-            ->validate(AsrRequestToValidate::create());
-    }
 }
 
 class AsrParty
@@ -124,8 +112,9 @@ class AsrServer
         $this->keyDB = $keyDB;
     }
 
-    public function validate(AsrRequestToValidate $request)
+    public function validateRequest()
     {
+        $request = AsrRequestToValidate::create();
         $authHeader = $request->getAuthHeaders();
 
         if (!$this->checkDates($request)) {
