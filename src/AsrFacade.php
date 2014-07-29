@@ -101,7 +101,7 @@ class AsrBuilder
 
     public static function parseHeaders(array $headerList)
     {
-        $headerList      = AsrHeaders::canonicalize($headerList);
+        $headerList = AsrHeaders::canonicalize($headerList);
         if (!isset($headerList['x-amz-date'])) {
             throw new AsrException('The X-Amz-Date header is missing');
         }
@@ -112,7 +112,11 @@ class AsrBuilder
         if (1 !== preg_match(self::regex(), $headerList['authorization'], $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
-        return new AsrAuthHeader($matches, $headerList['x-amz-date']);
+        $credentialParts = explode('/', $matches['credentials']);
+        if (count($credentialParts) != 5) {
+            throw new AsrException('Invalid credential scope');
+        }
+        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-amz-date']);
     }
 
     private static function regex()
@@ -208,28 +212,28 @@ class AsrAuthHeader
     private $headerParts;
 
     /**
+     * @var array
+     */
+    private $credentialParts;
+
+    /**
      * @var string
      */
     private $amazonDateTime;
 
-    public function __construct(array $headerParts, $amazonDateTime)
+    public function __construct(array $headerParts, array $credentialParts, $amazonDateTime)
     {
         $this->headerParts = $headerParts;
+        $this->credentialParts = $credentialParts;
         $this->amazonDateTime = $amazonDateTime;
-    }
-
-    private function getCredentialParts()
-    {
-        return explode('/', $this->headerParts['credentials']);
     }
 
     private function getCredentialPart($index, $name)
     {
-        $credentialParts = $this->getCredentialParts();
-        if (!isset($credentialParts[$index])) {
+        if (!isset($this->credentialParts[$index])) {
             throw new AsrException('Invalid credential scope in the authorization header: missing '.$name);
         }
-        return $credentialParts[$index];
+        return $this->credentialParts[$index];
     }
 
     public function getAccessKeyId()
