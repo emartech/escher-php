@@ -137,7 +137,7 @@ class AsrServer
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
             ->useRequest($request->asRequestToSign())
-            ->useHeaders($request->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
+            ->useHeaders($helper->getHost(), $request->getHeaderList(), $authHeader->getSignedHeaders())
             ->useCredentials($accessKeyId, $authHeader->getParty())
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
@@ -178,7 +178,7 @@ class AsrServer
      * @param array $requestBody
      * @return AsrRequestHelper
      */
-    private function createRequestHelper(array $serverVars, $requestBody)
+    private function createRequestHelper(array $serverVars = null, $requestBody = null)
     {
         $factory = new AsrRequestHelper($serverVars, $requestBody);
         return $factory;
@@ -229,6 +229,11 @@ class AsrRequestHelper
     {
         return $this->serverVars['REQUEST_TIME'];
     }
+
+    public function getHost()
+    {
+        return $this->serverVars['HTTP_HOST'];
+    }
 }
 
 class AsrRequestToValidate
@@ -254,11 +259,6 @@ class AsrRequestToValidate
     public function getHeaderList()
     {
         return $this->headerList;
-    }
-
-    public function getHost()
-    {
-        return $this->headerList['host'];
     }
 
     public function asRequestToSign()
