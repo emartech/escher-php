@@ -10,7 +10,7 @@ class AsrFacade
         $host     = $urlParts['host'];
         $path     = $urlParts['path'];
         $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
-        return AsrAuthHeader::create()
+        return AsrBuilder::create()
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, $headersToSign)
             ->useCredentials($accessKeyId, $baseCredentials)
@@ -21,7 +21,7 @@ class AsrFacade
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $amazonDateTime  = $headerList['x-amz-date'];
-        $authHeaderParts = AsrAuthHeader::parse($headerList['authorization']);
+        $authHeaderParts = AsrBuilder::parseAuthHeader($headerList['authorization']);
         $credentialParts = explode('/', $authHeaderParts['credentials']);
 
         $validator = new AsrValidator();
@@ -38,7 +38,7 @@ class AsrFacade
         // credential scope check: {accessKeyId}/{amazonDate}/{region:eu}/{service:ac-export|suite}/ems_request
         $secretKey = 'TODO-ADD-LOOKUP';
 
-        return AsrAuthHeader::create(strtotime($headerList['x-amz-date']), $authHeaderParts['algorithm'])
+        return AsrBuilder::create(strtotime($amazonDateTime), $authHeaderParts['algorithm'])
             ->useRequest($method, $path, $query, $requestBody)
             ->useHeaders($host, $headerList, explode(';', $authHeaderParts['signed_headers']))
             ->useCredentials($accessKeyId, $credentialParts)
@@ -46,7 +46,7 @@ class AsrFacade
     }
 }
 
-class AsrAuthHeader
+class AsrBuilder
 {
     /**
      * @var AsrSigningAlgorithm
@@ -82,7 +82,7 @@ class AsrAuthHeader
     public static function create($timeStamp = null, $algorithmName = AsrFacade::SHA256)
     {
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
-        return new AsrAuthHeader(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
+        return new AsrBuilder(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
     }
 
     public static function format($timeStamp)
@@ -90,7 +90,7 @@ class AsrAuthHeader
         return AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
     }
 
-    public static function parse($authHeaderString)
+    public static function parseAuthHeader($authHeaderString)
     {
         $matches = array();
         if (1 !== preg_match(self::regex(), $authHeaderString, $matches)) {
@@ -127,7 +127,7 @@ class AsrAuthHeader
     /**
      * @param string $accessKeyId
      * @param array $baseCredentials
-     * @return AsrAuthHeader
+     * @return AsrBuilder
      */
     public function useCredentials($accessKeyId, array $baseCredentials)
     {
@@ -139,7 +139,7 @@ class AsrAuthHeader
      * @param string $host
      * @param array $headerList
      * @param array $headersToSign
-     * @return AsrAuthHeader
+     * @return AsrBuilder
      */
     public function useHeaders($host, array $headerList, array $headersToSign)
     {
@@ -153,7 +153,7 @@ class AsrAuthHeader
      * @param string $path
      * @param string $query
      * @param string $requestBody
-     * @return AsrAuthHeader
+     * @return AsrBuilder
      */
     public function useRequest($method, $path, $query, $requestBody)
     {

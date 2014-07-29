@@ -63,7 +63,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return AsrAuthHeader::create(strtotime('20110909T233600Z'))
+        return AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
@@ -77,7 +77,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
-        $actual = AsrAuthHeader::create(strtotime('20110909T233600Z'))
+        $actual = AsrBuilder::create(strtotime('20110909T233600Z'))
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
@@ -93,7 +93,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
         $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
-        $actual = AsrAuthHeader::create()
+        $actual = AsrBuilder::create()
             ->useRequest('POST', '/', '', $this->payload())
             ->useCredentials($this->accessKeyId, $this->baseCredentials)
             ->useHeaders($this->host, $headerList, $headersToSign)
@@ -128,7 +128,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldParseAuthorizationHeader()
     {
         $headerList = $this->authorizationHeader();
-        $actual = AsrAuthHeader::parse($headerList['Authorization']);
+        $actual = AsrBuilder::parseAuthHeader($headerList['Authorization']);
         $this->assertEquals('SHA256', $actual['algorithm']);
         $this->assertEquals('AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request', $actual['credentials']);
         $this->assertEquals('content-type;host;x-amz-date', $actual['signed_headers']);
