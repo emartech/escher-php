@@ -72,7 +72,7 @@ class AsrClient
         $request = new AsrRequest($method, $path, $query, $requestBody);
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
-        return AsrBuilder::create($timeStamp, $algorithmName)
+        return AsrBuilder::create(AsrBuilder::format($timeStamp), $algorithmName)
             ->useRequest($request)
             ->useHeaders(AsrHeaders::createFrom($host, AsrBuilder::format($timeStamp), $headerList, $headersToSign))
             ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
@@ -127,7 +127,7 @@ class AsrServer implements AsrRequestValidator
 
         $accessKeyId = $authHeader->getAccessKeyId();
 
-        $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
+        $signature = AsrBuilder::create($authHeader->getLongDate(), $authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
             ->useHeaders(AsrHeaders::createFrom($helper->getHost(), strtotime($authHeader->getLongDate()), $helper->getHeaderList(), $authHeader->getSignedHeaders()))
             ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
@@ -265,9 +265,9 @@ class AsrBuilder
         $this->algorithm = $algorithm;
     }
 
-    public static function create($timeStamp, $algorithmName = AsrFacade::SHA256)
+    public static function create($amazonDateTime, $algorithmName = AsrFacade::SHA256)
     {
-        return new AsrBuilder(self::format($timeStamp), new AsrSigningAlgorithm(strtolower($algorithmName)));
+        return new AsrBuilder($amazonDateTime, new AsrSigningAlgorithm(strtolower($algorithmName)));
     }
 
     public static function format($timeStamp)
