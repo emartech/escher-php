@@ -117,9 +117,6 @@ class AsrServer
 
     public function validateRequest(array $serverVars = null, array $requestBody = null)
     {
-        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
-        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
-
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $request = $helper->createRequest();
 
@@ -180,6 +177,8 @@ class AsrServer
      */
     private function createRequestHelper(array $serverVars = null, $requestBody = null)
     {
+        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
+        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $factory = new AsrRequestHelper($serverVars, $requestBody);
         return $factory;
     }
