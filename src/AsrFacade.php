@@ -21,9 +21,10 @@ class AsrFacade
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $amazonDateTime  = $headerList['x-amz-date'];
-        $authHeaderParts = AsrBuilder::parseAuthHeader($headerList['authorization'])->getParts();
+        $authHeader      = AsrBuilder::parseAuthHeader($headerList['authorization']);
+        $authHeaderParts = $authHeader->getParts();
 
-        $credentialParts = explode('/', $authHeaderParts['credentials']);
+        $credentialParts = $authHeader->getCredentialParts();
 
         $validator = new AsrValidator();
         if (!$validator->validateCredentials($credentialParts)) {
@@ -198,6 +199,11 @@ class AsrAuthHeader
     public function getParts()
     {
         return $this->headerParts;
+    }
+
+    public function getCredentialParts()
+    {
+        return explode('/', $this->headerParts['credentials']);
     }
 }
 
