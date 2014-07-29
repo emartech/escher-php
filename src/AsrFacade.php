@@ -113,6 +113,73 @@ class AsrClient
     }
 }
 
+class AsrRequestToValidate
+{
+    /**
+     * @var array
+     */
+    private $serverVars;
+
+    /**
+     * @var array
+     */
+    private $headerList;
+
+    /**
+     * @var string
+     */
+    private $requestBody;
+
+    /**
+     * @param array $serverVars
+     * @param array $headerList
+     * @param string $requestBody
+     */
+    public function __construct(array $serverVars, array $headerList, $requestBody)
+    {
+        $this->serverVars = $serverVars;
+        $this->headerList = $headerList;
+        $this->requestBody = $requestBody;
+    }
+
+    /**
+     * @param array $serverVars
+     * @param string $requestBody
+     * @return AsrRequestToValidate
+     */
+    public static function create($serverVars = null, $requestBody = null)
+    {
+        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
+        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
+        $headerList = self::normalizeHeaders($serverVars);
+
+        return new AsrRequestToValidate($serverVars, $headerList, $requestBody);
+    }
+
+    /**
+     * @param $serverVars
+     * @return array
+     */
+    private static function normalizeHeaders($serverVars)
+    {
+        $headerList = array();
+        foreach ($serverVars as $key => $value) {
+            if (substr($key, 0, 4) == 'HTTP') {
+                $headerList[str_replace('_', '-', substr($key, 5))] = $value;
+            }
+        }
+        return AsrHeaders::canonicalize($headerList);
+    }
+
+    /**
+     * @return array
+     */
+    public function getHeaderList()
+    {
+        return $this->headerList;
+    }
+}
+
 class AsrBuilder
 {
     const AMAZON_DATE_FORMAT = self::ISO8601;

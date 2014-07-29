@@ -18,6 +18,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private $service = 'iam';
     private $requestType = 'aws4_request';
     private $host = 'iam.amazonaws.com';
+    private $contentType = 'application/x-www-form-urlencoded; charset=utf-8';
 
     /**
      * @return string
@@ -56,7 +57,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldAutomagicallyAddDateAndHostHeader()
     {
-        $headerList = array('Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8');
+        $headerList = array('Content-Type' => $this->contentType);
         $headersToSign = array('Content-Type');
         $this->assertEquals($this->authorizationHeader(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
@@ -67,7 +68,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldOnlySignHeadersExplicitlySetToBeSigned()
     {
         $headerList = array(
-            'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'Content-Type' => $this->contentType,
             'X-A-Header' => 'that/should/not/be/signed'
         );
         $headersToSign = array('Content-Type');
@@ -136,6 +137,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
+    public function itShouldParseHeaders()
+    {
+        $request = AsrRequestToValidate::create(array('HTTP_HOST' => $this->host, 'HTTP_CONTENT_TYPE' => $this->contentType), '');
+        $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());
+    }
+
+    /**
+     * @test
+     */
     public function itShouldThrowExceptionIfDatesAreTooFarApart()
     {
         $actual = $this->util->validateDates('20110909T233600Z', '20110909T231500Z', '20110909');
@@ -157,7 +167,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private function headers()
     {
         return array(
-            'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'Content-Type' => $this->contentType,
             'Host' => $this->host,
             'X-Amz-Date' => '20110909T233600Z',
         );
