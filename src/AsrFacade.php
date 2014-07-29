@@ -79,6 +79,43 @@ class AsrParty
     }
 }
 
+class AsrClient
+{
+    private $party;
+    private $secretKey;
+    private $accessKeyId;
+
+    public function __construct(AsrParty $party, $secretKey, $accessKeyId)
+    {
+        $this->party = $party;
+        $this->secretKey = $secretKey;
+        $this->accessKeyId = $accessKeyId;
+    }
+
+    public function signRequest($method, $url, $requestBody, $headerList, $headersToSign, $timeStamp = null, $algorithmName = AsrFacade::SHA256)
+    {
+        list($host, $path, $query) = $this->parseUrl($url);
+        return AsrBuilder::create($timeStamp, $algorithmName)
+            ->useRequest($method, $path, $query, $requestBody)
+            ->useHeaders($host, $headerList, $headersToSign)
+            ->useCredentials($this->accessKeyId, $this->party)
+            ->buildAuthHeaders($this->secretKey);
+    }
+
+    /**
+     * @param $url
+     * @return array
+     */
+    public function parseUrl($url)
+    {
+        $urlParts = parse_url($url);
+        $host = $urlParts['host'];
+        $path = $urlParts['path'];
+        $query = isset($urlParts['query']) ? $urlParts['query'] : '';
+        return array($host, $path, $query);
+    }
+}
+
 class AsrBuilder
 {
     const AMAZON_DATE_FORMAT = self::ISO8601;

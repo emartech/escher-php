@@ -19,6 +19,22 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private $requestType = 'aws4_request';
     private $host = 'iam.amazonaws.com';
 
+    /**
+     * @return string
+     */
+    public function url()
+    {
+        return 'http://'.$this->host . '/';
+    }
+
+    /**
+     * @return AsrClient
+     */
+    public function defaultClient()
+    {
+        return new AsrClient(new AsrParty($this->region, $this->service, $this->requestType), $this->secretKey, $this->accessKeyId);
+    }
+
     protected function setUp()
     {
         $this->util = new AsrFacade();
@@ -65,26 +81,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return AsrBuilder::create(strtotime('20110909T233600Z'))
-            ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
-            ->useHeaders($this->host, $headerList, $headersToSign)
-            ->buildAuthHeaders($this->secretKey);
-    }
-
-    /**
-     * @test
-     */
-    public function itShouldUseSha256AsDefaultAlgorithm()
-    {
-        $headerList = $this->headers();
-        $headersToSign = array('Content-Type');
-        $actual = AsrBuilder::create(strtotime('20110909T233600Z'))
-            ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
-            ->useHeaders($this->host, $headerList, $headersToSign)
-            ->buildAuthHeaders($this->secretKey);
-        $this->assertEquals($this->authorizationHeader(), $actual);
+        return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime('20110909T233600Z'));
     }
 
     /**
@@ -95,11 +92,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headerList = $this->headers();
         $headersToSign = array('Content-Type');
         $_SERVER['REQUEST_TIME'] = strtotime('20110909T233600Z');
-        $actual = AsrBuilder::create()
-            ->useRequest('POST', '/', '', $this->payload())
-            ->useCredentials($this->accessKeyId, new AsrParty($this->region, $this->service, $this->requestType))
-            ->useHeaders($this->host, $headerList, $headersToSign)
-            ->buildAuthHeaders($this->secretKey);
+        $actual = $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign);
         $this->assertEquals($this->authorizationHeader(), $actual);
     }
 
@@ -109,7 +102,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldGenerateCanonicalHash()
     {
         $headers = AsrHeaders::createFrom($this->headers(), array_keys($this->headers()));
-        $request = new AsrRequest('POST', '/', '', $this->payload());
+        $request = new AsrRequest('POST', '/', '', $this->requestBody());
         $result = $request->canonicalizeUsing($this->algorithm, $headers);
         $this->assertEquals('3511de7e95d28ecd39e9513b642aee07e54f4941150d8df8bf94b328ef7e55e2', $result);
     }
@@ -173,7 +166,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     /**
      * @return string
      */
-    private function payload()
+    private function requestBody()
     {
         return 'Action=ListUsers&Version=2010-05-08';
     }
