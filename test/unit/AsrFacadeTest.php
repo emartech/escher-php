@@ -158,28 +158,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @test
-     */
-    public function itShouldNotAllowTimeDifferencesLargerThanFifteenMinutes()
-    {
-        $requestTime = '20110909T235300Z';
-        $request = $this->requestHeadersToValidate($requestTime);
-        $actual = $this->defaultServer()->checkDates($request);
-        $this->assertFalse($actual);
-    }
-
-    /**
-     * @test
-     */
-    public function itShouldAllowTimeDifferencesSmallerThanFifteenMinutes()
-    {
-        $requestTime = '20110909T233200Z';
-        $request = $this->requestHeadersToValidate($requestTime);
-        $actual = $this->defaultServer()->checkDates($request);
-        $this->assertTrue($actual);
-    }
-
-    /**
      * @return array
      */
     private function headers()

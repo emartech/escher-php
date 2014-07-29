@@ -123,9 +123,9 @@ class AsrServer
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $request = $helper->createRequest();
 
-        $authHeader = $request->getAuthHeaders();
+        $authHeader = $helper->getAuthHeaders();
 
-        if (!$this->checkDates($request)) {
+        if (!$this->checkDates($authHeader->getLongDate(), $authHeader->getShortDate(), $helper->getTimeStamp())) {
             throw new AsrException('One of the date headers are invalid');
         }
 
@@ -146,13 +146,11 @@ class AsrServer
         }
     }
 
-    public function checkDates(AsrRequestToValidate $request)
+    public function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
     {
-        $amazonDateTime = $request->getAuthHeaders()->getLongDate();
-        $amazonShortDate = $request->getAuthHeaders()->getShortDate();
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
-        && abs($request->getTimeStamp() - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
     /**
@@ -203,7 +201,7 @@ class AsrRequestHelper
         $headerList = $this->fetchHeaders($this->serverVars);
         list ($path, $query) = array_pad(explode('?', $this->serverVars['REQUEST_URI'], 2), 2, '');
         $request = new AsrRequestToSign($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
-        return new AsrRequestToValidate($headerList, $this->serverVars['REQUEST_TIME'], $request);
+        return new AsrRequestToValidate($headerList, $request);
     }
 
     /**
@@ -221,6 +219,16 @@ class AsrRequestHelper
         $headerList['content-type'] = isset($serverVars['CONTENT_TYPE']) ? $serverVars['CONTENT_TYPE'] : '';
         return AsrHeaders::canonicalize($headerList);
     }
+
+    public function getAuthHeaders($authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
+    {
+        return AsrAuthHeader::parse($this->fetchHeaders($this->serverVars), strtolower($authHeaderKey));
+    }
+
+    public function getTimeStamp()
+    {
+        return $this->serverVars['REQUEST_TIME'];
+    }
 }
 
 class AsrRequestToValidate
@@ -231,24 +239,12 @@ class AsrRequestToValidate
     private $headerList;
 
     /**
-     * @var int
-     */
-    private $requestTime;
-
-    /**
-     * @var AsrRequestToSign
-     */
-    private $requestToSign;
-
-    /**
      * @param array $headerList
-     * @param int $requestTime
      * @param AsrRequestToSign $request
      */
-    public function __construct(array $headerList, $requestTime, AsrRequestToSign $request)
+    public function __construct(array $headerList, AsrRequestToSign $request)
     {
         $this->headerList  = $headerList;
-        $this->requestTime = $requestTime;
         $this->request     = $request;
     }
 
@@ -260,19 +256,9 @@ class AsrRequestToValidate
         return $this->headerList;
     }
 
-    public function getTimeStamp()
-    {
-        return $this->requestTime;
-    }
-
     public function getHost()
     {
         return $this->headerList['host'];
-    }
-
-    public function getAuthHeaders($authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
-    {
-        return AsrAuthHeader::parse($this->headerList, strtolower($authHeaderKey));
     }
 
     public function asRequestToSign()
