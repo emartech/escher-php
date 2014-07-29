@@ -21,7 +21,8 @@ class AsrFacade
     {
         $headerList      = AsrHeaders::canonicalize($headerList);
         $amazonDateTime  = $headerList['x-amz-date'];
-        $authHeaderParts = AsrBuilder::parseAuthHeader($headerList['authorization']);
+        $authHeaderParts = AsrBuilder::parseAuthHeader($headerList['authorization'])->getParts();
+
         $credentialParts = explode('/', $authHeaderParts['credentials']);
 
         $validator = new AsrValidator();
@@ -96,7 +97,7 @@ class AsrBuilder
         if (1 !== preg_match(self::regex(), $authHeaderString, $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
-        return $matches;
+        return new AsrAuthHeader($matches);
     }
 
     private static function regex()
@@ -179,6 +180,24 @@ class AsrBuilder
         $stringToSign = $this->credentials->generateStringToSignUsing($this->algorithm, $canonicalHash, $this->amazonDateTime);
         $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey, $this->amazonDateTime);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
+    }
+}
+
+class AsrAuthHeader
+{
+    /**
+     * @var array
+     */
+    private $headerParts;
+
+    public function __construct(array $headerParts)
+    {
+        $this->headerParts = $headerParts;
+    }
+
+    public function getParts()
+    {
+        return $this->headerParts;
     }
 }
 

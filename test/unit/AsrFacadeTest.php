@@ -128,7 +128,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldParseAuthorizationHeader()
     {
         $headerList = $this->authorizationHeader();
-        $actual = AsrBuilder::parseAuthHeader($headerList['Authorization']);
+        $actual = AsrBuilder::parseAuthHeader($headerList['Authorization'])->getParts();
         $this->assertEquals('SHA256', $actual['algorithm']);
         $this->assertEquals('AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request', $actual['credentials']);
         $this->assertEquals('content-type;host;x-amz-date', $actual['signed_headers']);
