@@ -316,8 +316,8 @@ class AsrBuilder
     {
         $canonicalizedRequest = $this->canonicalizeRequest();
         $canonicalHash        = $this->algorithm->hash($canonicalizedRequest);
-        $stringToSign         = $this->generateStringToSign($canonicalHash);
-        $signingKey           = $this->generateSigningKey($secretKey);
+        $stringToSign         = $this->generateStringToSign($canonicalHash, $this->amazonDateTime);
+        $signingKey           = $this->generateSigningKey($secretKey, $this->amazonDateTime);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
@@ -332,20 +332,20 @@ class AsrBuilder
         );
     }
 
-    private function generateStringToSign($canonicalHash)
+    private function generateStringToSign($canonicalHash, $amazonDateTime)
     {
         return implode("\n", array(
             $this->algorithm->toHeaderString(),
-            $this->amazonDateTime,
-            $this->credentials->scopeToSign($this->amazonDateTime),
+            $amazonDateTime,
+            $this->credentials->scopeToSign($amazonDateTime),
             $canonicalHash
         ));
     }
 
-    private function generateSigningKey($secretKey)
+    private function generateSigningKey($secretKey, $amazonDateTime)
     {
         $key = $secretKey;
-        foreach ($this->credentials->toArray($this->amazonDateTime) as $data) {
+        foreach ($this->credentials->toArray($amazonDateTime) as $data) {
             $key = $this->algorithm->hmac($data, $key, true);
         }
         return $key;
