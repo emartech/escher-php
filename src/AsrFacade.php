@@ -296,7 +296,7 @@ class AsrBuilder
      */
     public function useHeaders($host, array $headerList, array $headersToSign)
     {
-        $this->headers = AsrHeaders::createFrom($host, $this->dateHeader() + $headerList, $headersToSign);
+        $this->headers = AsrHeaders::createFrom($host, $this->amazonDateTime, $headerList, $headersToSign);
         return $this;
     }
 
@@ -308,14 +308,6 @@ class AsrBuilder
     {
         $this->request = $request;
         return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function dateHeader()
-    {
-        return array('X-Amz-Date' => $this->amazonDateTime);
     }
 
     /**
@@ -333,7 +325,7 @@ class AsrBuilder
 
     public function buildAuthHeaders($secretKey, $authHeaderKey)
     {
-        return $this->dateHeader() + AsrAuthHeader::build(
+        return array('X-Amz-Date' => $this->amazonDateTime) + AsrAuthHeader::build(
             $this->algorithm,
             $this->credentials->createScope($this->amazonDateTime),
             $this->headers,
@@ -642,13 +634,14 @@ class AsrHeaders implements AuthHeaderPart
         $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($host, $headerList, $headersToSign = array())
+    public static function createFrom($host, $amazonDateTime, $headerList, $headersToSign = array())
     {
-        $hostHeader = array('Host' => $host); //TODO; handle port
+        //TODO; handle port in host header
+        $baseHeaders = array('Host' => $host, 'X-Amz-Date' => $amazonDateTime);
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
 
         sort($headersToSign);
-        return new AsrHeaders(self::canonicalize($hostHeader + $headerList), $headersToSign);
+        return new AsrHeaders(self::canonicalize($baseHeaders + $headerList), $headersToSign);
     }
 
     public static function trimHeaderValue($value)
