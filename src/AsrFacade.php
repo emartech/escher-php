@@ -72,9 +72,10 @@ class AsrClient
         $request = new AsrRequest($method, $path, $query, $requestBody);
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
-        return AsrBuilder::create(AsrBuilder::format($timeStamp), $algorithmName)
+        $amazonDateTime = AsrBuilder::format($timeStamp);
+        return AsrBuilder::create($amazonDateTime, $algorithmName)
             ->useRequest($request)
-            ->useHeaders(AsrHeaders::createFrom($host, AsrBuilder::format($timeStamp), $headerList, $headersToSign))
+            ->useHeaders(AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign))
             ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
             ->buildAuthHeaders($this->secretKey, $authHeaderKey);
     }
@@ -127,9 +128,10 @@ class AsrServer implements AsrRequestValidator
 
         $accessKeyId = $authHeader->getAccessKeyId();
 
-        $signature = AsrBuilder::create($authHeader->getLongDate(), $authHeader->getAlgorithm())
+        $amazonDateTime = $authHeader->getLongDate();
+        $signature = AsrBuilder::create($amazonDateTime, $authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
-            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), $authHeader->getLongDate(), $helper->getHeaderList(), $authHeader->getSignedHeaders()))
+            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()))
             ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
