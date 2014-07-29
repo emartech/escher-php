@@ -385,9 +385,10 @@ class AsrBuilder
      */
     public function calculateSignature($secretKey)
     {
-        $canonicalHash = $this->request->canonicalizeUsing($this->algorithm, $this->headers);
-        $stringToSign = $this->generateStringToSign($canonicalHash);
-        $signingKey = $this->generateSigningKey($secretKey);
+        $canonicalizedRequest = $this->canonicalizeRequest();
+        $canonicalHash        = $this->algorithm->hash($canonicalizedRequest);
+        $stringToSign         = $this->generateStringToSign($canonicalHash);
+        $signingKey           = $this->generateSigningKey($secretKey);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
@@ -418,6 +419,22 @@ class AsrBuilder
             $key = $this->algorithm->hmac($data, $key, true);
         }
         return $key;
+    }
+
+    private function canonicalizeRequest()
+    {
+        $lines = array();
+        $lines[] = strtoupper($this->request->getMethod());
+        $lines[] = $this->request->getPath();
+        $lines[] = $this->request->getQuery();
+        foreach ($this->headers->collapse() as $headerLine) {
+            $lines[] = $headerLine;
+        }
+        $lines[] = '';
+        $lines[] = $this->headers->toHeaderString();
+        $lines[] = $this->algorithm->hash($this->request->getBody());
+
+        return implode("\n", $lines);
     }
 }
 
@@ -741,26 +758,24 @@ class AsrRequestToSign
         $this->requestBody = $requestBody;
     }
 
-    /**
-     * @param AsrSigningAlgorithm $algorithm
-     * @param AsrHeaders $headers
-     * @return string
-     */
-    public function canonicalizeUsing(AsrSigningAlgorithm $algorithm, AsrHeaders $headers)
+    public function getMethod()
     {
-        $lines = array();
-        $lines[] = strtoupper($this->method);
-        $lines[] = $this->path;
-        $lines[] = $this->query;
-        foreach ($headers->collapse() as $headerLine) {
-            $lines[] = $headerLine;
-        }
-        $lines[] = '';
-        $lines[] = $headers->toHeaderString();
-        $lines[] = $algorithm->hash($this->requestBody);
+        return $this->method;
+    }
 
-        $canonicalizedRequest = implode("\n", $lines);
-        return $algorithm->hash($canonicalizedRequest);
+    public function getBody()
+    {
+        return $this->requestBody;
+    }
+
+    public function getPath()
+    {
+        return $this->path;
+    }
+
+    public function getQuery()
+    {
+        return $this->query;
     }
 }
 
