@@ -139,7 +139,7 @@ class AsrBuilder
     private $headers;
 
     /**
-     * @var AsrRequest
+     * @var AsrRequestToSign
      */
     private $request;
 
@@ -201,7 +201,7 @@ class AsrBuilder
      */
     public function useRequest($method, $path, $query, $requestBody)
     {
-        $this->request = new AsrRequest($method, $path, $query, $requestBody);
+        $this->request = new AsrRequestToSign($method, $path, $query, $requestBody);
         return $this;
     }
 
@@ -555,7 +555,7 @@ class AsrHeaders implements AuthHeaderPart
     }
 }
 
-class AsrRequest
+class AsrRequestToSign
 {
     private $method;
     private $path;
