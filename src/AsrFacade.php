@@ -74,7 +74,7 @@ class AsrClient
         return AsrBuilder::create($timeStamp, $algorithmName)
             ->useRequest($request)
             ->useHeaders($host, $headerList, $headersToSign)
-            ->useCredentials($this->accessKeyId, $this->party)
+            ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
             ->buildAuthHeaders($this->secretKey, $authHeaderKey);
     }
 
@@ -129,7 +129,7 @@ class AsrServer implements AsrRequestValidator
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
             ->useHeaders($helper->getHost(), $helper->getHeaderList(), $authHeader->getSignedHeaders())
-            ->useCredentials($accessKeyId, $authHeader->getParty())
+            ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
         if ($signature != $authHeader->getSignature()) {
@@ -279,13 +279,12 @@ class AsrBuilder
     }
 
     /**
-     * @param string $accessKeyId
-     * @param AsrParty $party
+     * @param AsrCredentials $credentials
      * @return AsrBuilder
      */
-    public function useCredentials($accessKeyId, AsrParty $party)
+    public function useCredentials(AsrCredentials $credentials)
     {
-        $this->credentials = new AsrCredentials($accessKeyId, $party);
+        $this->credentials = $credentials;
         return $this;
     }
 
