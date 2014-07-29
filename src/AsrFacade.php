@@ -99,46 +99,6 @@ class AsrBuilder
         return AsrDateHelper::fromTimeStamp($timeStamp)->format(AsrDateHelper::AMAZON_DATE_FORMAT);
     }
 
-    public static function parseHeaders(array $headerList)
-    {
-        $headerList = AsrHeaders::canonicalize($headerList);
-        if (!isset($headerList['x-amz-date'])) {
-            throw new AsrException('The X-Amz-Date header is missing');
-        }
-        if (!isset($headerList['authorization'])) {
-            throw new AsrException('The Authorization header is missing');
-        }
-        $matches = array();
-        if (1 !== preg_match(self::regex(), $headerList['authorization'], $matches)) {
-            throw new AsrException('Could not parse authorization header.');
-        }
-        $credentialParts = explode('/', $matches['credentials']);
-        if (count($credentialParts) != 5) {
-            throw new AsrException('Invalid credential scope');
-        }
-        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-amz-date']);
-    }
-
-    private static function regex()
-    {
-        return '/'.
-            '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
-            'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
-            'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
-            'Signature=(?P<signature>[0-9a-f]{64})'.
-        '$/';
-    }
-
-    public function buildAuthHeaders($secretKey)
-    {
-        $signature = $this->calculateSignature($secretKey);
-
-        return $this->dateHeader() + array('Authorization' => $this->algorithm->toHeaderString() . ' ' .
-            "Credential={$this->credentials->toHeaderString($this->amazonDateTime)}, " .
-            "SignedHeaders={$this->headers->toHeaderString()}, ".
-            "Signature=$signature");
-    }
-
     public function validate($secretKey, $signature)
     {
         return $signature == $this->calculateSignature($secretKey);
@@ -202,6 +162,17 @@ class AsrBuilder
         $signingKey = $this->credentials->generateSigningKeyUsing($this->algorithm, $secretKey, $this->amazonDateTime);
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
+
+    public function buildAuthHeaders($secretKey)
+    {
+        return AsrAuthHeader::buildAuthHeaders(
+            $this->dateHeader(),
+            $this->algorithm->toHeaderString(),
+            $this->credentials->getParts($this->amazonDateTime),
+            $this->headers->getSignedHeaders(),
+            $this->calculateSignature($secretKey)
+        );
+    }
 }
 
 class AsrAuthHeader
@@ -226,6 +197,46 @@ class AsrAuthHeader
         $this->headerParts = $headerParts;
         $this->credentialParts = $credentialParts;
         $this->amazonDateTime = $amazonDateTime;
+    }
+
+    public static function parseHeaders(array $headerList)
+    {
+        $headerList = AsrHeaders::canonicalize($headerList);
+        if (!isset($headerList['x-amz-date'])) {
+            throw new AsrException('The X-Amz-Date header is missing');
+        }
+        if (!isset($headerList['authorization'])) {
+            throw new AsrException('The Authorization header is missing');
+        }
+        $matches = array();
+        if (1 !== preg_match(self::regex(), $headerList['authorization'], $matches)) {
+            throw new AsrException('Could not parse authorization header.');
+        }
+        $credentialParts = explode('/', $matches['credentials']);
+        if (count($credentialParts) != 5) {
+            throw new AsrException('Invalid credential scope');
+        }
+        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-amz-date']);
+    }
+
+    private static function regex()
+    {
+        return '/'.
+        '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
+        'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
+        'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
+        'Signature=(?P<signature>[0-9a-f]{64})'.
+        '$/';
+    }
+
+    public static function buildAuthHeaders($dateHeader, $algorithmHeaderName, array $credentialParts, array $signedHeaders, $signature)
+    {
+        $credentialsString = implode('/', $credentialParts);
+        $signedHeadersString = implode(';', $signedHeaders);
+        return $dateHeader + array('Authorization' => $algorithmHeaderName . ' ' .
+            "Credential={$credentialsString}, " .
+            "SignedHeaders={$signedHeadersString}, ".
+            "Signature=$signature");
     }
 
     private function getCredentialPart($index, $name)
@@ -372,9 +383,9 @@ class AsrCredentials
         ));
     }
 
-    public function toHeaderString($amazonDateTime)
+    public function getParts($amazonDateTime)
     {
-        return $this->accessKeyId . '/' . $this->toScopeString($amazonDateTime);
+        return array_merge(array($this->accessKeyId), $this->toArray($amazonDateTime));
     }
 }
 
@@ -441,6 +452,11 @@ class AsrHeaders
     public function collapseLine($headerKey, $headerValue)
     {
         return $headerKey.':'.$headerValue;
+    }
+
+    public function getSignedHeaders()
+    {
+        return $this->headersToSign;
     }
 }
 
