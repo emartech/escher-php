@@ -4,7 +4,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 {
     private $defaultAmzDate = '20110909T233600Z';
     /**
-     * @var AsrSigningAlgorithm
+     * @var AsrHashAlgorithm
      */
     private $algorithm;
 
@@ -42,7 +42,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     protected function setUp()
     {
-        $this->algorithm = new AsrSigningAlgorithm(AsrFacade::SHA256);
+        $this->algorithm = new AsrHashAlgorithm(AsrFacade::SHA256);
     }
 
     /**

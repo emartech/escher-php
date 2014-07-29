@@ -235,7 +235,7 @@ class AsrBuilder
     const ISO8601 = 'Ymd\THis\Z';
 
     /**
-     * @var AsrSigningAlgorithm
+     * @var AsrHashAlgorithm
      */
     private $algorithm;
 
@@ -259,7 +259,7 @@ class AsrBuilder
      */
     private $request;
 
-    public function __construct($amazonDateTime, AsrSigningAlgorithm $algorithm)
+    public function __construct($amazonDateTime, AsrHashAlgorithm $algorithm)
     {
         $this->amazonDateTime = $amazonDateTime;
         $this->algorithm = $algorithm;
@@ -267,7 +267,7 @@ class AsrBuilder
 
     public static function create($amazonDateTime, $algorithmName = AsrFacade::SHA256)
     {
-        return new AsrBuilder($amazonDateTime, new AsrSigningAlgorithm(strtolower($algorithmName)));
+        return new AsrBuilder($amazonDateTime, new AsrHashAlgorithm(strtolower($algorithmName)));
     }
 
     public static function format($timeStamp)
@@ -422,7 +422,7 @@ class AsrAuthHeader
         '$/';
     }
 
-    public static function build(AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature, $authHeaderKey)
+    public static function build(AsrHashAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature, $authHeaderKey)
     {
         return array($authHeaderKey => $algorithm->toHeaderString() . ' ' .
             "Credential={$credentialScope->toHeaderString()}, " .
@@ -508,7 +508,7 @@ interface AuthHeaderPart
     public function toHeaderString();
 }
 
-class AsrSigningAlgorithm implements AuthHeaderPart
+class AsrHashAlgorithm implements AuthHeaderPart
 {
     /**
      * @var string
