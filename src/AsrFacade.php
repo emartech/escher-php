@@ -74,7 +74,7 @@ class AsrClient
 
         return AsrBuilder::create($timeStamp, $algorithmName)
             ->useRequest($request)
-            ->useHeaders($host, $headerList, $headersToSign)
+            ->useHeaders(AsrHeaders::createFrom($host, AsrBuilder::format($timeStamp), $headerList, $headersToSign))
             ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
             ->buildAuthHeaders($this->secretKey, $authHeaderKey);
     }
@@ -129,7 +129,7 @@ class AsrServer implements AsrRequestValidator
 
         $signature = AsrBuilder::create(strtotime($authHeader->getLongDate()), $authHeader->getAlgorithm())
             ->useRequest($helper->createRequest())
-            ->useHeaders($helper->getHost(), $helper->getHeaderList(), $authHeader->getSignedHeaders())
+            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), strtotime($authHeader->getLongDate()), $helper->getHeaderList(), $authHeader->getSignedHeaders()))
             ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
             ->calculateSignature($this->lookupSecretKey($accessKeyId));
 
@@ -289,14 +289,12 @@ class AsrBuilder
     }
 
     /**
-     * @param string $host
-     * @param array $headerList
-     * @param array $headersToSign
+     * @param AsrHeaders $headers
      * @return AsrBuilder
      */
-    public function useHeaders($host, array $headerList, array $headersToSign)
+    public function useHeaders(AsrHeaders $headers)
     {
-        $this->headers = AsrHeaders::createFrom($host, $this->amazonDateTime, $headerList, $headersToSign);
+        $this->headers = $headers;
         return $this;
     }
 
