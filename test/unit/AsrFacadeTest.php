@@ -139,8 +139,16 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldParseHeaders()
     {
-        $request = AsrRequestToValidate::create(array('HTTP_HOST' => $this->host, 'HTTP_CONTENT_TYPE' => $this->contentType), '');
+        $request = AsrRequestToValidate::create(
+            array(
+                'HTTP_HOST' => $this->host,
+                'HTTP_CONTENT_TYPE' => $this->contentType,
+                'REQUEST_URI' => '/path?query=string'
+        ), 'BODY');
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());
+        $this->assertEquals('/path', $request->getPath());
+        $this->assertEquals('query=string', $request->getQuery());
+        $this->assertEquals('BODY', $request->getBody());
     }
 
     /**

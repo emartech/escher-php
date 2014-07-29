@@ -15,10 +15,16 @@ class AsrFacade
         return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
     }
 
-    public function checkSignature($host, $method, $path, $query, $requestBody, array $headerList)
+    public function checkSignature()
     {
         $request         = AsrRequestToValidate::create();
         $serverTimeStamp = $request->getTimeStamp();
+        $host            = $request->getHost();
+        $method          = $request->getMethod();
+        $path            = $request->getPath();
+        $query           = $request->getQuery();
+        $requestBody     = $request->getBody();
+        $headerList      = $request->getHeaderList();
         $authHeader      = AsrAuthHeader::parse($headerList);
 
         $accessKeyId     = $authHeader->getAccessKeyId();
@@ -133,14 +139,28 @@ class AsrRequestToValidate
     private $requestBody;
 
     /**
+     * @var string
+     */
+    private $path;
+
+    /**
+     * @var string
+     */
+    private $query;
+
+    /**
      * @param array $serverVars
      * @param array $headerList
+     * @param string $path
+     * @param string $query
      * @param string $requestBody
      */
-    public function __construct(array $serverVars, array $headerList, $requestBody)
+    public function __construct(array $serverVars, array $headerList, $path, $query, $requestBody)
     {
-        $this->serverVars = $serverVars;
-        $this->headerList = $headerList;
+        $this->serverVars  = $serverVars;
+        $this->headerList  = $headerList;
+        $this->path        = $path;
+        $this->query       = $query;
         $this->requestBody = $requestBody;
     }
 
@@ -154,8 +174,8 @@ class AsrRequestToValidate
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $headerList = self::normalizeHeaders($serverVars);
-
-        return new AsrRequestToValidate($serverVars, $headerList, $requestBody);
+        list ($path, $query) = explode('?', $serverVars['REQUEST_URI'], 2);
+        return new AsrRequestToValidate($serverVars, $headerList, $path, $query, $requestBody);
     }
 
     /**
@@ -184,6 +204,31 @@ class AsrRequestToValidate
     public function getTimeStamp()
     {
         return $this->serverVars['REQUEST_TIME'];
+    }
+
+    public function getHost()
+    {
+        return $this->headerList['host'];
+    }
+
+    public function getMethod()
+    {
+        return $this->serverVars['REQUEST_METHOD'];
+    }
+
+    public function getPath()
+    {
+        return $this->path;
+    }
+
+    public function getQuery()
+    {
+        return $this->query;
+    }
+
+    public function getBody()
+    {
+        return $this->requestBody;
     }
 }
 
