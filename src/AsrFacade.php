@@ -171,11 +171,11 @@ class AsrBuilder
 
     public function buildAuthHeaders($secretKey)
     {
-        return AsrAuthHeader::buildAuthHeaders(
+        return AsrAuthHeader::build(
             $this->dateHeader(),
-            $this->algorithm->toHeaderString(),
-            $this->credentials->getParts($this->amazonDateTime),
-            $this->headers->getSignedHeaders(),
+            $this->algorithm,
+            $this->credentials->createScope($this->amazonDateTime),
+            $this->headers,
             $this->calculateSignature($secretKey)
         );
     }
@@ -205,7 +205,7 @@ class AsrAuthHeader
         $this->amazonDateTime = $amazonDateTime;
     }
 
-    public static function parseHeaders(array $headerList)
+    public static function parse(array $headerList)
     {
         $headerList = AsrHeaders::canonicalize($headerList);
         if (!isset($headerList['x-amz-date'])) {
@@ -235,13 +235,11 @@ class AsrAuthHeader
         '$/';
     }
 
-    public static function buildAuthHeaders($dateHeader, $algorithmHeaderName, array $credentialParts, array $signedHeaders, $signature)
+    public static function build($dateHeader, AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature)
     {
-        $credentialsString = implode('/', $credentialParts);
-        $signedHeadersString = implode(';', $signedHeaders);
-        return $dateHeader + array('Authorization' => $algorithmHeaderName . ' ' .
-            "Credential={$credentialsString}, " .
-            "SignedHeaders={$signedHeadersString}, ".
+        return $dateHeader + array('Authorization' => $algorithm->toHeaderString() . ' ' .
+            "Credential={$credentialScope->toHeaderString()}, " .
+            "SignedHeaders={$headers->toHeaderString()}, ".
             "Signature=$signature");
     }
 
@@ -299,7 +297,12 @@ class AsrAuthHeader
     }
 }
 
-class AsrSigningAlgorithm
+interface AuthHeaderPart
+{
+    public function toHeaderString();
+}
+
+class AsrSigningAlgorithm implements AuthHeaderPart
 {
     /**
      * @var string
@@ -360,11 +363,6 @@ class AsrCredentials
         return array_merge(array($this->shorten($amazonDateTime)), $this->parts);
     }
 
-    public function toScopeString($amazonDateTime)
-    {
-        return implode('/', $this->toArray($amazonDateTime));
-    }
-
     private function shorten($amazonDateTime)
     {
         return substr($amazonDateTime, 0, 8);
@@ -384,18 +382,59 @@ class AsrCredentials
         return implode("\n", array(
             $algorithm->toHeaderString(),
             $amazonDateTime,
-            $this->toScopeString($amazonDateTime),
+            $this->scopeToSign($amazonDateTime),
             $canonicalHash
         ));
     }
 
-    public function getParts($amazonDateTime)
+    /**
+     * @param $amazonDateTime
+     * @return string
+     */
+    public function scopeToSign($amazonDateTime)
     {
-        return array_merge(array($this->accessKeyId), $this->toArray($amazonDateTime));
+        return implode('/', $this->toArray($amazonDateTime));
+    }
+
+    public function toScopeString($amazonDateTime)
+    {
+        return $this->accessKeyId . '/' . $this->scopeToSign($amazonDateTime);
+    }
+
+    public function createScope($amazonDateTime)
+    {
+        return new AsrCredentialScope($this, $amazonDateTime);
     }
 }
 
-class AsrHeaders
+class AsrCredentialScope implements AuthHeaderPart
+{
+    /**
+     * @var AsrCredentials
+     */
+    private $credentials;
+
+    /**
+     * @var string
+     */
+    private $amazonDateTime;
+
+    public function __construct(AsrCredentials $credentials, $amazonShortDate)
+    {
+        $this->credentials = $credentials;
+        $this->amazonDateTime = $amazonShortDate;
+    }
+
+    /**
+     * @return string
+     */
+    public function toHeaderString()
+    {
+        return $this->credentials->toScopeString($this->amazonDateTime);
+    }
+}
+
+class AsrHeaders implements AuthHeaderPart
 {
     /**
      * @var array
