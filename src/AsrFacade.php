@@ -3,7 +3,7 @@
 class AsrFacade
 {
     const SHA256 = 'sha256';
-    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 600;
+    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900; // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
 
     public function signRequest($secretKey, $accessKeyId, array $baseCredentials, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {

@@ -145,7 +145,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldThrowExceptionIfDatesAreTooFarApart()
     {
-        $actual = $this->util->validateDates('20110909T233600Z', '20110909T232500Z', '20110909');
+        $actual = $this->util->validateDates('20110909T233600Z', '20110909T231500Z', '20110909');
         $this->assertFalse($actual);
     }
 
