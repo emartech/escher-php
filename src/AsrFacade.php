@@ -435,11 +435,6 @@ class AsrHeaders
         );
     }
 
-    public function get($headerKey)
-    {
-        return isset($this->headerList[$headerKey]) ? $this->headerList[$headerKey] : '';
-    }
-
     public function toHeaderString()
     {
         return implode(';', $this->headersToSign);
