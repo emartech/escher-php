@@ -5,17 +5,14 @@ class AsrFacade
     const SHA256 = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900; // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
 
+    public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
+    {
+        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId);
+    }
+
     public function signRequest($secretKey, $accessKeyId, $region, $service, $requestType, $method, $url, $requestBody, array $headerList, array $headersToSign = array())
     {
-        $urlParts = parse_url($url);
-        $host     = $urlParts['host'];
-        $path     = $urlParts['path'];
-        $query    = isset($urlParts['query']) ? $urlParts['query'] : '';
-        return AsrBuilder::create()
-            ->useRequest($method, $path, $query, $requestBody)
-            ->useHeaders($host, $headerList, $headersToSign)
-            ->useCredentials($accessKeyId, new AsrParty($region, $service, $requestType))
-            ->buildAuthHeaders($secretKey);
+        return self::createClient($secretKey, $accessKeyId, $region, $service, $requestType)->signRequest($method, $url, $requestBody, $headerList, $headersToSign);
     }
 
     public function checkSignature($serverDate, $host, $method, $path, $query, $requestBody, array $headerList)

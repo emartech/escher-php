@@ -32,7 +32,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function defaultClient()
     {
-        return new AsrClient(new AsrParty($this->region, $this->service, $this->requestType), $this->secretKey, $this->accessKeyId);
+        return AsrFacade::createClient($this->secretKey, $this->accessKeyId, $this->region, $this->service, $this->requestType);
     }
 
     protected function setUp()
