@@ -69,7 +69,7 @@ class AsrClient
     public function signRequest($method, $url, $requestBody, $headerList, $headersToSign, $timeStamp = null, $algorithmName = AsrFacade::SHA256, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
         list($host, $path, $query) = $this->parseUrl($url);
-        $request = new AsrRequestToSign($method, $path, $query, $requestBody);
+        $request = new AsrRequest($method, $path, $query, $requestBody);
 
         return AsrBuilder::create($timeStamp, $algorithmName)
             ->useRequest($request)
@@ -191,7 +191,7 @@ class AsrRequestHelper
     public function createRequest()
     {
         list ($path, $query) = array_pad(explode('?', $this->serverVars['REQUEST_URI'], 2), 2, '');
-        $request = new AsrRequestToSign($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
+        $request = new AsrRequest($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
         return $request;
     }
 
@@ -254,7 +254,7 @@ class AsrBuilder
     private $headers;
 
     /**
-     * @var AsrRequestToSign
+     * @var AsrRequest
      */
     private $request;
 
@@ -303,10 +303,10 @@ class AsrBuilder
     }
 
     /**
-     * @param AsrRequestToSign $request
+     * @param AsrRequest $request
      * @return AsrBuilder
      */
-    public function useRequest(AsrRequestToSign $request)
+    public function useRequest(AsrRequest $request)
     {
         $this->request = $request;
         return $this;
@@ -693,7 +693,7 @@ class AsrHeaders implements AuthHeaderPart
     }
 }
 
-class AsrRequestToSign
+class AsrRequest
 {
     private $method;
     private $path;
