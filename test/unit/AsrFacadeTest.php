@@ -142,7 +142,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $request = AsrRequestToValidate::create(
             array(
                 'HTTP_HOST' => $this->host,
-                'HTTP_CONTENT_TYPE' => $this->contentType,
+                'CONTENT_TYPE' => $this->contentType,
                 'REQUEST_URI' => '/path?query=string'
         ), 'BODY');
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());

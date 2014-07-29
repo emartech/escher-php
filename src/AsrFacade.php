@@ -220,7 +220,7 @@ class AsrRequestToValidate
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
-        $headerList = self::normalizeHeaders($serverVars);
+        $headerList = self::fetchHeaders($serverVars);
         list ($path, $query) = array_pad(explode('?', $serverVars['REQUEST_URI'], 2), 2, '');
         return new AsrRequestToValidate($serverVars, $headerList, $path, $query, $requestBody);
     }
@@ -229,14 +229,15 @@ class AsrRequestToValidate
      * @param $serverVars
      * @return array
      */
-    private static function normalizeHeaders($serverVars)
+    private static function fetchHeaders($serverVars)
     {
         $headerList = array();
         foreach ($serverVars as $key => $value) {
-            if (substr($key, 0, 4) == 'HTTP') {
-                $headerList[str_replace('_', '-', substr($key, 5))] = $value;
+            if (substr($key, 0, 5) == 'HTTP_') {
+                $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
             }
         }
+        $headerList['content-type'] = isset($serverVars['CONTENT_TYPE']) ? $serverVars['CONTENT_TYPE'] : '';
         return AsrHeaders::canonicalize($headerList);
     }
 
@@ -700,7 +701,6 @@ class AsrHeaders implements AuthHeaderPart
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
 
         sort($headersToSign);
-        ksort($headerList);
         return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
     }
 
@@ -711,10 +711,12 @@ class AsrHeaders implements AuthHeaderPart
 
     public static function canonicalize($headerList)
     {
-        return array_combine(
+        $result = array_combine(
             array_map('strtolower', array_keys($headerList)),
             array_map('self::trimHeaderValue', array_values($headerList))
         );
+        ksort($result);
+        return $result;
     }
 
     public function toHeaderString()
