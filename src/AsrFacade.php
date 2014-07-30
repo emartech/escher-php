@@ -73,14 +73,15 @@ class AsrClient
         list($host, $path, $query) = $this->parseUrl($url);
         $request = new AsrRequest($method, $path, $query, $requestBody);
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
-
         $amazonDateTime = $this->format($timeStamp);
 
+        $headerList += array('Host' => $host, 'X-Amz-Date' => $amazonDateTime);
+        $headersToSign = array_merge($headersToSign, array('host', 'x-amz-date'));
         // TODO: handle port in the host headers
         $signer = new AsrSigner(
             AsrHashAlgorithm::create($algorithmName),
             new AsrCredentials($this->accessKeyId, $this->party),
-            AsrHeaders::createFrom($headerList + array('Host' => $host, 'X-Amz-Date' => $amazonDateTime), $headersToSign),
+            AsrHeaders::createFrom($headerList, $headersToSign),
             $request
         );
         return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
@@ -575,9 +576,9 @@ class AsrHeaders implements AuthHeaderPart
         $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($headerList, $headersToSign = array())
+    public static function createFrom($headerList, array $headersToSign)
     {
-        $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
+        $headersToSign = array_unique(array_map('strtolower', $headersToSign));
         sort($headersToSign);
         return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
     }
