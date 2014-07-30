@@ -109,13 +109,7 @@ class AsrClient
     }
 }
 
-interface AsrRequestValidator
-{
-    public function checkDates($amazonDateTime, $amazonShortDate, $serverTime);
-    public function checkCredentials($region, $service, $requestType);
-}
-
-class AsrServer implements AsrRequestValidator
+class AsrServer
 {
     /**
      * @var AsrParty
@@ -143,13 +137,6 @@ class AsrServer implements AsrRequestValidator
         $this->validateSignature($authHeader, $helper);
     }
 
-    public function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
-    {
-        //TODO: validate date format
-        return substr($amazonDateTime, 0, 8) == $amazonShortDate
-            && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
-    }
-
     public function lookupSecretKey($accessKeyId)
     {
         if (!isset($this->keyDB[$accessKeyId])) {
@@ -158,7 +145,7 @@ class AsrServer implements AsrRequestValidator
         return $this->keyDB[$accessKeyId];
     }
 
-    public function checkCredentials($region, $service, $requestType)
+    private function checkCredentials($region, $service, $requestType)
     {
         return $region == $this->party->getRegion()
             && $service == $this->party->getService()
@@ -193,12 +180,23 @@ class AsrServer implements AsrRequestValidator
 
     private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
     {
-        $authHeader->validateCredentials($this);
+        if (!$this->checkCredentials($authHeader->getRegion(), $authHeader->getService(), $authHeader->getRequestType())) {
+            throw new AsrException('Invalid credentials');
+        }
     }
 
     private function validateDates(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
     {
-        $authHeader->validateDates($this, $helper->getTimeStamp());
+        if (!$this->checkDates($authHeader->getLongDate(), $authHeader->getShortDate(), $helper->getTimeStamp())) {
+            throw new AsrException('One of the date headers are invalid');
+        }
+    }
+
+    private function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
+    {
+        //TODO: validate date format
+        return substr($amazonDateTime, 0, 8) == $amazonShortDate
+        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 }
 
@@ -467,20 +465,6 @@ class AsrAuthHeader
     public function getRequestType()
     {
         return $this->getCredentialPart(4, 'request type');
-    }
-
-    public function validateDates(AsrRequestValidator $validator, $serverTime)
-    {
-        if (!$validator->checkDates($this->amazonDateTime, $this->getShortDate(), $serverTime)) {
-            throw new AsrException('One of the date headers are invalid');
-        }
-    }
-
-    public function validateCredentials(AsrRequestValidator $validator)
-    {
-        if (!$validator->checkCredentials($this->getRegion(), $this->getService(), $this->getRequestType())) {
-            throw new AsrException('Invalid credentials');
-        }
     }
 
     public function createSignerFor(array $headerList, AsrRequest $request)
