@@ -414,7 +414,7 @@ class AsrAuthHeader
 
     public function createAlgorithm()
     {
-        return AsrHashAlgorithm::create($this->getAlgorithm());
+        return AsrHashAlgorithm::create($this->headerParts['algorithm']);
     }
 
     public function createCredentials()
@@ -431,11 +431,6 @@ class AsrAuthHeader
     public function getShortDate()
     {
         return $this->getCredentialPart(1, 'credential date');
-    }
-
-    private function getAlgorithm()
-    {
-        return $this->headerParts['algorithm'];
     }
 
     public function getSignedHeaders()
