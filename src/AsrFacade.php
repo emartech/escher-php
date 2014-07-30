@@ -137,52 +137,11 @@ class AsrServer
         $this->validateSignature($authHeader, $helper);
     }
 
-    public function lookupSecretKey($accessKeyId)
-    {
-        if (!isset($this->keyDB[$accessKeyId])) {
-            throw new AsrException('Invalid access key id');
-        }
-        return $this->keyDB[$accessKeyId];
-    }
-
-    private function checkCredentials($region, $service, $requestType)
-    {
-        return $region == $this->party->getRegion()
-            && $service == $this->party->getService()
-            && $requestType == $this->party->getRequestType();
-    }
-
-    /**
-     * @param array $serverVars
-     * @param array $requestBody
-     * @param string $authHeaderKey
-     * @return AsrRequestHelper
-     */
     private function createRequestHelper(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         return new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
-    }
-
-    private function generateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
-    {
-        return $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest())
-            ->calculateSignature($this->lookupSecretKey($authHeader->getAccessKeyId()), $authHeader->getLongDate());
-    }
-
-    private function validateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
-    {
-        if ($this->generateSignature($authHeader, $helper) != $authHeader->getSignature()) {
-            throw new AsrException('The signatures do not match');
-        }
-    }
-
-    private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
-    {
-        if (!$this->checkCredentials($authHeader->getRegion(), $authHeader->getService(), $authHeader->getRequestType())) {
-            throw new AsrException('Invalid credentials');
-        }
     }
 
     private function validateDates(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
@@ -196,7 +155,42 @@ class AsrServer
     {
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
-        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+            && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+    }
+
+    private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        if (!$this->checkCredentials($authHeader->getRegion(), $authHeader->getService(), $authHeader->getRequestType())) {
+            throw new AsrException('Invalid credentials');
+        }
+    }
+
+    private function checkCredentials($region, $service, $requestType)
+    {
+        return $region == $this->party->getRegion()
+            && $service == $this->party->getService()
+            && $requestType == $this->party->getRequestType();
+    }
+
+    private function validateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        if ($this->generateSignature($authHeader, $helper) != $authHeader->getSignature()) {
+            throw new AsrException('The signatures do not match');
+        }
+    }
+
+    private function generateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        return $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest())
+            ->calculateSignature($this->lookupSecretKey($authHeader->getAccessKeyId()), $authHeader->getLongDate());
+    }
+
+    private function lookupSecretKey($accessKeyId)
+    {
+        if (!isset($this->keyDB[$accessKeyId])) {
+            throw new AsrException('Invalid access key id');
+        }
+        return $this->keyDB[$accessKeyId];
     }
 }
 
