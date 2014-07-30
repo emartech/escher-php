@@ -81,7 +81,7 @@ class AsrClient
         $signer = new AsrSigner(
             AsrHashAlgorithm::create($algorithmName),
             new AsrCredentials($this->accessKeyId, $this->party),
-            AsrHeaders::createFrom($headerList, $headersToSign),
+            AsrHeaders::normalize($headerList, $headersToSign),
             $request
         );
         return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
@@ -464,7 +464,7 @@ class AsrAuthHeader
         return new AsrSigner(
             $this->createAlgorithm(),
             $this->createCredentials(),
-            AsrHeaders::createFrom($headerList, $this->getSignedHeaders()),
+            AsrHeaders::normalize($headerList, $this->getSignedHeaders()),
             $request
         );
     }
@@ -562,7 +562,7 @@ class AsrHeaders
         $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($headerList, array $headersToSign)
+    public static function normalize($headerList, array $headersToSign)
     {
         $headersToSign = array_unique(array_map('strtolower', $headersToSign));
         sort($headersToSign);
