@@ -195,8 +195,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     protected function createRequestHelper($serverVars, $requestBody)
     {
-        $requestFactory = new AsrRequestHelper($serverVars, $requestBody);
-        return $requestFactory;
+        return new AsrRequestHelper($serverVars, $requestBody, 'Authorization');
     }
 
     /**

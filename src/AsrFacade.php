@@ -132,9 +132,9 @@ class AsrServer implements AsrRequestValidator
         $this->keyDB = $keyDB;
     }
 
-    public function validateRequest(array $serverVars = null, $requestBody = null)
+    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
-        $helper = $this->createRequestHelper($serverVars, $requestBody);
+        $helper = $this->createRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
 
         $authHeader->validateDates($this, $helper->getTimeStamp());
@@ -186,25 +186,27 @@ class AsrServer implements AsrRequestValidator
     /**
      * @param array $serverVars
      * @param array $requestBody
+     * @param string $authHeaderKey
      * @return AsrRequestHelper
      */
-    private function createRequestHelper(array $serverVars = null, $requestBody = null)
+    private function createRequestHelper(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
-        $factory = new AsrRequestHelper($serverVars, $requestBody);
-        return $factory;
+        return new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
     }}
 
 class AsrRequestHelper
 {
     private $serverVars;
     private $requestBody;
+    private $authHeaderKey;
 
-    public function __construct(array $serverVars, $requestBody)
+    public function __construct(array $serverVars, $requestBody, $authHeaderKey)
     {
         $this->serverVars = $serverVars;
         $this->requestBody = $requestBody;
+        $this->authHeaderKey = $authHeaderKey;
     }
 
     public function createRequest()
@@ -214,9 +216,9 @@ class AsrRequestHelper
         return $request;
     }
 
-    public function getAuthHeaders($authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
+    public function getAuthHeaders()
     {
-        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($authHeaderKey));
+        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($this->authHeaderKey));
     }
 
     public function getTimeStamp()
