@@ -540,12 +540,7 @@ class AsrCredentials
 
     public function toArray($amazonDateTime)
     {
-        return array_merge(array($this->shorten($amazonDateTime)), $this->party->toArray());
-    }
-
-    private function shorten($amazonDateTime)
-    {
-        return substr($amazonDateTime, 0, 8);
+        return array_merge(array(substr($amazonDateTime, 0, 8)), $this->party->toArray());
     }
 
     public function scopeToSign($amazonDateTime)
