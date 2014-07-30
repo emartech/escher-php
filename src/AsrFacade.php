@@ -144,7 +144,7 @@ class AsrServer implements AsrRequestValidator
 
         $amazonDateTime = $authHeader->getLongDate();
         $signer = new AsrSigner(
-            AsrHashAlgorithm::create($authHeader->getAlgorithm()),
+            $authHeader->createAlgorithm(),
             $authHeader->createCredentials(),
             AsrHeaders::createFrom($helper->getHeaderList(), $authHeader->getSignedHeaders()),
             $helper->createRequest()
@@ -412,6 +412,11 @@ class AsrAuthHeader
         return $this->credentialParts[$index];
     }
 
+    public function createAlgorithm()
+    {
+        return AsrHashAlgorithm::create($this->getAlgorithm());
+    }
+
     public function createCredentials()
     {
         $party = new AsrParty($this->getRegion(), $this->getService(), $this->getRequestType());
@@ -428,7 +433,7 @@ class AsrAuthHeader
         return $this->getCredentialPart(1, 'credential date');
     }
 
-    public function getAlgorithm()
+    private function getAlgorithm()
     {
         return $this->headerParts['algorithm'];
     }
