@@ -143,14 +143,8 @@ class AsrServer implements AsrRequestValidator
 
         $accessKeyId = $authHeader->getAccessKeyId();
 
-        $amazonDateTime = $authHeader->getLongDate();
-        $signer = new AsrSigner(
-            $authHeader->createAlgorithm(),
-            $authHeader->createCredentials(),
-            AsrHeaders::createFrom($helper->getHeaderList(), $authHeader->getSignedHeaders()),
-            $helper->createRequest()
-        );
-        $signature = $signer->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
+        $signer = $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest());
+        $signature = $signer->calculateSignature($this->lookupSecretKey($accessKeyId), $authHeader->getLongDate());
 
         if ($signature != $authHeader->getSignature()) {
             throw new AsrException('The signatures do not match');
@@ -476,6 +470,16 @@ class AsrAuthHeader
         if (!$validator->checkCredentials($this->getRegion(), $this->getService(), $this->getRequestType())) {
             throw new AsrException('Invalid credentials');
         }
+    }
+
+    public function createSignerFor(array $headerList, AsrRequest $request)
+    {
+        return new AsrSigner(
+            $this->createAlgorithm(),
+            $this->createCredentials(),
+            AsrHeaders::createFrom($headerList, $this->getSignedHeaders()),
+            $request
+        );
     }
 }
 
