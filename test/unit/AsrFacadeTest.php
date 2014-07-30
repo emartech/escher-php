@@ -3,11 +3,6 @@
 class AsrFacadeTest extends PHPUnit_Framework_TestCase
 {
     private $defaultAmzDate = '20110909T233600Z';
-    /**
-     * @var AsrHashAlgorithm
-     */
-    private $algorithm;
-
     private $secretKey = 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
     private $accessKeyId = 'AKIDEXAMPLE';
     private $region = 'us-east-1';
@@ -38,11 +33,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function defaultServer()
     {
         return AsrFacade::createServer($this->region, $this->service, $this->requestType, array($this->accessKeyId => $this->secretKey));
-    }
-
-    protected function setUp()
-    {
-        $this->algorithm = new AsrHashAlgorithm(AsrFacade::SHA256);
     }
 
     /**
@@ -99,7 +89,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $authHeader = AsrAuthHeader::parse($headerList, 'authorization');
 
         $this->assertEquals($this->defaultAmzDate, $authHeader->getLongDate());
-        $this->assertEquals($this->algorithm, $authHeader->createAlgorithm());
+        $this->assertEquals(AsrHashAlgorithm::create(AsrFacade::SHA256), $authHeader->createAlgorithm());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
         $this->assertEquals($this->region, $authHeader->getRegion());
