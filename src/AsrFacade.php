@@ -284,7 +284,7 @@ class AsrSigner
     {
         $requestBodyHash      = $this->algorithm->hash($this->request->getBody());
         $canonicalizedRequest = $this->canonicalizeRequest($requestBodyHash);
-        $canonicalHash        = $this->algorithm->hash($canonicalizedRequest);
+        $canonicalHash        = $this->algorithm->hash(implode("\n", $canonicalizedRequest));
         $stringToSign         = $this->generateStringToSign($canonicalHash, $amazonDateTime);
         $signingKey           = $this->generateSigningKey($secretKey, $amazonDateTime);
         $signature            = $this->algorithm->hmac($stringToSign, $signingKey, false);
@@ -334,7 +334,7 @@ class AsrSigner
         $lines[] = $this->headers->getSignedHeadersAsString();
         $lines[] = $requestBodyHash;
 
-        return implode("\n", $lines);
+        return $lines;
     }
 }
 
