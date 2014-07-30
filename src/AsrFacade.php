@@ -468,12 +468,7 @@ class AsrAuthHeader
     }
 }
 
-interface AuthHeaderPart
-{
-    public function toHeaderString();
-}
-
-class AsrHashAlgorithm implements AuthHeaderPart
+class AsrHashAlgorithm
 {
     /**
      * @var string
@@ -547,7 +542,7 @@ class AsrCredentials
     }
 }
 
-class AsrHeaders implements AuthHeaderPart
+class AsrHeaders
 {
     /**
      * @var array
