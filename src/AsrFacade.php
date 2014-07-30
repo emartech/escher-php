@@ -98,7 +98,6 @@ class AsrClient
 
     private function format($timeStamp)
     {
-        $date = getdate($timeStamp);
         $result = new DateTime(date("Ymd H:i:s", $timeStamp));
         $result->setTimezone(new DateTimeZone('UTC'));
         return $result->format(AsrFacade::AMAZON_DATE_FORMAT);
@@ -590,7 +589,7 @@ class AsrHeaders
     {
         $result = array_combine(
             array_map('strtolower', array_keys($headerList)),
-            array_map('self::trimHeaderValue', array_values($headerList))
+            array_map(array('AsrHeaders', 'trimHeaderValue'), array_values($headerList))
         );
         ksort($result);
         return $result;
