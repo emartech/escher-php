@@ -75,11 +75,13 @@ class AsrClient
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
         $amazonDateTime = $this->format($timeStamp);
-        return AsrBuilder::create($algorithmName)
-            ->useRequest($request)
-            ->useHeaders(AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign))
-            ->useCredentials(new AsrCredentials($this->accessKeyId, $this->party))
-            ->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
+        $builder = new AsrBuilder(
+            AsrHashAlgorithm::create($algorithmName),
+            new AsrCredentials($this->accessKeyId, $this->party),
+            AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign),
+            $request
+        );
+        return $builder->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
     }
 
     /**
@@ -139,11 +141,13 @@ class AsrServer implements AsrRequestValidator
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $amazonDateTime = $authHeader->getLongDate();
-        $signature = AsrBuilder::create($authHeader->getAlgorithm())
-            ->useRequest($helper->createRequest())
-            ->useHeaders(AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()))
-            ->useCredentials(new AsrCredentials($accessKeyId, $authHeader->getParty()))
-            ->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
+        $builder = new AsrBuilder(
+            AsrHashAlgorithm::create($authHeader->getAlgorithm()),
+            new AsrCredentials($accessKeyId, $authHeader->getParty()),
+            AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()),
+            $helper->createRequest()
+        );
+        $signature = $builder->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
 
         if ($signature != $authHeader->getSignature()) {
             throw new AsrException('The signatures do not match');
@@ -263,44 +267,12 @@ class AsrBuilder
      */
     private $request;
 
-    public function __construct(AsrHashAlgorithm $algorithm)
+    public function __construct(AsrHashAlgorithm $algorithm, AsrCredentials $credentials, AsrHeaders $headers, AsrRequest $request)
     {
         $this->algorithm = $algorithm;
-    }
-
-    public static function create($algorithmName = AsrFacade::SHA256)
-    {
-        return new AsrBuilder(new AsrHashAlgorithm(strtolower($algorithmName)));
-    }
-
-    /**
-     * @param AsrCredentials $credentials
-     * @return AsrBuilder
-     */
-    public function useCredentials(AsrCredentials $credentials)
-    {
         $this->credentials = $credentials;
-        return $this;
-    }
-
-    /**
-     * @param AsrHeaders $headers
-     * @return AsrBuilder
-     */
-    public function useHeaders(AsrHeaders $headers)
-    {
         $this->headers = $headers;
-        return $this;
-    }
-
-    /**
-     * @param AsrRequest $request
-     * @return AsrBuilder
-     */
-    public function useRequest(AsrRequest $request)
-    {
         $this->request = $request;
-        return $this;
     }
 
     /**
@@ -511,33 +483,38 @@ class AsrHashAlgorithm implements AuthHeaderPart
     /**
      * @var string
      */
-    private $algorithm;
+    private $algorithmName;
 
     /**
-     * @param string $algorithm
-     * @throws AsrException
+     * @param string $algorithmName
      */
-    public function __construct($algorithm)
+    public function __construct($algorithmName)
     {
-        if (!in_array($algorithm, hash_algos())) {
-            throw new AsrException("Invalid algorithm: '$algorithm'");
+        $this->algorithmName = $algorithmName;
+    }
+
+    public static function create($algorithmName)
+    {
+        $algorithmName = strtolower($algorithmName);
+        if (!in_array($algorithmName, hash_algos())) {
+            throw new AsrException("Invalid algorithm: '$algorithmName'");
         }
-        $this->algorithm = $algorithm;
+        return new AsrHashAlgorithm($algorithmName);
     }
 
     public function toHeaderString()
     {
-        return 'AWS4-HMAC-' . strtoupper($this->algorithm);
+        return 'AWS4-HMAC-' . strtoupper($this->algorithmName);
     }
 
     public function hmac($data, $key, $raw = false)
     {
-        return hash_hmac($this->algorithm, $data, $key, $raw);
+        return hash_hmac($this->algorithmName, $data, $key, $raw);
     }
 
     public function hash($data, $raw = false)
     {
-        return hash($this->algorithm, $data, $raw);
+        return hash($this->algorithmName, $data, $raw);
     }
 }
 
