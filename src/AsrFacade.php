@@ -75,13 +75,13 @@ class AsrClient
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
         $amazonDateTime = $this->format($timeStamp);
-        $builder = new AsrBuilder(
+        $signer = new AsrSigner(
             AsrHashAlgorithm::create($algorithmName),
             new AsrCredentials($this->accessKeyId, $this->party),
             AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign),
             $request
         );
-        return $builder->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
+        return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
     }
 
     /**
@@ -141,13 +141,13 @@ class AsrServer implements AsrRequestValidator
         $accessKeyId = $authHeader->getAccessKeyId();
 
         $amazonDateTime = $authHeader->getLongDate();
-        $builder = new AsrBuilder(
+        $signer = new AsrSigner(
             AsrHashAlgorithm::create($authHeader->getAlgorithm()),
             new AsrCredentials($accessKeyId, $authHeader->getParty()),
             AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()),
             $helper->createRequest()
         );
-        $signature = $builder->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
+        $signature = $signer->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
 
         if ($signature != $authHeader->getSignature()) {
             throw new AsrException('The signatures do not match');
@@ -245,7 +245,7 @@ class AsrRequestHelper
     }
 }
 
-class AsrBuilder
+class AsrSigner
 {
     /**
      * @var AsrHashAlgorithm
