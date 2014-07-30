@@ -126,7 +126,7 @@ class AsrServer
     public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
-        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
+        $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
@@ -183,6 +183,17 @@ class AsrServer
             throw new AsrException('Invalid access key id');
         }
         return $this->keyDB[$accessKeyId];
+    }
+
+    /**
+     * php://input may contain data even though the request body is empty, e.g. in GET requests
+     *
+     * @param string
+     * @return string
+     */
+    private function fetchRequestBodyFor($method)
+    {
+        return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
     }
 }
 
