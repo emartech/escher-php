@@ -138,31 +138,18 @@ class AsrServer implements AsrRequestValidator
         $helper = $this->createRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
 
-        $authHeader->validateDates($this, $helper->getTimeStamp());
-        $authHeader->validateCredentials($this);
-
-        $accessKeyId = $authHeader->getAccessKeyId();
-
-        $signer = $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest());
-        $signature = $signer->calculateSignature($this->lookupSecretKey($accessKeyId), $authHeader->getLongDate());
-
-        if ($signature != $authHeader->getSignature()) {
-            throw new AsrException('The signatures do not match');
-        }
+        $this->validateDates($authHeader, $helper);
+        $this->validateCredentials($authHeader, $helper);
+        $this->validateSignature($authHeader, $helper);
     }
 
     public function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
     {
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
-        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+            && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
-    /**
-     * @param string $accessKeyId
-     * @return string
-     * @throws AsrException
-     */
     public function lookupSecretKey($accessKeyId)
     {
         if (!isset($this->keyDB[$accessKeyId])) {
@@ -189,7 +176,31 @@ class AsrServer implements AsrRequestValidator
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         return new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
-    }}
+    }
+
+    private function generateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        return $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest())
+            ->calculateSignature($this->lookupSecretKey($authHeader->getAccessKeyId()), $authHeader->getLongDate());
+    }
+
+    private function validateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        if ($this->generateSignature($authHeader, $helper) != $authHeader->getSignature()) {
+            throw new AsrException('The signatures do not match');
+        }
+    }
+
+    private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        $authHeader->validateCredentials($this);
+    }
+
+    private function validateDates(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        $authHeader->validateDates($this, $helper->getTimeStamp());
+    }
+}
 
 class AsrRequestHelper
 {
