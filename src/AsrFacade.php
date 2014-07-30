@@ -75,10 +75,12 @@ class AsrClient
         $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
 
         $amazonDateTime = $this->format($timeStamp);
+
+        // TODO: handle port in the host headers
         $signer = new AsrSigner(
             AsrHashAlgorithm::create($algorithmName),
             new AsrCredentials($this->accessKeyId, $this->party),
-            AsrHeaders::createFrom($host, $amazonDateTime, $headerList, $headersToSign),
+            AsrHeaders::createFrom($headerList + array('Host' => $host, 'X-Amz-Date' => $amazonDateTime), $headersToSign),
             $request
         );
         return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
@@ -144,7 +146,7 @@ class AsrServer implements AsrRequestValidator
         $signer = new AsrSigner(
             AsrHashAlgorithm::create($authHeader->getAlgorithm()),
             new AsrCredentials($accessKeyId, $authHeader->getParty()),
-            AsrHeaders::createFrom($helper->getHost(), $amazonDateTime, $helper->getHeaderList(), $authHeader->getSignedHeaders()),
+            AsrHeaders::createFrom($helper->getHeaderList(), $authHeader->getSignedHeaders()),
             $helper->createRequest()
         );
         $signature = $signer->calculateSignature($this->lookupSecretKey($accessKeyId), $amazonDateTime);
@@ -607,14 +609,11 @@ class AsrHeaders implements AuthHeaderPart
         $this->headersToSign = $headersToSign;
     }
 
-    public static function createFrom($host, $amazonDateTime, $headerList, $headersToSign = array())
+    public static function createFrom($headerList, $headersToSign = array())
     {
-        //TODO; handle port in host header
-        $baseHeaders = array('Host' => $host, 'X-Amz-Date' => $amazonDateTime);
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array('host', 'x-amz-date')));
-
         sort($headersToSign);
-        return new AsrHeaders(self::canonicalize($baseHeaders + $headerList), $headersToSign);
+        return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
     }
 
     public static function trimHeaderValue($value)
