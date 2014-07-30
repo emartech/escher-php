@@ -297,7 +297,7 @@ class AsrSigner
     {
         return array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
             $this->algorithm->toHeaderString(),
-            $this->credentials->createScope($amazonDateTime)->toHeaderString(),
+            $this->credentials->toScopeString($amazonDateTime),
             $this->headers->toHeaderString(),
             $this->calculateSignature($secretKey, $amazonDateTime),
             $authHeaderKey
@@ -556,38 +556,6 @@ class AsrCredentials
     public function toScopeString($amazonDateTime)
     {
         return $this->accessKeyId . '/' . $this->scopeToSign($amazonDateTime);
-    }
-
-    public function createScope($amazonDateTime)
-    {
-        return new AsrCredentialScope($this, $amazonDateTime);
-    }
-}
-
-class AsrCredentialScope implements AuthHeaderPart
-{
-    /**
-     * @var AsrCredentials
-     */
-    private $credentials;
-
-    /**
-     * @var string
-     */
-    private $amazonDateTime;
-
-    public function __construct(AsrCredentials $credentials, $amazonShortDate)
-    {
-        $this->credentials = $credentials;
-        $this->amazonDateTime = $amazonShortDate;
-    }
-
-    /**
-     * @return string
-     */
-    public function toHeaderString()
-    {
-        return $this->credentials->toScopeString($this->amazonDateTime);
     }
 }
 
