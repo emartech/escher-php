@@ -582,6 +582,7 @@ class AsrHeaders implements AuthHeaderPart
         return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
     }
 
+    //TODO implement according to amazon document
     public static function trimHeaderValue($value)
     {
         return trim($value);
@@ -604,7 +605,7 @@ class AsrHeaders implements AuthHeaderPart
 
     public function collapse()
     {
-        $headersToSign = array_intersect_key($this->headerList, array_flip($this->headersToSign));
+        $headersToSign = $this->selectOnlySignedHeaders();
         return array_map(
             array($this, 'collapseLine'),
             array_keys($headersToSign),
@@ -617,9 +618,9 @@ class AsrHeaders implements AuthHeaderPart
         return $headerKey.':'.$headerValue;
     }
 
-    public function getSignedHeaders()
+    private function selectOnlySignedHeaders()
     {
-        return $this->headersToSign;
+        return array_intersect_key($this->headerList, array_flip($this->headersToSign));
     }
 }
 
