@@ -294,7 +294,7 @@ class AsrSigner
         return array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
             $this->algorithm->toHeaderString(),
             $this->credentials->toScopeString($amazonDateTime),
-            $this->headers->toHeaderString(),
+            $this->headers->getSignedHeadersAsString(),
             $this->calculateSignature($secretKey, $amazonDateTime),
             $authHeaderKey
         );
@@ -329,7 +329,7 @@ class AsrSigner
             $lines[] = $headerLine;
         }
         $lines[] = '';
-        $lines[] = $this->headers->toHeaderString();
+        $lines[] = $this->headers->getSignedHeadersAsString();
         $lines[] = $requestBodyHash;
 
         return implode("\n", $lines);
@@ -583,7 +583,7 @@ class AsrHeaders
         return $result;
     }
 
-    public function toHeaderString()
+    public function getSignedHeadersAsString()
     {
         return implode(';', $this->headersToSign);
     }
