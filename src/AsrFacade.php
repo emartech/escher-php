@@ -129,19 +129,15 @@ class AsrServer
 
     public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
-        $helper = $this->createRequestHelper($serverVars, $requestBody, $authHeaderKey);
+        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
+        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
+
+        $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
 
         $this->validateDates($authHeader, $helper);
         $this->validateCredentials($authHeader, $helper);
         $this->validateSignature($authHeader, $helper);
-    }
-
-    private function createRequestHelper(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
-    {
-        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
-        $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
-        return new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
     }
 
     private function validateDates(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
