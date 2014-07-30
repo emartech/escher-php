@@ -42,7 +42,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headersToSign = array('Content-Type');
         $headerList = $this->headers();
-        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -52,7 +52,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $headerList = array('Content-Type' => $this->contentType);
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -65,7 +65,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'X-A-Header' => 'that/should/not/be/signed'
         );
         $headersToSign = array('Content-Type');
-        $this->assertEquals($this->authorizationHeaders(), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
+        $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
     /**
@@ -77,7 +77,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headersToSign = array('Content-Type');
         $_SERVER['REQUEST_TIME'] = strtotime($this->defaultAmzDate);
         $actual = $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign);
-        $this->assertEquals($this->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY), $actual);
+        $this->assertEquals($this->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY) + $headerList + $this->hostHeader(), $actual);
     }
 
     /**
@@ -196,5 +196,19 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
         return $this->defaultClient()->signRequest('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, strtotime($this->defaultAmzDate), 'SHA256', 'Authorization');
+    }
+
+    private function hostHeader()
+    {
+        return array('Host' => $this->host);
+    }
+
+    /**
+     * @param $headerList
+     * @return array
+     */
+    protected function allHeaders($headerList)
+    {
+        return $this->authorizationHeaders() + $headerList + $this->hostHeader();
     }
 }

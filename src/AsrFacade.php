@@ -304,7 +304,7 @@ class AsrSigner
 
     public function buildAuthHeaders($secretKey, $authHeaderKey, $amazonDateTime)
     {
-        return array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
+        return $this->headers->getAll() + array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
             $this->algorithm->toHeaderString(),
             $this->credentials->toScopeString($amazonDateTime),
             $this->headers->getSignedHeadersAsString(),
@@ -619,6 +619,19 @@ class AsrHeaders
     private function selectOnlySignedHeaders()
     {
         return array_intersect_key($this->headerList, array_flip($this->headersToSign));
+    }
+
+    public function getAll()
+    {
+        return array_combine(
+            array_map(array($this, 'ucWord'), array_keys($this->headerList)),
+            array_values($this->headerList)
+        );
+    }
+
+    public function ucWord($headerKey)
+    {
+        return implode('-', array_map('ucfirst', explode('-', $headerKey)));
     }
 }
 
