@@ -87,10 +87,6 @@ class AsrClient
         return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
     }
 
-    /**
-     * @param $url
-     * @return array
-     */
     private function parseUrl($url)
     {
         $urlParts = parse_url($url);
@@ -227,17 +223,23 @@ class AsrRequestHelper
 
     public function getHeaderList()
     {
-        $headerList = array();
-        foreach ($this->serverVars as $key => $value) {
-            if (substr($key, 0, 5) == 'HTTP_') {
-                $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
-            }
-        }
+        $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
         return AsrHeaders::canonicalize($headerList);
     }
 
-    protected function getContentType()
+    private function process(array $serverVars)
+    {
+        $headerList = array();
+        foreach ($serverVars as $key => $value) {
+            if (substr($key, 0, 5) == 'HTTP_') {
+                $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
+            }
+        }
+        return $headerList;
+    }
+
+    private function getContentType()
     {
         return isset($this->serverVars['CONTENT_TYPE']) ? $this->serverVars['CONTENT_TYPE'] : '';
     }
