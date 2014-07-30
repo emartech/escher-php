@@ -98,9 +98,9 @@ class AsrClient
 
     private function format($timeStamp)
     {
-        $result = new DateTime();
+        $date = getdate($timeStamp);
+        $result = new DateTime(date("Ymd H:i:s", $timeStamp));
         $result->setTimezone(new DateTimeZone('UTC'));
-        $result->setTimestamp($timeStamp);
         return $result->format(AsrFacade::AMAZON_DATE_FORMAT);
     }
 }
@@ -147,7 +147,7 @@ class AsrServer
     {
         //TODO: validate date format
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
-            && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
     private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
@@ -160,8 +160,8 @@ class AsrServer
     private function checkCredentials($region, $service, $requestType)
     {
         return $region == $this->party->getRegion()
-            && $service == $this->party->getService()
-            && $requestType == $this->party->getRequestType();
+        && $service == $this->party->getService()
+        && $requestType == $this->party->getRequestType();
     }
 
     private function validateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
