@@ -5,7 +5,7 @@ class AsrFacade
     const SHA256 = 'sha256';
     // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
-    const DEFAULT_AUTH_HEADER_KEY = 'X-Amz-Auth';
+    const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
     const AMAZON_DATE_FORMAT = self::ISO8601;
     const ISO8601 = 'Ymd\THis\Z';
 
@@ -61,30 +61,65 @@ class AsrClient
     private $secretKey;
     private $accessKeyId;
 
-    public function __construct(AsrParty $party, $secretKey, $accessKeyId)
+    private $vendorPrefix;
+    private $hashAlgo;
+
+    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo = "sha256", $vendorPrefix = "EMS")
     {
-        $this->party = $party;
-        $this->secretKey = $secretKey;
-        $this->accessKeyId = $accessKeyId;
+        $this->party        = $party;
+        $this->secretKey    = $secretKey;
+        $this->accessKeyId  = $accessKeyId;
+
+        $this->vendorPrefix = $vendorPrefix;
+        $this->hashAlgo     = $hashAlgo;
     }
 
-    public function signRequest($method, $url, $requestBody, $headerList, $headersToSign, $timeStamp = null, $algorithmName = AsrFacade::SHA256, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
+    public function getSignedHeaders($method, $url, $requestBody, $headerList, $headersToSign, $date, $authHeaderKey = "X-Ems-Auth")
     {
         list($host, $path, $query) = $this->parseUrl($url);
-        $request = new AsrRequest($method, $path, $query, $requestBody);
-        $timeStamp = $timeStamp ? $timeStamp : $_SERVER['REQUEST_TIME'];
-        $amazonDateTime = $this->format($timeStamp);
 
-        $headerList += array('Host' => $host, 'X-Amz-Date' => $amazonDateTime);
-        $headersToSign = array_merge($headersToSign, array('host', 'x-amz-date'));
-        // TODO: handle port in the host headers
-        $signer = new AsrSigner(
-            AsrHashAlgorithm::create($algorithmName),
-            new AsrCredentials($this->accessKeyId, $this->party),
-            AsrHeaders::normalize($headerList, $headersToSign),
-            $request
+        $request = array(
+            'method'  => $method,
+            'path'    => $path,
+            'query'   => $query,
+            'headers' => $headerList,
+            'body'    => $requestBody,
         );
-        return $signer->buildAuthHeaders($this->secretKey, $authHeaderKey, $amazonDateTime);
+        $credentialScope = implode("/", $this->party->toArray());
+        $credentialScopeWithDatePrefix = $date->format("Ymd") . "/" .  $credentialScope;
+        $dateHeaderKey = "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Date";
+        $headerList += array('Host' => $host, $dateHeaderKey => $date->format('Ymd\THis\Z'));
+
+        $canonizedRequest = AsrRequestCanonizer::canonize(
+            $request,
+            $headersToSign,
+            $this->hashAlgo
+        );
+
+        $stringToSign = AsrSigner::createStringToSign(
+            $credentialScope,
+            $canonizedRequest,
+            $date
+        );
+
+        $signerKey = AsrSigner::calculateSigningKey(
+            $this->secretKey,
+            $credentialScopeWithDatePrefix
+        );
+
+        $authHeader = AsrSigner::createAuthHeader(
+            $stringToSign,
+            $signerKey,
+            $this->accessKeyId,
+            $credentialScopeWithDatePrefix,
+            implode(";", $headersToSign),
+            $this->hashAlgo,
+            $this->vendorPrefix
+        );
+
+        $headerList += array($authHeaderKey => $authHeader);
+
+        return $headerList;
     }
 
     private function parseUrl($url)
@@ -94,13 +129,6 @@ class AsrClient
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
-    }
-
-    private function format($timeStamp)
-    {
-        $result = new DateTime(date("Ymd H:i:s", $timeStamp));
-        $result->setTimezone(new DateTimeZone('UTC'));
-        return $result->format(AsrFacade::AMAZON_DATE_FORMAT);
     }
 }
 
@@ -116,10 +144,15 @@ class AsrServer
      */
     private $keyDB;
 
-    public function __construct(AsrParty $party, ArrayAccess $keyDB)
+    private $hashAlgo;
+    private $vendorPrefix;
+
+    public function __construct(AsrParty $party, ArrayAccess $keyDB, $hashAlgo = "sha256", $vendorPrefix = "EMS")
     {
-        $this->party = $party;
-        $this->keyDB = $keyDB;
+        $this->party        = $party;
+        $this->keyDB        = $keyDB;
+        $this->hashAlgo     = $hashAlgo;
+        $this->vendorPrefix = $vendorPrefix;
     }
 
     public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
@@ -144,7 +177,7 @@ class AsrServer
 
     private function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
     {
-        //TODO: validate date format
+        //TODO: validate date format and timezone
         return substr($amazonDateTime, 0, 8) == $amazonShortDate
         && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
@@ -163,17 +196,56 @@ class AsrServer
         && $requestType == $this->party->getRequestType();
     }
 
-    private function validateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    private function validateSignature(AsrAuthHeader $authHeaderOfCurrentRequest, AsrRequestHelper $helper)
     {
-        if ($this->generateSignature($authHeader, $helper) != $authHeader->getSignature()) {
-            throw new AsrException('The signatures do not match');
+        $currentRequest = $helper->createRequest();
+        $secret = $this->lookupSecretKey($authHeaderOfCurrentRequest->getAccessKeyId());
+        $key = $authHeaderOfCurrentRequest->getAccessKeyId();
+        $client = new AsrClient($this->party, $secret, $key, $this->hashAlgo, $this->vendorPrefix);
+
+        $requestHeaders = $helper->getHeaderList();
+
+        $dateOfCurrentRequest = new DateTime(
+            $requestHeaders["x-" . strtolower($this->vendorPrefix) . "-date"],
+            new DateTimeZone("UTC")
+        );
+
+        $signedHeaderKeys = $authHeaderOfCurrentRequest->getSignedHeaders();
+
+        $headers = array();
+        foreach ($requestHeaders as $key => $value) {
+            if (in_array($key, $signedHeaderKeys)) {
+                $headers[$key] = $value;
+            }
+        }
+
+        $signedHeaders = $client->getSignedHeaders(
+            $currentRequest->getMethod(),
+            $this->getCurrentUrl(),
+            $currentRequest->getBody(),
+            $headers,
+            $signedHeaderKeys,
+            $dateOfCurrentRequest,
+            "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"
+        );
+
+        $compareSignature = substr($signedHeaders["X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"], -64);
+
+        if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
+            throw new AsrException('The signatures do not match ' . $compareSignature . " -- " . $authHeaderOfCurrentRequest->getSignature());
         }
     }
-
-    private function generateSignature(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    private function getCurrentUrl()
     {
-        return $authHeader->createSignerFor($helper->getHeaderList(), $helper->createRequest())
-            ->calculateSignature($this->lookupSecretKey($authHeader->getAccessKeyId()), $authHeader->getLongDate());
+        $pageURL = 'http';
+        if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
+        $pageURL .= "://";
+        if ($_SERVER["SERVER_PORT"] != "80" && $_SERVER["SERVER_PORT"] != "443") {
+            $pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
+        } else {
+            $pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
+        }
+        return $pageURL;
     }
 
     private function lookupSecretKey($accessKeyId)
@@ -255,99 +327,6 @@ class AsrRequestHelper
     }
 }
 
-class AsrSigner
-{
-    /**
-     * @var AsrHashAlgorithm
-     */
-    private $algorithm;
-
-    /**
-     * @var AsrCredentials
-     */
-    private $credentials;
-
-    /**
-     * @var AsrHeaders
-     */
-    private $headers;
-
-    /**
-     * @var AsrRequest
-     */
-    private $request;
-
-    public function __construct(AsrHashAlgorithm $algorithm, AsrCredentials $credentials, AsrHeaders $headers, AsrRequest $request)
-    {
-        $this->algorithm = $algorithm;
-        $this->credentials = $credentials;
-        $this->headers = $headers;
-        $this->request = $request;
-    }
-
-    /**
-     * @param string $secretKey
-     * @param string $amazonDateTime
-     * @return string
-     */
-    public function calculateSignature($secretKey, $amazonDateTime)
-    {
-        $requestBodyHash      = $this->algorithm->hash($this->request->getBody());
-        $canonicalizedRequest = $this->canonicalizeRequest($requestBodyHash);
-        $canonicalHash        = $this->algorithm->hash(implode("\n", $canonicalizedRequest));
-        $stringToSign         = $this->generateStringToSign($canonicalHash, $amazonDateTime);
-        $signingKey           = $this->generateSigningKey($secretKey, $amazonDateTime);
-        $signature            = $this->algorithm->hmac($stringToSign, $signingKey, false);
-        return $signature;
-    }
-
-    public function buildAuthHeaders($secretKey, $authHeaderKey, $amazonDateTime)
-    {
-        return $this->headers->getAll() + array('X-Amz-Date' => $amazonDateTime) + AsrAuthHeader::build(
-            $this->algorithm->toHeaderString(),
-            $this->credentials->toScopeString($amazonDateTime),
-            $this->headers->getSignedHeadersAsString(),
-            $this->calculateSignature($secretKey, $amazonDateTime),
-            $authHeaderKey
-        );
-    }
-
-    private function generateStringToSign($canonicalHash, $amazonDateTime)
-    {
-        return implode("\n", array(
-            $this->algorithm->toHeaderString(),
-            $amazonDateTime,
-            $this->credentials->scopeToSign($amazonDateTime),
-            $canonicalHash
-        ));
-    }
-
-    private function generateSigningKey($secretKey, $amazonDateTime)
-    {
-        $key = $secretKey;
-        foreach ($this->credentials->toArray($amazonDateTime) as $data) {
-            $key = $this->algorithm->hmac($data, $key, true);
-        }
-        return $key;
-    }
-
-    private function canonicalizeRequest($requestBodyHash)
-    {
-        $lines = array();
-        $lines[] = strtoupper($this->request->getMethod());
-        $lines[] = $this->request->getPath();
-        $lines[] = $this->request->getQuery();
-        foreach ($this->headers->collapse() as $headerLine) {
-            $lines[] = $headerLine;
-        }
-        $lines[] = '';
-        $lines[] = $this->headers->getSignedHeadersAsString();
-        $lines[] = $requestBodyHash;
-
-        return $lines;
-    }
-}
-
 class AsrAuthHeader
 {
     /**
@@ -375,8 +354,8 @@ class AsrAuthHeader
     public static function parse(array $headerList, $authHeaderKey)
     {
         $headerList = AsrHeaders::canonicalize($headerList);
-        if (!isset($headerList['x-amz-date'])) {
-            throw new AsrException('The X-Amz-Date header is missing');
+        if (!isset($headerList['x-ems-date'])) {
+            throw new AsrException('The X-Ems-Date header is missing');
         }
         if (!isset($headerList[strtolower($authHeaderKey)])) {
             throw new AsrException('The '.$authHeaderKey.' header is missing');
@@ -389,13 +368,13 @@ class AsrAuthHeader
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
         }
-        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-amz-date']);
+        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date']);
     }
 
     private static function regex()
     {
         return '/'.
-        '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
+        '^EMS-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
         'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
         'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
         'Signature=(?P<signature>[0-9a-f]{64})'.
@@ -672,4 +651,137 @@ class AsrRequest
 
 class AsrException extends Exception
 {
+}
+
+class AsrRequestCanonizer
+{
+    public static function canonize($requestArray, $headersToSign, $hashAlgo = "sha256")
+    {
+        $lines = array();
+        $lines[] = strtoupper($requestArray['method']);
+        $lines[] = self::normalizePath($requestArray['path']);
+        $lines[] = self::urlEncodeQueryString($requestArray['query']);
+
+        $lines = array_merge($lines, self::addHeaderLines($requestArray, $headersToSign));
+
+        $lines[] = '';
+        $lines[] = implode(";", $headersToSign);
+
+        $lines[] = hash($hashAlgo, $requestArray['body']);
+
+        return implode("\n", $lines);
+    }
+
+    public static function urlEncodeQueryString($query)
+    {
+        if (empty($query)) return "";
+        $pairs = explode("&", $query);
+        $encodedParts = array();
+
+        foreach ($pairs as $pair){
+            $keyValues = explode("=", $pair);
+            if (strpos($keyValues[0], " ") !== false) {
+                $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], " "));
+                $keyValues[1] = "";
+            }
+            $encodedParts[] = implode("=",array(
+                rawurlencode($keyValues[0]),
+                rawurlencode($keyValues[1]),
+            ));
+        }
+        sort($encodedParts);
+        return implode("&", $encodedParts);
+    }
+
+    private static function normalizePath($path)
+    {
+        $path = explode('/', $path);
+        $keys = array_keys($path, '..');
+
+        foreach($keys as $keypos => $key)
+        {
+            array_splice($path, $key - ($keypos * 2 + 1), 2);
+        }
+
+        $path = implode('/', $path);
+        $path = str_replace('./', '', $path);
+
+        $path = str_replace("//", "/", $path);
+
+        if (empty($path)) return "/";
+        return $path;
+    }
+
+    /**
+     * @param $requestArray
+     * @param $lines
+     * @return array
+     */
+    private static function addHeaderLines($requestArray, $headersToSign)
+    {
+        $elements = array();
+        foreach ($requestArray['headers'] as $key => $value) {
+            if (!in_array(strtolower($key), $headersToSign)) continue;
+            $keyInLowercase = strtolower($key);
+            if (is_array($value)) {
+                sort($value);
+                $value = implode(',', $value);
+            }
+            $elements[] = $keyInLowercase . ":" . trim($value);
+        }
+        sort($elements);
+        return $elements;
+    }
+}
+
+class AsrSigner
+{
+    public static function createStringToSign(
+        $credentialScope,
+        $canonicalRequestString,
+        DateTime $date,
+        $hashAlgo = "sha256",
+        $vendorPrefix = "AWS4"
+    ) {
+        $date->setTimezone(new DateTimeZone("UTC"));
+        $formattedDate = $date->format('Ymd\THis\Z');
+        $scope = substr($formattedDate,0, 8) . "/" . $credentialScope . "/" . strtolower($vendorPrefix) . "_request";
+        $lines = array();
+        $lines[] = $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo);
+        $lines[] = $formattedDate;
+        $lines[] = $scope;
+        $lines[] = hash($hashAlgo, $canonicalRequestString);
+        return implode("\n", $lines);
+    }
+
+    public static function calculateSigningKey(
+        $secret,
+        $credentialScope,
+        $hashAlgo = "sha256",
+        $vendorPrefix = "AWS4"
+    ) {
+        $key = $vendorPrefix . $secret;
+        $credentials = explode("/", $credentialScope);
+        foreach ($credentials as $data) {
+            $key = hash_hmac($hashAlgo, $data, $key, true);
+        }
+        return $key;
+    }
+
+    public static function createAuthHeader(
+        $stringToSign,
+        $signerKey,
+        $accessKey,
+        $credentialScope,
+        $signedHeaders,
+        $hashAlgo = "sha256",
+        $vendorPrefix = "AWS4"
+    ) {
+        return $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo)
+        . " Credential="
+        . $accessKey . "/"
+        . $credentialScope
+        . ", SignedHeaders=" . $signedHeaders
+        . ", Signature=" . hash_hmac($hashAlgo, $stringToSign, $signerKey);
+    }
 }
