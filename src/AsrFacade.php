@@ -74,8 +74,13 @@ class AsrClient
         $this->hashAlgo     = $hashAlgo;
     }
 
-    public function getSignedHeaders($method, $url, $requestBody, $headerList, $headersToSign, $date, $authHeaderKey = "X-Ems-Auth")
+    public function getSignedHeaders($method, $url, $requestBody, $headerList, $headersToSign, $date = null, $authHeaderKey = "X-Ems-Auth")
     {
+        if(empty($date))
+        {
+            $date = new DateTime('now', new DateTimeZone('UTC'));
+        }
+
         list($host, $path, $query) = $this->parseUrl($url);
 
         $request = array(
