@@ -381,7 +381,7 @@ class AsrAuthHeader
         return '/'.
         '^EMS-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
         'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
-        'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
+        'SignedHeaders=(?P<signed_headers>[A-Za-z\-;]+), '.
         'Signature=(?P<signature>[0-9a-f]{64})'.
         '$/';
     }
