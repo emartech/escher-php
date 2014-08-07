@@ -89,7 +89,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $authHeader = AsrAuthHeader::parse($headerList, 'authorization');
 
         $this->assertEquals($this->defaultEmsDate, $authHeader->getLongDate());
-        $this->assertEquals(AsrHashAlgorithm::create(AsrFacade::SHA256), $authHeader->createAlgorithm());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
         $this->assertEquals($this->region, $authHeader->getRegion());
@@ -115,8 +114,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $request = $helper->createRequest();
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $helper->getHeaderList());
-        $this->assertEquals('/path', $request->getPath());
-        $this->assertEquals('query=string', $request->getQuery());
         $this->assertEquals('BODY', $request->getBody());
     }
 

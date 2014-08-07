@@ -169,7 +169,7 @@ class AsrServer
         $authHeader = $helper->getAuthHeaders();
 
         $this->validateDates($authHeader, $helper);
-        $this->validateCredentials($authHeader, $helper);
+        $this->validateCredentials($authHeader);
         $this->validateSignature($authHeader, $helper);
     }
 
@@ -187,7 +187,7 @@ class AsrServer
         && abs($serverTime - strtotime($dateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
-    private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    private function validateCredentials(AsrAuthHeader $authHeader)
     {
         if (!$this->checkCredentials($authHeader->getRegion(), $authHeader->getService(), $authHeader->getRequestType())) {
             throw new AsrException('Invalid credentials');
@@ -276,8 +276,7 @@ class AsrRequestHelper
 
     public function createRequest()
     {
-        list ($path, $query) = array_pad(explode('?', $this->serverVars['REQUEST_URI'], 2), 2, '');
-        $request = new AsrRequest($this->serverVars['REQUEST_METHOD'], $path, $query, $this->requestBody);
+        $request = new AsrRequest($this->serverVars['REQUEST_METHOD'], $this->requestBody);
         return $request;
     }
 
@@ -289,11 +288,6 @@ class AsrRequestHelper
     public function getTimeStamp()
     {
         return $this->serverVars['REQUEST_TIME'];
-    }
-
-    public function getHost()
-    {
-        return $this->serverVars['HTTP_HOST'];
     }
 
     public function getHeaderList()
@@ -387,31 +381,12 @@ class AsrAuthHeader
         '$/';
     }
 
-    public static function build($algorithmHeaderName, $credentialScope, $signedHeaders, $signature, $authHeaderKey)
-    {
-        return array($authHeaderKey => $algorithmHeaderName . ' ' .
-            "Credential={$credentialScope}, " .
-            "SignedHeaders={$signedHeaders}, ".
-            "Signature=$signature");
-    }
-
     private function getCredentialPart($index, $name)
     {
         if (!isset($this->credentialParts[$index])) {
             throw new AsrException('Invalid credential scope in the authorization header: missing '.$name);
         }
         return $this->credentialParts[$index];
-    }
-
-    public function createAlgorithm()
-    {
-        return AsrHashAlgorithm::create($this->headerParts['algorithm']);
-    }
-
-    public function createCredentials()
-    {
-        $party = new AsrParty($this->getRegion(), $this->getService(), $this->getRequestType());
-        return new AsrCredentials($this->getAccessKeyId(), $party);
     }
 
     public function getAccessKeyId()
@@ -453,117 +428,10 @@ class AsrAuthHeader
     {
         return $this->getCredentialPart(4, 'request type');
     }
-
-    public function createSignerFor(array $headerList, AsrRequest $request)
-    {
-        return new AsrSigner(
-            $this->createAlgorithm(),
-            $this->createCredentials(),
-            AsrHeaders::normalize($headerList, $this->getSignedHeaders()),
-            $request
-        );
-    }
-}
-
-class AsrHashAlgorithm
-{
-    /**
-     * @var string
-     */
-    private $algorithmName;
-
-    /**
-     * @param string $algorithmName
-     */
-    public function __construct($algorithmName)
-    {
-        $this->algorithmName = $algorithmName;
-    }
-
-    public static function create($algorithmName)
-    {
-        $algorithmName = strtolower($algorithmName);
-        if (!in_array($algorithmName, hash_algos())) {
-            throw new AsrException("Invalid algorithm: '$algorithmName'");
-        }
-        return new AsrHashAlgorithm($algorithmName);
-    }
-
-    public function toHeaderString()
-    {
-        return 'AWS4-HMAC-' . strtoupper($this->algorithmName);
-    }
-
-    public function hmac($data, $key, $raw = false)
-    {
-        return hash_hmac($this->algorithmName, $data, $key, $raw);
-    }
-
-    public function hash($data, $raw = false)
-    {
-        return hash($this->algorithmName, $data, $raw);
-    }
-}
-
-class AsrCredentials
-{
-    /**
-     * @var string
-     */
-    private $accessKeyId;
-
-    /**
-     * @var AsrParty
-     */
-    private $party;
-
-    public function __construct($accessKeyId, AsrParty $party)
-    {
-        $this->accessKeyId = $accessKeyId;
-        $this->party = $party;
-    }
-
-    public function toArray($dateTime)
-    {
-        return array_merge(array(substr($dateTime, 0, 8)), $this->party->toArray());
-    }
-
-    public function scopeToSign($dateTime)
-    {
-        return implode('/', $this->toArray($dateTime));
-    }
-
-    public function toScopeString($dateTime)
-    {
-        return $this->accessKeyId . '/' . $this->scopeToSign($dateTime);
-    }
 }
 
 class AsrHeaders
 {
-    /**
-     * @var array
-     */
-    private $headerList;
-
-    /**
-     * @var array
-     */
-    private $headersToSign;
-
-    public function __construct(array $headerList, array $headersToSign)
-    {
-        $this->headerList = $headerList;
-        $this->headersToSign = $headersToSign;
-    }
-
-    public static function normalize($headerList, array $headersToSign)
-    {
-        $headersToSign = array_unique(array_map('strtolower', $headersToSign));
-        sort($headersToSign);
-        return new AsrHeaders(self::canonicalize($headerList), $headersToSign);
-    }
-
     //TODO implement according to amazon document
     public static function trimHeaderValue($value)
     {
@@ -579,58 +447,16 @@ class AsrHeaders
         ksort($result);
         return $result;
     }
-
-    public function getSignedHeadersAsString()
-    {
-        return implode(';', $this->headersToSign);
-    }
-
-    public function collapse()
-    {
-        $headersToSign = $this->selectOnlySignedHeaders();
-        return array_map(
-            array($this, 'collapseLine'),
-            array_keys($headersToSign),
-            array_values($headersToSign)
-        );
-    }
-
-    public function collapseLine($headerKey, $headerValue)
-    {
-        return $headerKey.':'.$headerValue;
-    }
-
-    private function selectOnlySignedHeaders()
-    {
-        return array_intersect_key($this->headerList, array_flip($this->headersToSign));
-    }
-
-    public function getAll()
-    {
-        return array_combine(
-            array_map(array($this, 'ucWord'), array_keys($this->headerList)),
-            array_values($this->headerList)
-        );
-    }
-
-    public function ucWord($headerKey)
-    {
-        return implode('-', array_map('ucfirst', explode('-', $headerKey)));
-    }
 }
 
 class AsrRequest
 {
     private $method;
-    private $path;
-    private $query;
     private $requestBody;
 
-    public function __construct($method, $path, $query, $requestBody)
+    public function __construct($method, $requestBody)
     {
         $this->method = $method;
-        $this->path = $path;
-        $this->query = $query;
         $this->requestBody = $requestBody;
     }
 
@@ -642,16 +468,6 @@ class AsrRequest
     public function getBody()
     {
         return $this->requestBody;
-    }
-
-    public function getPath()
-    {
-        return $this->path;
-    }
-
-    public function getQuery()
-    {
-        return $this->query;
     }
 }
 
@@ -720,7 +536,8 @@ class AsrRequestCanonizer
 
     /**
      * @param $requestArray
-     * @param $lines
+     * @param $headersToSign
+     * @internal param $lines
      * @return array
      */
     private static function addHeaderLines($requestArray, $headersToSign)
