@@ -6,7 +6,7 @@ class AsrFacade
     // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
-    const AMAZON_DATE_FORMAT = self::ISO8601;
+    const DATE_FORMAT = self::ISO8601;
     const ISO8601 = 'Ymd\THis\Z';
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
@@ -180,11 +180,11 @@ class AsrServer
         }
     }
 
-    private function checkDates($amazonDateTime, $amazonShortDate, $serverTime)
+    private function checkDates($dateTime, $shortDate, $serverTime)
     {
         //TODO: validate date format and timezone
-        return substr($amazonDateTime, 0, 8) == $amazonShortDate
-        && abs($serverTime - strtotime($amazonDateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+        return substr($dateTime, 0, 8) == $shortDate
+        && abs($serverTime - strtotime($dateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
     private function validateCredentials(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
@@ -348,13 +348,13 @@ class AsrAuthHeader
     /**
      * @var string
      */
-    private $amazonDateTime;
+    private $dateTime;
 
-    public function __construct(array $headerParts, array $credentialParts, $amazonDateTime)
+    public function __construct(array $headerParts, array $credentialParts, $dateTime)
     {
         $this->headerParts = $headerParts;
         $this->credentialParts = $credentialParts;
-        $this->amazonDateTime = $amazonDateTime;
+        $this->dateTime = $dateTime;
     }
 
     public static function parse(array $headerList, $authHeaderKey)
@@ -436,7 +436,7 @@ class AsrAuthHeader
 
     public function getLongDate()
     {
-        return $this->amazonDateTime;
+        return $this->dateTime;
     }
 
     public function getRegion()
@@ -523,19 +523,19 @@ class AsrCredentials
         $this->party = $party;
     }
 
-    public function toArray($amazonDateTime)
+    public function toArray($dateTime)
     {
-        return array_merge(array(substr($amazonDateTime, 0, 8)), $this->party->toArray());
+        return array_merge(array(substr($dateTime, 0, 8)), $this->party->toArray());
     }
 
-    public function scopeToSign($amazonDateTime)
+    public function scopeToSign($dateTime)
     {
-        return implode('/', $this->toArray($amazonDateTime));
+        return implode('/', $this->toArray($dateTime));
     }
 
-    public function toScopeString($amazonDateTime)
+    public function toScopeString($dateTime)
     {
-        return $this->accessKeyId . '/' . $this->scopeToSign($amazonDateTime);
+        return $this->accessKeyId . '/' . $this->scopeToSign($dateTime);
     }
 }
 
