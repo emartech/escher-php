@@ -226,7 +226,7 @@ class AsrServer
 
         $signedHeaders = $client->getSignedHeaders(
             $currentRequest->getMethod(),
-            $this->getCurrentUrl(),
+            $helper->getCurrentUrl(),
             $currentRequest->getBody(),
             $headers,
             $signedHeaderKeys,
@@ -239,18 +239,6 @@ class AsrServer
         if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
             throw new AsrException('The signatures do not match ' . $compareSignature . " -- " . $authHeaderOfCurrentRequest->getSignature());
         }
-    }
-    private function getCurrentUrl()
-    {
-        $pageURL = 'http';
-        if ($_SERVER["HTTPS"] == "on") {$pageURL .= "s";}
-        $pageURL .= "://";
-        if ($_SERVER["SERVER_PORT"] != "80" && $_SERVER["SERVER_PORT"] != "443") {
-            $pageURL .= $_SERVER["SERVER_NAME"].":".$_SERVER["SERVER_PORT"].$_SERVER["REQUEST_URI"];
-        } else {
-            $pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
-        }
-        return $pageURL;
     }
 
     private function lookupSecretKey($accessKeyId)
@@ -313,6 +301,19 @@ class AsrRequestHelper
         $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
         return AsrHeaders::canonicalize($headerList);
+    }
+
+    public function getCurrentUrl()
+    {
+        $pageURL = 'http';
+        if ($this->serverVars["HTTPS"] == "on") {$pageURL .= "s";}
+        $pageURL .= "://";
+        if ($this->serverVars["SERVER_PORT"] != "80" && $this->serverVars["SERVER_PORT"] != "443") {
+            $pageURL .= $this->serverVars["SERVER_NAME"].":".$this->serverVars["SERVER_PORT"].$this->serverVars["REQUEST_URI"];
+        } else {
+            $pageURL .= $this->serverVars["SERVER_NAME"].$this->serverVars["REQUEST_URI"];
+        }
+        return $pageURL;
     }
 
     private function process(array $serverVars)
