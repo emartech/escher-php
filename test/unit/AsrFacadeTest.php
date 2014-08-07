@@ -125,7 +125,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldValidateRequest()
     {
-        $this->markTestIncomplete('Still not correct');
         $serverVars = array(
             'HTTP_X_EMS_DATE' => $this->defaultEmsDate,
             'HTTP_X_EMS_AUTH' => $this->authorizationHeader(),
@@ -133,7 +132,10 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'REQUEST_METHOD' => 'POST',
             'HTTP_HOST' => $this->host,
             'CONTENT_TYPE' => $this->contentType,
-            'REQUEST_URI' => '/'
+            'REQUEST_URI' => '/',
+            'HTTPS' => null,
+            'SERVER_PORT' => null,
+            'SERVER_NAME' => null,
         );
         $this->defaultServer()->validateRequest($serverVars, $this->requestBody());
     }
