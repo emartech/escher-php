@@ -2,7 +2,7 @@
 
 class AsrFacade
 {
-    const SHA256 = 'sha256';
+    const DEFAULT_HASH_ALGORITHM = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
     const DATE_FORMAT = self::ISO8601;
@@ -10,7 +10,7 @@ class AsrFacade
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
-        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, 'sha256', 'EMS');
+        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, 'EMS');
     }
 
     public static function createServer($region, $service, $requestType, $keyDB)
