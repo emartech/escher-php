@@ -3,7 +3,6 @@
 class AsrFacade
 {
     const SHA256 = 'sha256';
-    // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
     const DATE_FORMAT = self::ISO8601;
@@ -11,13 +10,13 @@ class AsrFacade
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
-        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId);
+        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, 'sha256', 'EMS');
     }
 
     public static function createServer($region, $service, $requestType, $keyDB)
     {
-        $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : array());
-        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB);
+        $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
+        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, 'EMS');
     }
 }
 
@@ -104,12 +103,16 @@ class AsrClient
         $stringToSign = AsrSigner::createStringToSign(
             $credentialScope,
             $canonizedRequest,
-            $date
+            $date,
+            $this->hashAlgo,
+            $this->vendorPrefix
         );
 
         $signerKey = AsrSigner::calculateSigningKey(
             $this->secretKey,
-            $credentialScopeWithDatePrefix
+            $credentialScopeWithDatePrefix,
+            $this->hashAlgo,
+            $this->vendorPrefix
         );
 
         $authHeader = AsrSigner::createAuthHeader(
@@ -151,7 +154,7 @@ class AsrServer
 
     private $vendorPrefix;
 
-    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorPrefix = "EMS")
+    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorPrefix)
     {
         $this->party        = $party;
         $this->keyDB        = $keyDB;
@@ -168,6 +171,7 @@ class AsrServer
 
         $this->validateHashAlgo($authHeader);
         $this->validateDates($authHeader, $helper);
+        $this->validateHost($authHeader, $helper);
         $this->validateCredentials($authHeader);
         $this->validateSignature($authHeader, $helper);
     }
@@ -179,9 +183,16 @@ class AsrServer
         }
     }
 
+    private function validateHost(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    {
+        if($helper->getServerName() !== $authHeader->getHost()) {
+            throw new AsrException('The host header does not match.');
+        }
+    }
+
     private function checkDates($dateTime, $shortDate, $serverTime)
     {
-        //TODO: validate date format and timezone
+        //TODO: validate date format
         return substr($dateTime, 0, 8) == $shortDate
         && abs($serverTime - strtotime($dateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
@@ -236,7 +247,7 @@ class AsrServer
         $compareSignature = substr($signedHeaders["X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"], -64);
 
         if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
-            throw new AsrException('The signatures do not match ' . $compareSignature . " -- " . $authHeaderOfCurrentRequest->getSignature());
+            throw new AsrException('The signatures do not match');
         }
     }
 
@@ -332,6 +343,11 @@ class AsrRequestHelper
     {
         return isset($this->serverVars['CONTENT_TYPE']) ? $this->serverVars['CONTENT_TYPE'] : '';
     }
+
+    public function getServerName()
+    {
+        return $this->serverVars['SERVER_NAME'];
+    }
 }
 
 class AsrAuthHeader
@@ -351,11 +367,14 @@ class AsrAuthHeader
      */
     private $dateTime;
 
-    public function __construct(array $headerParts, array $credentialParts, $dateTime)
+    private $host;
+
+    public function __construct(array $headerParts, array $credentialParts, $dateTime, $host)
     {
         $this->headerParts = $headerParts;
         $this->credentialParts = $credentialParts;
         $this->dateTime = $dateTime;
+        $this->host = $host;
     }
 
     public static function parse(array $headerList, $authHeaderKey)
@@ -364,18 +383,21 @@ class AsrAuthHeader
         if (!isset($headerList['x-ems-date'])) {
             throw new AsrException('The X-Ems-Date header is missing');
         }
-        if (!isset($headerList[strtolower($authHeaderKey)])) {
+        if (!isset($headerList['host'])) {
+            throw new AsrException('The Host header is missing');
+        }
+        if (!isset($headerList[$authHeaderKey])) {
             throw new AsrException('The '.$authHeaderKey.' header is missing');
         }
         $matches = array();
-        if (1 !== preg_match(self::regex(), $headerList[strtolower($authHeaderKey)], $matches)) {
+        if (1 !== preg_match(self::regex(), $headerList[$authHeaderKey], $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
         $credentialParts = explode('/', $matches['credentials']);
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
         }
-        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date']);
+        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date'], $headerList['host']);
     }
 
     private static function regex()
@@ -439,6 +461,11 @@ class AsrAuthHeader
     public function getRequestType()
     {
         return $this->getCredentialPart(4, 'request type');
+    }
+
+    public function getHost()
+    {
+        return $this->host;
     }
 }
 
@@ -575,8 +602,8 @@ class AsrSigner
         $credentialScope,
         $canonicalRequestString,
         DateTime $date,
-        $hashAlgo = "sha256",
-        $vendorPrefix = "AWS4"
+        $hashAlgo,
+        $vendorPrefix
     ) {
         $date->setTimezone(new DateTimeZone("UTC"));
         $formattedDate = $date->format('Ymd\THis\Z');
@@ -592,8 +619,8 @@ class AsrSigner
     public static function calculateSigningKey(
         $secret,
         $credentialScope,
-        $hashAlgo = "sha256",
-        $vendorPrefix = "AWS4"
+        $hashAlgo,
+        $vendorPrefix
     ) {
         $key = $vendorPrefix . $secret;
         $credentials = explode("/", $credentialScope);
@@ -609,8 +636,8 @@ class AsrSigner
         $accessKey,
         $credentialScope,
         $signedHeaders,
-        $hashAlgo = "sha256",
-        $vendorPrefix = "AWS4"
+        $hashAlgo,
+        $vendorPrefix
     ) {
         return $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo)
         . " Credential="

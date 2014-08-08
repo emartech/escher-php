@@ -95,7 +95,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($this->service, $authHeader->getService());
         $this->assertEquals($this->requestType, $authHeader->getRequestType());
         $this->assertEquals(array('content-type'), $authHeader->getSignedHeaders());
-        $this->assertEquals('55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1c', $authHeader->getSignature());
+        $this->assertEquals('ac112ad5285453a5a4631928f7cd26a0731d894b23c5564fa8d3dd847a8cf8ff', $authHeader->getSignature());
     }
 
     /**
@@ -171,7 +171,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return array(
             'wrong date'            => array('HTTP_X_EMS_DATE', '20110909T113600Z', 'One of the date headers are invalid'),
             'wrong auth header'     => array('HTTP_X_EMS_AUTH', '', 'Could not parse authorization header.'),
-            'tampered signature'    => array('HTTP_X_EMS_AUTH', $this->headerWithTamperedSignature(), 'The signatures do not match 55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1c -- 55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1a'),
+            'tampered signature'    => array('HTTP_X_EMS_AUTH', $this->headerWithTamperedSignature(), 'The signatures do not match'),
             'wrong hash algo'       => array('HTTP_X_EMS_AUTH', $this->headerWithWrongHashAlgo(), 'Only SHA256 and SHA512 hash algorithms are allowed.'),
             'wrong request time'    => array('REQUEST_TIME', strtotime('20110909T113600Z'), 'One of the date headers are invalid'),
             'wrong host'            => array('HTTP_HOST', 'example.com', 'The host header does not match.'),
@@ -183,7 +183,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     private function headerWithTamperedSignature()
     {
-        return rtrim($this->authorizationHeader(), 'c') . 'a';
+        return rtrim($this->authorizationHeader(), 'f') . 'aa';
     }
 
     private function headerWithWrongHashAlgo()
@@ -230,7 +230,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'EMS-HMAC-SHA256 '.
             'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
             'SignedHeaders=content-type, '.
-            'Signature=55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1c';
+            'Signature=ac112ad5285453a5a4631928f7cd26a0731d894b23c5564fa8d3dd847a8cf8ff';
     }
 
     /**
