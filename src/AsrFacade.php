@@ -192,8 +192,7 @@ class AsrServer
 
     private function checkDates($dateTime, $shortDate, $serverTime)
     {
-        //TODO: validate date format
-        return substr($dateTime, 0, 8) == $shortDate
+        return preg_match('/^\d{8}T\d{6}Z$/', $dateTime) && substr($dateTime, 0, 8) == $shortDate
         && abs($serverTime - strtotime($dateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
