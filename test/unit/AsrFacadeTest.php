@@ -122,7 +122,37 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldValidateRequest()
     {
-        $serverVars = array(
+        $serverVars = $this->goodServerVars();
+        $this->defaultServer()->validateRequest($serverVars, $this->requestBody());
+    }
+
+    /**
+     * @test
+     * @dataProvider requestTamperingProvider
+     */
+    public function itShouldFailForInvalidRequest($tamperedKey, $tamperedValue, $expectedErrorMessage)
+    {
+        $serverVars = $this->goodServerVars();
+        $serverVars[$tamperedKey] = $tamperedValue;
+        $asrServer = $this->defaultServer();
+        $requestBody = $this->requestBody();
+        try
+        {
+            $asrServer->validateRequest($serverVars, $requestBody);
+            $this->fail('Should fail to validate');
+        }
+        catch (AsrException $ex)
+        {
+            $this->assertEquals($expectedErrorMessage, $ex->getMessage());
+        }
+    }
+
+    /**
+     * @return array
+     */
+    private function goodServerVars()
+    {
+        return array(
             'HTTP_X_EMS_DATE' => $this->defaultEmsDate,
             'HTTP_X_EMS_AUTH' => $this->authorizationHeader(),
             'REQUEST_TIME' => strtotime($this->defaultEmsDate) + rand(0, 100),
@@ -132,9 +162,33 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'REQUEST_URI' => '/',
             'HTTPS' => null,
             'SERVER_PORT' => null,
-            'SERVER_NAME' => null,
+            'SERVER_NAME' => $this->host,
         );
-        $this->defaultServer()->validateRequest($serverVars, $this->requestBody());
+    }
+
+    public function requestTamperingProvider()
+    {
+        return array(
+            'wrong date'            => array('HTTP_X_EMS_DATE', '20110909T113600Z', 'One of the date headers are invalid'),
+            'wrong auth header'     => array('HTTP_X_EMS_AUTH', '', 'Could not parse authorization header.'),
+            'tampered signature'    => array('HTTP_X_EMS_AUTH', $this->headerWithTamperedSignature(), 'The signatures do not match 55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1c -- 55f4516ff407b77d521d927091f05320e2bbe685886a94a0d97379e7e79a2b1a'),
+            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', $this->headerWithWrongHashAlgo(), 'Only SHA256 and SHA512 hash algorithms are allowed.'),
+            'wrong request time'    => array('REQUEST_TIME', strtotime('20110909T113600Z'), 'One of the date headers are invalid'),
+            'wrong host'            => array('HTTP_HOST', 'example.com', 'The host header does not match.'),
+        );
+    }
+
+    /**
+     * @return string
+     */
+    private function headerWithTamperedSignature()
+    {
+        return rtrim($this->authorizationHeader(), 'c') . 'a';
+    }
+
+    private function headerWithWrongHashAlgo()
+    {
+        return str_replace('SHA256', 'ASDA', $this->authorizationHeader());
     }
 
     /**
@@ -166,6 +220,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return array(
             $headerKey   => $this->authorizationHeader(),
             'X-Ems-Date' => $this->defaultEmsDate,
+            'Host'       => $this->host
         );
     }
 

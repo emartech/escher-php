@@ -149,14 +149,12 @@ class AsrServer
      */
     private $keyDB;
 
-    private $hashAlgo;
     private $vendorPrefix;
 
-    public function __construct(AsrParty $party, ArrayAccess $keyDB, $hashAlgo = "sha256", $vendorPrefix = "EMS")
+    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorPrefix = "EMS")
     {
         $this->party        = $party;
         $this->keyDB        = $keyDB;
-        $this->hashAlgo     = $hashAlgo;
         $this->vendorPrefix = $vendorPrefix;
     }
 
@@ -168,6 +166,7 @@ class AsrServer
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
 
+        $this->validateHashAlgo($authHeader);
         $this->validateDates($authHeader, $helper);
         $this->validateCredentials($authHeader);
         $this->validateSignature($authHeader, $helper);
@@ -206,7 +205,7 @@ class AsrServer
         $currentRequest = $helper->createRequest();
         $secret = $this->lookupSecretKey($authHeaderOfCurrentRequest->getAccessKeyId());
         $key = $authHeaderOfCurrentRequest->getAccessKeyId();
-        $client = new AsrClient($this->party, $secret, $key, $this->hashAlgo, $this->vendorPrefix);
+        $client = new AsrClient($this->party, $secret, $key, $authHeaderOfCurrentRequest->getAlgorithm(), $this->vendorPrefix);
 
         $requestHeaders = $helper->getHeaderList();
 
@@ -258,6 +257,14 @@ class AsrServer
     private function fetchRequestBodyFor($method)
     {
         return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
+    }
+
+    private function validateHashAlgo(AsrAuthHeader $authHeader)
+    {
+        if(!in_array(strtoupper($authHeader->getAlgorithm()), array('SHA256','SHA512')))
+        {
+            throw new AsrException('Only SHA256 and SHA512 hash algorithms are allowed.');
+        }
     }
 }
 
@@ -407,6 +414,11 @@ class AsrAuthHeader
     public function getSignature()
     {
         return $this->headerParts['signature'];
+    }
+
+    public function getAlgorithm()
+    {
+        return $this->headerParts['algorithm'];
     }
 
     public function getLongDate()
