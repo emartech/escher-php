@@ -112,9 +112,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
         $requestBody = 'BODY';
         $helper = $this->createRequestHelper($serverVars, $requestBody);
-        $request = $helper->createRequest();
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $helper->getHeaderList());
-        $this->assertEquals('BODY', $request->getBody());
+        $this->assertEquals('BODY', $helper->getRequestBody());
     }
 
     /**

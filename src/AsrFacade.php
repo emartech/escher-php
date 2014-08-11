@@ -212,7 +212,6 @@ class AsrServer
 
     private function validateSignature(AsrAuthHeader $authHeaderOfCurrentRequest, AsrRequestHelper $helper)
     {
-        $currentRequest = $helper->createRequest();
         $secret = $this->lookupSecretKey($authHeaderOfCurrentRequest->getAccessKeyId());
         $key = $authHeaderOfCurrentRequest->getAccessKeyId();
         $client = new AsrClient($this->party, $secret, $key, $authHeaderOfCurrentRequest->getAlgorithm(), $this->vendorPrefix);
@@ -234,9 +233,9 @@ class AsrServer
         }
 
         $signedHeaders = $client->getSignedHeaders(
-            $currentRequest->getMethod(),
+            $helper->getRequestMethod(),
             $helper->getCurrentUrl(),
-            $currentRequest->getBody(),
+            $helper->getRequestBody(),
             $headers,
             $signedHeaderKeys,
             $dateOfCurrentRequest,
@@ -291,10 +290,14 @@ class AsrRequestHelper
         $this->authHeaderKey = $authHeaderKey;
     }
 
-    public function createRequest()
+    public function getRequestMethod()
     {
-        $request = new AsrRequest($this->serverVars['REQUEST_METHOD'], $this->requestBody);
-        return $request;
+        return $this->serverVars['REQUEST_METHOD'];
+    }
+
+    public function getRequestBody()
+    {
+        return $this->requestBody;
     }
 
     public function getAuthHeaders()
@@ -487,27 +490,6 @@ class AsrHeaders
     }
 }
 
-class AsrRequest
-{
-    private $method;
-    private $requestBody;
-
-    public function __construct($method, $requestBody)
-    {
-        $this->method = $method;
-        $this->requestBody = $requestBody;
-    }
-
-    public function getMethod()
-    {
-        return $this->method;
-    }
-
-    public function getBody()
-    {
-        return $this->requestBody;
-    }
-}
 
 class AsrException extends Exception
 {
