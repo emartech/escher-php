@@ -58,16 +58,15 @@ class AsrClient
 
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $request = array(
+        $headerList += $this->mandatoryHeaders($date, $host);
+
+        $authHeader = $this->calculateAuthHeader($headersToSign, $date, array(
             'method'  => $method,
             'path'    => $path,
             'query'   => $query,
             'headers' => $headerList,
             'body'    => $requestBody,
-        );
-        $headerList += $this->mandatoryHeaders($date, $host);
-
-        $authHeader = $this->calculateAuthHeader($headersToSign, $date, $request);
+        ));
 
         $headerList += array($authHeaderKey => $authHeader);
 
@@ -80,30 +79,20 @@ class AsrClient
         $requestBody,
         $headerList = array(),
         $headersToSign = array('host', 'x-ems-date'),
-        $date = null,
-        $authHeaderKey = "X-Ems-Auth"
+        $date = null
     )
     {
-        if(empty($date))
-        {
-            $date = new DateTime('now', new DateTimeZone('UTC'));
-        }
-
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $request = array(
+        $authHeader = $this->calculateAuthHeader($headersToSign, $date, array(
             'method'  => $method,
             'path'    => $path,
             'query'   => $query,
             'headers' => $headerList,
             'body'    => $requestBody,
-        );
+        ));
 
-        $authHeader = $this->calculateAuthHeader($headersToSign, $date, $request);
-
-        $headerList += array($authHeaderKey => $authHeader);
-
-        return substr($headerList["X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"], -64);
+        return substr($authHeader, -64);
     }
 
     private function parseUrl($url)
@@ -287,13 +276,7 @@ class AsrServer
         }
 
         $compareSignature = $client->getSignature(
-            $helper->getRequestMethod(),
-            $helper->getCurrentUrl(),
-            $helper->getRequestBody(),
-            $headers,
-            $signedHeaderKeys,
-            $dateOfCurrentRequest,
-            "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"
+            $helper->getRequestMethod(), $helper->getCurrentUrl(), $helper->getRequestBody(), $headers, $signedHeaderKeys, $dateOfCurrentRequest
         );
 
         if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
