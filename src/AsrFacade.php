@@ -74,6 +74,38 @@ class AsrClient
         return $headerList;
     }
 
+    public function getSignature(
+        $method,
+        $url,
+        $requestBody,
+        $headerList = array(),
+        $headersToSign = array('host', 'x-ems-date'),
+        $date = null,
+        $authHeaderKey = "X-Ems-Auth"
+    )
+    {
+        if(empty($date))
+        {
+            $date = new DateTime('now', new DateTimeZone('UTC'));
+        }
+
+        list($host, $path, $query) = $this->parseUrl($url);
+
+        $request = array(
+            'method'  => $method,
+            'path'    => $path,
+            'query'   => $query,
+            'headers' => $headerList,
+            'body'    => $requestBody,
+        );
+
+        $authHeader = $this->calculateAuthHeader($headersToSign, $date, $request);
+
+        $headerList += array($authHeaderKey => $authHeader);
+
+        return substr($headerList["X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"], -64);
+    }
+
     private function parseUrl($url)
     {
         $urlParts = parse_url($url);
@@ -254,7 +286,7 @@ class AsrServer
             }
         }
 
-        $signedHeaders = $client->getSignedHeaders(
+        $compareSignature = $client->getSignature(
             $helper->getRequestMethod(),
             $helper->getCurrentUrl(),
             $helper->getRequestBody(),
@@ -263,8 +295,6 @@ class AsrServer
             $dateOfCurrentRequest,
             "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"
         );
-
-        $compareSignature = substr($signedHeaders["X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Auth"], -64);
 
         if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
             throw new AsrException('The signatures do not match');
