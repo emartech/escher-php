@@ -40,7 +40,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldSignRequest()
     {
-        $headersToSign = array('content-type');
+        $headersToSign = array('content-type','host','x-ems-date');
         $headerList = $this->headers();
         $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
@@ -51,7 +51,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldAutomagicallyAddDateAndHostHeader()
     {
         $headerList = array('content-type' => $this->contentType);
-        $headersToSign = array('content-type');
+        $headersToSign = array('content-type','host','x-ems-date');
         $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
@@ -64,7 +64,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'content-type' => $this->contentType,
             'X-A-Header' => 'that/should/not/be/signed'
         );
-        $headersToSign = array('content-type');
+        $headersToSign = array('content-type','host','x-ems-date');
         $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
@@ -74,7 +74,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldUseTheServersRequestTimeAsTheFullDate()
     {
         $headerList = $this->headers();
-        $headersToSign = array('content-type');
+        $headersToSign = array('content-type','host','x-ems-date');
         $_SERVER['REQUEST_TIME'] = strtotime($this->defaultEmsDate);
         $actual = $this->defaultClient()->getSignedHeaders('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, $this->defaultDateTime());
         $this->assertEquals($this->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY) + $headerList + $this->hostHeader(), $actual);
@@ -94,8 +94,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($this->region, $authHeader->getRegion());
         $this->assertEquals($this->service, $authHeader->getService());
         $this->assertEquals($this->requestType, $authHeader->getRequestType());
-        $this->assertEquals(array('content-type'), $authHeader->getSignedHeaders());
-        $this->assertEquals('ac112ad5285453a5a4631928f7cd26a0731d894b23c5564fa8d3dd847a8cf8ff', $authHeader->getSignature());
+        $this->assertEquals(array('content-type','host','x-ems-date'), $authHeader->getSignedHeaders());
+        $this->assertEquals('f54b1e2c5311eaafe8d2a9ae065414b94a644e6e22b2ccb47dec0f1f874a33e4', $authHeader->getSignature());
     }
 
     /**
@@ -172,6 +172,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'wrong auth header'     => array('HTTP_X_EMS_AUTH', '', 'Could not parse authorization header.'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', $this->headerWithTamperedSignature(), 'The signatures do not match'),
             'wrong hash algo'       => array('HTTP_X_EMS_AUTH', $this->headerWithWrongHashAlgo(), 'Only SHA256 and SHA512 hash algorithms are allowed.'),
+            'host not signed'       => array('HTTP_X_EMS_AUTH', $this->headerWithHostNotSigned(), 'Host header not signed'),
+            'date not signed'       => array('HTTP_X_EMS_AUTH', $this->headerWithDateNotSigned(), 'Date header not signed'),
             'wrong request time'    => array('REQUEST_TIME', strtotime('20110909T113600Z'), 'One of the date headers are invalid'),
             'wrong host'            => array('HTTP_HOST', 'example.com', 'The host header does not match.'),
         );
@@ -182,12 +184,22 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     private function headerWithTamperedSignature()
     {
-        return rtrim($this->authorizationHeader(), 'f') . 'aa';
+        return rtrim($this->authorizationHeader(), '4') . 'a';
     }
 
     private function headerWithWrongHashAlgo()
     {
         return str_replace('SHA256', 'ASDA', $this->authorizationHeader());
+    }
+
+    private function headerWithHostNotSigned()
+    {
+        return str_replace(';host', '', $this->authorizationHeader());
+    }
+
+    private function headerWithDateNotSigned()
+    {
+        return str_replace(';x-ems-date', '', $this->authorizationHeader());
     }
 
     /**
@@ -228,8 +240,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return
             'EMS-HMAC-SHA256 '.
             'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
-            'SignedHeaders=content-type, '.
-            'Signature=ac112ad5285453a5a4631928f7cd26a0731d894b23c5564fa8d3dd847a8cf8ff';
+            'SignedHeaders=content-type;host;x-ems-date, '.
+            'Signature=f54b1e2c5311eaafe8d2a9ae065414b94a644e6e22b2ccb47dec0f1f874a33e4';
     }
 
     /**

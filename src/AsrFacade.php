@@ -213,6 +213,7 @@ class AsrServer
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
         $authHeader = $helper->getAuthHeaders();
 
+        $this->validateMandatorySignedHeaders($authHeader);
         $this->validateHashAlgo($authHeader);
         $this->validateDates($authHeader, $helper);
         $this->validateHost($authHeader, $helper);
@@ -314,6 +315,22 @@ class AsrServer
         if(!in_array(strtoupper($authHeader->getAlgorithm()), array('SHA256','SHA512')))
         {
             throw new AsrException('Only SHA256 and SHA512 hash algorithms are allowed.');
+        }
+    }
+
+    /**
+     * @param $authHeader
+     * @throws AsrException
+     */
+    private function validateMandatorySignedHeaders(AsrAuthHeader $authHeader)
+    {
+        $signedHeaders = $authHeader->getSignedHeaders();
+        debug(json_encode($signedHeaders));
+        if (!in_array('host', $signedHeaders)) {
+            throw new AsrException('Host header not signed');
+        }
+        if (!in_array('x-ems-date', $signedHeaders)) {
+            throw new AsrException('Date header not signed');
         }
     }
 }
