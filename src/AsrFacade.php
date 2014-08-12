@@ -277,7 +277,12 @@ class AsrServer
         }
 
         $compareSignature = $client->getSignature(
-            $helper->getRequestMethod(), $helper->getCurrentUrl(), $helper->getRequestBody(), $headers, $signedHeaderKeys, $dateOfCurrentRequest
+            $helper->getRequestMethod(),
+            $helper->getCurrentUrl(),
+            $helper->getRequestBody(),
+            $headers,
+            $signedHeaderKeys,
+            $dateOfCurrentRequest
         );
 
         if ($compareSignature != $authHeaderOfCurrentRequest->getSignature()) {
