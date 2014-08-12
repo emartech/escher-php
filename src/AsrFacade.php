@@ -20,39 +20,7 @@ class AsrFacade
     }
 }
 
-class AsrParty
-{
-    protected $region;
-    protected $service;
-    protected $requestType;
 
-    public function __construct($region, $service, $requestType)
-    {
-        $this->region = $region;
-        $this->service = $service;
-        $this->requestType = $requestType;
-    }
-
-    public function toArray()
-    {
-        return array($this->region, $this->service, $this->requestType);
-    }
-
-    public function getRegion()
-    {
-        return $this->region;
-    }
-
-    public function getService()
-    {
-        return $this->service;
-    }
-
-    public function getRequestType()
-    {
-        return $this->requestType;
-    }
-}
 
 class AsrClient
 {
@@ -139,6 +107,8 @@ class AsrClient
         return array($host, $path, $query);
     }
 }
+
+
 
 class AsrServer
 {
@@ -277,6 +247,44 @@ class AsrServer
     }
 }
 
+
+
+class AsrParty
+{
+    protected $region;
+    protected $service;
+    protected $requestType;
+
+    public function __construct($region, $service, $requestType)
+    {
+        $this->region = $region;
+        $this->service = $service;
+        $this->requestType = $requestType;
+    }
+
+    public function toArray()
+    {
+        return array($this->region, $this->service, $this->requestType);
+    }
+
+    public function getRegion()
+    {
+        return $this->region;
+    }
+
+    public function getService()
+    {
+        return $this->service;
+    }
+
+    public function getRequestType()
+    {
+        return $this->requestType;
+    }
+}
+
+
+
 class AsrRequestHelper
 {
     private $serverVars;
@@ -351,6 +359,8 @@ class AsrRequestHelper
         return $this->serverVars['SERVER_NAME'];
     }
 }
+
+
 
 class AsrAuthHeader
 {
@@ -480,9 +490,13 @@ class AsrAuthHeader
     }
 }
 
+
+
 class AsrException extends Exception
 {
 }
+
+
 
 class AsrRequestCanonizer
 {
@@ -565,6 +579,8 @@ class AsrRequestCanonizer
         return $elements;
     }
 }
+
+
 
 class AsrSigner
 {
