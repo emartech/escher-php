@@ -84,15 +84,13 @@ class AsrClient
     {
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $authHeader = $this->calculateAuthHeader($headersToSign, $date, array(
+        return $this->calculateSignature($headersToSign, $date, array(
             'method'  => $method,
             'path'    => $path,
             'query'   => $query,
             'headers' => $headerList,
             'body'    => $requestBody,
         ));
-
-        return substr($authHeader, -64);
     }
 
     private function parseUrl($url)
@@ -139,13 +137,20 @@ class AsrClient
         return array('Host' => $host, $this->dateHeaderKey() => $date->format('Ymd\THis\Z'));
     }
 
-    /**
-     * @param $headersToSign
-     * @param $date
-     * @param $request
-     * @return string
-     */
     private function calculateAuthHeader($headersToSign, $date, $request)
+    {
+        $authHeader = AsrSigner::createAuthHeader(
+            $this->calculateSignature($headersToSign, $date, $request),
+            $this->fullCredentialScope($date),
+            implode(";", $headersToSign),
+            $this->hashAlgo,
+            $this->vendorPrefix,
+            $this->accessKeyId
+        );
+        return $authHeader;
+    }
+
+    private function calculateSignature($headersToSign, $date, $request)
     {
         $canonizedRequest = AsrRequestCanonizer::canonize(
             $request,
@@ -168,16 +173,12 @@ class AsrClient
             $this->vendorPrefix
         );
 
-        $authHeader = AsrSigner::createAuthHeader(
+        $signature = AsrSigner::createSignature(
             $stringToSign,
             $signerKey,
-            $this->accessKeyId,
-            $this->fullCredentialScope($date),
-            implode(";", $headersToSign),
-            $this->hashAlgo,
-            $this->vendorPrefix
+            $this->hashAlgo
         );
-        return $authHeader;
+        return $signature;
     }
 }
 
@@ -682,19 +683,18 @@ class AsrSigner
     }
 
     public static function createAuthHeader(
-        $stringToSign,
-        $signerKey,
-        $accessKey,
-        $credentialScope,
-        $signedHeaders,
-        $hashAlgo,
-        $vendorPrefix
+        $signature, $credentialScope, $signedHeaders, $hashAlgo, $vendorPrefix, $accessKey
     ) {
         return $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo)
         . " Credential="
         . $accessKey . "/"
         . $credentialScope
         . ", SignedHeaders=" . $signedHeaders
-        . ", Signature=" . hash_hmac($hashAlgo, $stringToSign, $signerKey);
+        . ", Signature=" . $signature;
+    }
+
+    public static function createSignature($stringToSign, $signerKey, $hashAlgo)
+    {
+        return hash_hmac($hashAlgo, $stringToSign, $signerKey);
     }
 }
