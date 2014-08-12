@@ -314,7 +314,7 @@ class AsrRequestHelper
     {
         $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
-        return AsrHeaders::canonicalize($headerList);
+        return $headerList;
     }
 
     public function getCurrentUrl()
@@ -381,7 +381,7 @@ class AsrAuthHeader
 
     public static function parse(array $headerList, $authHeaderKey)
     {
-        $headerList = AsrHeaders::canonicalize($headerList);
+        $headerList = self::keysToLower($headerList);
         if (!isset($headerList['x-ems-date'])) {
             throw new AsrException('The X-Ems-Date header is missing');
         }
@@ -400,6 +400,15 @@ class AsrAuthHeader
             throw new AsrException('Invalid credential scope');
         }
         return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date'], $headerList['host']);
+    }
+
+    private static function keysToLower($headerList)
+    {
+        $result = array_combine(
+            array_map('strtolower', array_keys($headerList)),
+            array_values($headerList)
+        );
+        return $result;
     }
 
     private static function regex()
@@ -470,26 +479,6 @@ class AsrAuthHeader
         return $this->host;
     }
 }
-
-class AsrHeaders
-{
-    //TODO implement according to amazon document
-    public static function trimHeaderValue($value)
-    {
-        return trim($value);
-    }
-
-    public static function canonicalize($headerList)
-    {
-        $result = array_combine(
-            array_map('strtolower', array_keys($headerList)),
-            array_map(array('AsrHeaders', 'trimHeaderValue'), array_values($headerList))
-        );
-        ksort($result);
-        return $result;
-    }
-}
-
 
 class AsrException extends Exception
 {
