@@ -41,7 +41,15 @@ class AsrClient
         $this->hashAlgo     = $hashAlgo;
     }
 
-    public function getSignedHeaders($method, $url, $requestBody, $headerList, $headersToSign, $date = null, $authHeaderKey = "X-Ems-Auth")
+    public function getSignedHeaders(
+        $method,
+        $url,
+        $requestBody,
+        $headerList = array(),
+        $headersToSign = array('host', 'x-ems-date'),
+        $date = null,
+        $authHeaderKey = "X-Ems-Auth"
+    )
     {
         if(empty($date))
         {
@@ -57,41 +65,9 @@ class AsrClient
             'headers' => $headerList,
             'body'    => $requestBody,
         );
-        $credentialScope = implode("/", $this->party->toArray());
-        $credentialScopeWithDatePrefix = $date->format("Ymd") . "/" .  $credentialScope;
-        $dateHeaderKey = "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Date";
-        $headerList += array('Host' => $host, $dateHeaderKey => $date->format('Ymd\THis\Z'));
+        $headerList += $this->mandatoryHeaders($date, $host);
 
-        $canonizedRequest = AsrRequestCanonizer::canonize(
-            $request,
-            $headersToSign,
-            $this->hashAlgo
-        );
-
-        $stringToSign = AsrSigner::createStringToSign(
-            $credentialScope,
-            $canonizedRequest,
-            $date,
-            $this->hashAlgo,
-            $this->vendorPrefix
-        );
-
-        $signerKey = AsrSigner::calculateSigningKey(
-            $this->secretKey,
-            $credentialScopeWithDatePrefix,
-            $this->hashAlgo,
-            $this->vendorPrefix
-        );
-
-        $authHeader = AsrSigner::createAuthHeader(
-            $stringToSign,
-            $signerKey,
-            $this->accessKeyId,
-            $credentialScopeWithDatePrefix,
-            implode(";", $headersToSign),
-            $this->hashAlgo,
-            $this->vendorPrefix
-        );
+        $authHeader = $this->calculateAuthHeader($headersToSign, $date, $request);
 
         $headerList += array($authHeaderKey => $authHeader);
 
@@ -105,6 +81,82 @@ class AsrClient
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
+    }
+
+    /**
+     * @return string
+     */
+    private function credentialScope()
+    {
+        return implode("/", $this->party->toArray());
+    }
+
+    /**
+     * @param $date
+     * @return string
+     */
+    private function fullCredentialScope(DateTime $date)
+    {
+        return $date->format("Ymd") . "/" . $this->credentialScope();
+    }
+
+    /**
+     * @return string
+     */
+    private function dateHeaderKey()
+    {
+        return "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Date";
+    }
+
+    /**
+     * @param $date
+     * @param $host
+     * @return array
+     */
+    private function mandatoryHeaders(DateTime $date, $host)
+    {
+        return array('Host' => $host, $this->dateHeaderKey() => $date->format('Ymd\THis\Z'));
+    }
+
+    /**
+     * @param $headersToSign
+     * @param $date
+     * @param $request
+     * @return string
+     */
+    private function calculateAuthHeader($headersToSign, $date, $request)
+    {
+        $canonizedRequest = AsrRequestCanonizer::canonize(
+            $request,
+            $headersToSign,
+            $this->hashAlgo
+        );
+
+        $stringToSign = AsrSigner::createStringToSign(
+            $this->credentialScope(),
+            $canonizedRequest,
+            $date,
+            $this->hashAlgo,
+            $this->vendorPrefix
+        );
+
+        $signerKey = AsrSigner::calculateSigningKey(
+            $this->secretKey,
+            $this->fullCredentialScope($date),
+            $this->hashAlgo,
+            $this->vendorPrefix
+        );
+
+        $authHeader = AsrSigner::createAuthHeader(
+            $stringToSign,
+            $signerKey,
+            $this->accessKeyId,
+            $this->fullCredentialScope($date),
+            implode(";", $headersToSign),
+            $this->hashAlgo,
+            $this->vendorPrefix
+        );
+        return $authHeader;
     }
 }
 
