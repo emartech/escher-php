@@ -325,7 +325,6 @@ class AsrServer
     private function validateMandatorySignedHeaders(AsrAuthHeader $authHeader)
     {
         $signedHeaders = $authHeader->getSignedHeaders();
-        debug(json_encode($signedHeaders));
         if (!in_array('host', $signedHeaders)) {
             throw new AsrException('Host header not signed');
         }
