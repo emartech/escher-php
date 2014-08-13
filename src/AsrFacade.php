@@ -58,6 +58,9 @@ class AsrClient
 
         list($host, $path, $query) = $this->parseUrl($url);
 
+        $headerList = AsrUtils::keysToLower($headerList);
+        $headersToSign = array_map('strtolower', $headersToSign);
+
         $headerList += $this->mandatoryHeaders($date, $host);
 
         $authHeader = $this->calculateAuthHeader($headersToSign, $date, array(
@@ -124,7 +127,7 @@ class AsrClient
      */
     private function dateHeaderKey()
     {
-        return "X-" . ucfirst(strtolower($this->vendorPrefix)) . "-Date";
+        return "x-" . strtolower($this->vendorPrefix) . "-date";
     }
 
     /**
@@ -134,7 +137,7 @@ class AsrClient
      */
     private function mandatoryHeaders(DateTime $date, $host)
     {
-        return array('Host' => $host, $this->dateHeaderKey() => $date->format('Ymd\THis\Z'));
+        return array('host' => $host, $this->dateHeaderKey() => $date->format('Ymd\THis\Z'));
     }
 
     private function calculateAuthHeader($headersToSign, $date, $request)
@@ -478,7 +481,7 @@ class AsrAuthHeader
 
     public static function parse(array $headerList, $authHeaderKey)
     {
-        $headerList = self::keysToLower($headerList);
+        $headerList = AsrUtils::keysToLower($headerList);
         if (!isset($headerList['x-ems-date'])) {
             throw new AsrException('The X-Ems-Date header is missing');
         }
@@ -497,15 +500,6 @@ class AsrAuthHeader
             throw new AsrException('Invalid credential scope');
         }
         return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date'], $headerList['host']);
-    }
-
-    private static function keysToLower($headerList)
-    {
-        $result = array_combine(
-            array_map('strtolower', array_keys($headerList)),
-            array_values($headerList)
-        );
-        return $result;
     }
 
     private static function regex()
@@ -680,7 +674,7 @@ class AsrSigner
     ) {
         $date->setTimezone(new DateTimeZone("UTC"));
         $formattedDate = $date->format('Ymd\THis\Z');
-        $scope = substr($formattedDate,0, 8) . "/" . $credentialScope . "/" . strtolower($vendorPrefix) . "_request";
+        $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
         $lines[] = $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo);
         $lines[] = $formattedDate;
@@ -717,5 +711,17 @@ class AsrSigner
     public static function createSignature($stringToSign, $signerKey, $hashAlgo)
     {
         return hash_hmac($hashAlgo, $stringToSign, $signerKey);
+    }
+}
+
+class AsrUtils
+{
+    public static function keysToLower($array)
+    {
+        $result = array_combine(
+            array_map('strtolower', array_keys($array)),
+            array_values($array)
+        );
+        return $result;
     }
 }
