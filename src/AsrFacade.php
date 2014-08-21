@@ -521,16 +521,16 @@ class AsrAuthHeader
         if (!isset($headerList['x-ems-date'])) {
             throw new AsrException('The X-Ems-Date header is missing');
         }
+
         if (!isset($headerList['host'])) {
             throw new AsrException('The Host header is missing');
         }
+
         if (!isset($headerList[$authHeaderKey])) {
             throw new AsrException('The '.$authHeaderKey.' header is missing');
         }
-        $matches = array();
-        if (1 !== preg_match(self::regex($vendorPrefix), $headerList[$authHeaderKey], $matches)) {
-            throw new AsrException('Could not parse authorization header.');
-        }
+
+        $matches = self::parseAuthHeader($headerList[$authHeaderKey], $vendorPrefix);
         $credentialParts = explode('/', $matches['credentials']);
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
@@ -546,6 +546,21 @@ class AsrAuthHeader
         'SignedHeaders=(?P<signed_headers>[A-Za-z\-;]+), '.
         'Signature=(?P<signature>[0-9a-f]+)'.
         '$/';
+    }
+
+    /**
+     * @param $headerContent
+     * @param $vendorPrefix
+     * @return array
+     * @throws AsrException
+     */
+    public static function parseAuthHeader($headerContent, $vendorPrefix)
+    {
+        $matches = array();
+        if (1 !== preg_match(self::regex($vendorPrefix), $headerContent, $matches)) {
+            throw new AsrException('Could not parse authorization header.');
+        }
+        return $matches;
     }
 
     private function getCredentialPart($index, $name)

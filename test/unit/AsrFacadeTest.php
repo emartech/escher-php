@@ -361,24 +361,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function createAuthHeader_Perfect_Perfect($stringToSign, $expectedAuthHeaders)
     {
-
-        $pattern = '/'.
-            '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
-            'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
-            'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
-            'Signature=(?P<signature>[0-9a-f]{64})'.
-            '$/';
-        preg_match($pattern, $expectedAuthHeaders, $matches);
+        $matches = AsrAuthHeader::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
         list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
 
-        $signerKey = hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
-        $signedHeaders = $matches['signed_headers'];
-
+        $signingKey = hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
         $actualAuthHeader = AsrSigner::createAuthHeader(
-            AsrSigner::createSignature($stringToSign, $signerKey, $matches['algorithm']),
+            AsrSigner::createSignature($stringToSign, $signingKey, $matches['algorithm']),
             $credentialScope,
-            $signedHeaders,
+            $matches['signed_headers'],
             $matches['algorithm'],
             'AWS4',
             $accessKey
@@ -475,11 +466,12 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $headerRows[] = $row;
             unset($rows[$key]);
         }
-        $body = implode("\n", $rows);
         $headers = http_parse_headers($headerRows);
 
         $query = isset($matches['query']) ? $matches['query'] : "";
         $headers = $headers ? $headers : array();
+
+        $body = implode("\n", $rows);
         $body = isset($body) ? $body : "";
 
         return array(
