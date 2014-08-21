@@ -181,8 +181,7 @@ class AsrClient
     {
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
             $method,
-            $path,
-            $query,
+            $path . ($query ? '?'. $query : ''),
             $requestBody,
             $headerList,
             $headersToSign,
@@ -632,8 +631,9 @@ class AsrException extends Exception
 
 class AsrRequestCanonicalizer
 {
-    public static function canonicalize($method, $path, $query, $payload, array $headerList, array $headersToSign, $hashAlgo)
+    public static function canonicalize($method, $requestUri, $payload, array $headerList, array $headersToSign, $hashAlgo)
     {
+        list($path, $query) = array_pad(explode('?', $requestUri, 2), 2, '');
         $lines = array();
         $lines[] = strtoupper($method);
         $lines[] = self::normalizePath($path);
@@ -654,14 +654,13 @@ class AsrRequestCanonicalizer
         if (empty($query)) return "";
         $pairs = explode("&", $query);
         $encodedParts = array();
-
-        foreach ($pairs as $pair){
-            $keyValues = explode("=", $pair);
+        foreach ($pairs as $pair) {
+            $keyValues = array_pad(explode("=", $pair), 2, '');
             if (strpos($keyValues[0], " ") !== false) {
                 $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], " "));
                 $keyValues[1] = "";
             }
-            $encodedParts[] = implode("=",array(
+            $encodedParts[] = implode("=", array(
                 rawurlencode($keyValues[0]),
                 rawurlencode($keyValues[1]),
             ));

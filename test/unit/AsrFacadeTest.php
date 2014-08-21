@@ -429,8 +429,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $headersToSign = array_unique(array_map('strtolower', array_keys($rawRequestArray['headers'])));
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
             $rawRequestArray['method'],
-            $rawRequestArray['path'],
-            $rawRequestArray['query'],
+            $rawRequestArray['requestUri'],
             $rawRequestArray['body'],
             $rawRequestArray['headers'],
             $headersToSign,
@@ -453,8 +452,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private function parseRawRequest($content)
     {
         $rows = explode("\n", $content);
-        $pattern = "/^(?P<method>GET|POST|PUT) (?P<path>.*)(\?(?P<query>.*))? http\/1\.1$/U";
-        preg_match($pattern, $rows[0], $matches);
+        list($method, $requestUri) = explode(' ', $rows[0]);
         unset($rows[0]);
 
         $headerRows = array();
@@ -468,18 +466,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         }
         $headers = http_parse_headers($headerRows);
 
-        $query = isset($matches['query']) ? $matches['query'] : "";
-        $headers = $headers ? $headers : array();
-
         $body = implode("\n", $rows);
         $body = isset($body) ? $body : "";
 
         return array(
-            'method'  => $matches['method'],
-            'path'    => $matches['path'],
-            'query'   => $query,
-            'headers' => $headers,
-            'body'    => $body
+            'method'     => $method,
+            'requestUri' => $requestUri,
+            'headers'    => $headers ? $headers : array(),
+            'body'       => $body
         );
     }
 
