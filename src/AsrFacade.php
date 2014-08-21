@@ -32,7 +32,7 @@ class AsrClient
     private $vendorPrefix;
     private $hashAlgo;
 
-    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo = "sha256", $vendorPrefix = "EMS")
+    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo, $vendorPrefix)
     {
         $this->party        = $party;
         $this->secretKey    = $secretKey;
@@ -193,7 +193,7 @@ class AsrClient
 
     private function calculateSignature($headersToSign, $date, $request)
     {
-        $canonizedRequest = AsrRequestCanonizer::canonize(
+        $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
             $request,
             $headersToSign,
             $this->hashAlgo
@@ -201,7 +201,7 @@ class AsrClient
 
         $stringToSign = AsrSigner::createStringToSign(
             $this->credentialScope(),
-            $canonizedRequest,
+            $canonicalizedRequest,
             $date,
             $this->hashAlgo,
             $this->vendorPrefix
@@ -617,9 +617,9 @@ class AsrException extends Exception
 
 
 
-class AsrRequestCanonizer
+class AsrRequestCanonicalizer
 {
-    public static function canonize($requestArray, $headersToSign, $hashAlgo = "sha256")
+    public static function canonicalize($requestArray, $headersToSign, $hashAlgo)
     {
         $lines = array();
         $lines[] = strtoupper($requestArray['method']);
