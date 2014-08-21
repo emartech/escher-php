@@ -8,16 +8,17 @@ class AsrFacade
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";
+    const VENDOR_PREFIX = 'EMS';
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
-        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, 'EMS');
+        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_PREFIX);
     }
 
     public static function createServer($region, $service, $requestType, $keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, 'EMS');
+        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, self::VENDOR_PREFIX);
     }
 }
 
@@ -249,7 +250,7 @@ class AsrServer
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
-        $authHeader = $helper->getAuthHeaders();
+        $authHeader = $helper->getAuthHeaders($this->vendorPrefix);
 
         $this->validateMandatorySignedHeaders($authHeader);
         $this->validateHashAlgo($authHeader);
@@ -433,9 +434,9 @@ class AsrRequestHelper
         return $this->requestBody;
     }
 
-    public function getAuthHeaders()
+    public function getAuthHeaders($vendorPrefix)
     {
-        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($this->authHeaderKey));
+        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($this->authHeaderKey), $vendorPrefix);
     }
 
     public function getTimeStamp()
@@ -514,7 +515,7 @@ class AsrAuthHeader
         $this->host = $host;
     }
 
-    public static function parse(array $headerList, $authHeaderKey)
+    public static function parse(array $headerList, $authHeaderKey, $vendorPrefix)
     {
         $headerList = AsrUtils::keysToLower($headerList);
         if (!isset($headerList['x-ems-date'])) {
@@ -527,7 +528,7 @@ class AsrAuthHeader
             throw new AsrException('The '.$authHeaderKey.' header is missing');
         }
         $matches = array();
-        if (1 !== preg_match(self::regex(), $headerList[$authHeaderKey], $matches)) {
+        if (1 !== preg_match(self::regex($vendorPrefix), $headerList[$authHeaderKey], $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
         $credentialParts = explode('/', $matches['credentials']);
@@ -537,13 +538,13 @@ class AsrAuthHeader
         return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date'], $headerList['host']);
     }
 
-    private static function regex()
+    private static function regex($vendorPrefix)
     {
         return '/'.
-        '^EMS-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
+        '^'.$vendorPrefix.'-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
         'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
         'SignedHeaders=(?P<signed_headers>[A-Za-z\-;]+), '.
-        'Signature=(?P<signature>[0-9a-f]{64})'.
+        'Signature=(?P<signature>[0-9a-f]+)'.
         '$/';
     }
 
