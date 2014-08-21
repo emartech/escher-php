@@ -626,7 +626,7 @@ class AsrRequestCanonicalizer
         $lines[] = self::normalizePath($requestArray['path']);
         $lines[] = self::urlEncodeQueryString($requestArray['query']);
 
-        $lines = array_merge($lines, self::addHeaderLines($requestArray, $headersToSign));
+        $lines = array_merge($lines, self::addHeaderLines($requestArray['headers'], $headersToSign));
 
         $lines[] = '';
         $lines[] = implode(";", $headersToSign);
@@ -677,15 +677,14 @@ class AsrRequestCanonicalizer
     }
 
     /**
-     * @param $requestArray
+     * @param $headers
      * @param $headersToSign
-     * @internal param $lines
      * @return array
      */
-    private static function addHeaderLines($requestArray, $headersToSign)
+    private static function addHeaderLines($headers, $headersToSign)
     {
         $elements = array();
-        foreach ($requestArray['headers'] as $key => $value) {
+        foreach ($headers as $key => $value) {
             if (!in_array(strtolower($key), $headersToSign)) continue;
             $keyInLowercase = strtolower($key);
             if (is_array($value)) {
