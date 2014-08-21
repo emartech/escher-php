@@ -47,13 +47,7 @@ class AsrClient
         $date = new DateTime('now', new DateTimeZone('UTC'));
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $signature = $this->calculateSignature(array('host'), $date, array(
-            'method'  => 'GET',
-            'path'    => $path,
-            'query'   => $query,
-            'headers' => array('host' => $host),
-            'body'    => 'UNSIGNED-PAYLOAD',
-        ));
+        $signature = $this->calculateSignature($date,  'GET', $path, $query, array('host' => $host), array('host'), 'UNSIGNED-PAYLOAD');
 
         $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Algorithm', $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo));
         $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Credential', $this->accessKeyId . $this->fullCredentialScope($date));
@@ -101,13 +95,7 @@ class AsrClient
 
         $headerList += $this->mandatoryHeaders($date, $host);
 
-        $authHeader = $this->calculateAuthHeader($headersToSign, $date, array(
-            'method'  => $method,
-            'path'    => $path,
-            'query'   => $query,
-            'headers' => $headerList,
-            'body'    => $requestBody,
-        ));
+        $authHeader = $this->calculateAuthHeader($date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
 
         $headerList += array($authHeaderKey => $authHeader);
 
@@ -125,13 +113,7 @@ class AsrClient
     {
         list(, $path, $query) = $this->parseUrl($url);
 
-        return $this->calculateSignature($headersToSign, $date, array(
-            'method'  => $method,
-            'path'    => $path,
-            'query'   => $query,
-            'headers' => $headerList,
-            'body'    => $requestBody,
-        ));
+        return $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
     }
 
     private function parseUrl($url)
@@ -178,10 +160,10 @@ class AsrClient
         return array('host' => $host, $this->dateHeaderKey() => $this->toLongDate($date));
     }
 
-    private function calculateAuthHeader($headersToSign, $date, $request)
+    private function calculateAuthHeader($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
         $authHeader = AsrSigner::createAuthHeader(
-            $this->calculateSignature($headersToSign, $date, $request),
+            $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
             $this->hashAlgo,
@@ -191,10 +173,14 @@ class AsrClient
         return $authHeader;
     }
 
-    private function calculateSignature($headersToSign, $date, $request)
+    private function calculateSignature($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
-            $request,
+            $method,
+            $path,
+            $query,
+            $requestBody,
+            $headerList,
             $headersToSign,
             $this->hashAlgo
         );
@@ -619,19 +605,19 @@ class AsrException extends Exception
 
 class AsrRequestCanonicalizer
 {
-    public static function canonicalize($requestArray, $headersToSign, $hashAlgo)
+    public static function canonicalize($method, $path, $query, $payload, array $headers, array $headersToSign, $hashAlgo)
     {
         $lines = array();
-        $lines[] = strtoupper($requestArray['method']);
-        $lines[] = self::normalizePath($requestArray['path']);
-        $lines[] = self::urlEncodeQueryString($requestArray['query']);
+        $lines[] = strtoupper($method);
+        $lines[] = self::normalizePath($path);
+        $lines[] = self::urlEncodeQueryString($query);
 
-        $lines = array_merge($lines, self::addHeaderLines($requestArray['headers'], $headersToSign));
+        $lines = array_merge($lines, self::addHeaderLines($headers, $headersToSign));
 
         $lines[] = '';
         $lines[] = implode(";", $headersToSign);
 
-        $lines[] = hash($hashAlgo, $requestArray['body']);
+        $lines[] = hash($hashAlgo, $payload);
 
         return implode("\n", $lines);
     }
@@ -685,13 +671,14 @@ class AsrRequestCanonicalizer
     {
         $elements = array();
         foreach ($headers as $key => $value) {
-            if (!in_array(strtolower($key), $headersToSign)) continue;
-            $keyInLowercase = strtolower($key);
+            if (!in_array(strtolower($key), $headersToSign)) {
+                continue;
+            }
             if (is_array($value)) {
                 sort($value);
                 $value = implode(',', $value);
             }
-            $elements[] = $keyInLowercase . ":" . trim($value);
+            $elements[] = strtolower($key) . ":" . trim($value);
         }
         sort($elements);
         return $elements;

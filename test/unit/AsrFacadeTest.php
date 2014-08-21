@@ -452,7 +452,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $rawRequestArray = $this->parseRawRequest($rawRequest);
         $headersToSign = array_unique(array_map('strtolower', array_keys($rawRequestArray['headers'])));
-        $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize($rawRequestArray, $headersToSign, 'sha256');
+        $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
+            $rawRequestArray['method'],
+            $rawRequestArray['path'],
+            $rawRequestArray['query'],
+            $rawRequestArray['body'],
+            $rawRequestArray['headers'],
+            $headersToSign,
+            'sha256'
+        );
         $this->assertEquals($canonicalRequestString, $canonicalizedRequest);
     }
 
