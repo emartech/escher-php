@@ -372,7 +372,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
         list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
 
-        $signerKey = $this->hextobin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
+        $signerKey = hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
         $signedHeaders = $matches['signed_headers'];
 
         $actualAuthHeader = AsrSigner::createAuthHeader(
@@ -383,7 +383,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'AWS4',
             $accessKey
         );
-        $this->assertEquals($expectedAuthHeaders,$actualAuthHeader);
+        $this->assertEquals($expectedAuthHeaders, $actualAuthHeader);
     }
 
     public function stringToSignFileList()
@@ -418,22 +418,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             "stringToSign"           => file_get_contents($path . $request . ".sts"),
             "authHeader"             => file_get_contents($path . $request . ".authz"),
         );
-    }
-
-    public function hextobin($hexstr)
-    {
-        $n = strlen($hexstr);
-        $sbin="";
-        $i=0;
-        while($i<$n)
-        {
-            $a =substr($hexstr,$i,2);
-            $c = pack("H*",$a);
-            if ($i==0){$sbin=$c;}
-            else {$sbin.=$c;}
-            $i+=2;
-        }
-        return $sbin;
     }
 
     /**
