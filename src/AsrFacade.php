@@ -41,6 +41,43 @@ class AsrClient
         $this->hashAlgo     = $hashAlgo;
     }
 
+    public function getSignedUrl($url, $expiresInSeconds = 86400)
+    {
+        $date = new DateTime('now', new DateTimeZone('UTC'));
+        list($host, $path, $query) = $this->parseUrl($url);
+
+        $signature = $this->calculateSignature(array('host'), $date, array(
+            'method'  => 'GET',
+            'path'    => $path,
+            'query'   => $query,
+            'headers' => array('host' => $host),
+            'body'    => 'UNSIGNED-PAYLOAD',
+        ));
+
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Algorithm', $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo));
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Credential', $this->accessKeyId . $this->fullCredentialScope($date));
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Date', $this->toLongDate($date));
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Expires', $expiresInSeconds);
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-SignedHeaders', 'host');
+        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Signature', $signature);
+        return $url;
+    }
+
+    private function toLongDate(DateTime $date)
+    {
+        return $date->format('Ymd\THis\Z');
+    }
+
+    public function addGetParameter($url, $key, $value)
+    {
+        if (strpos($url, '?') === false) {
+            $url .= '?';
+        } else {
+            $url .= '&';
+        }
+        return $url . $key . '=' . urlencode($value);
+    }
+
     public function getSignedHeaders(
         $method,
         $url,
@@ -85,7 +122,7 @@ class AsrClient
         $date = null
     )
     {
-        list($host, $path, $query) = $this->parseUrl($url);
+        list(, $path, $query) = $this->parseUrl($url);
 
         return $this->calculateSignature($headersToSign, $date, array(
             'method'  => $method,
@@ -137,7 +174,7 @@ class AsrClient
      */
     private function mandatoryHeaders(DateTime $date, $host)
     {
-        return array('host' => $host, $this->dateHeaderKey() => $date->format('Ymd\THis\Z'));
+        return array('host' => $host, $this->dateHeaderKey() => $this->toLongDate($date));
     }
 
     private function calculateAuthHeader($headersToSign, $date, $request)
