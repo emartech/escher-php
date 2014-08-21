@@ -312,7 +312,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         'post-header-key-sort',
         'post-header-value-case',
         'post-vanilla-empty-query-value',
-//        'post-vanilla-query-nonunreserved',
+        'post-vanilla-query-nonunreserved',
         'post-vanilla-query-space',
         'post-vanilla-query',
         'post-vanilla',

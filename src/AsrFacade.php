@@ -666,8 +666,8 @@ class AsrRequestCanonicalizer
                 $keyValues[1] = "";
             }
             $encodedParts[] = implode("=", array(
-                rawurlencode($keyValues[0]),
-                rawurlencode($keyValues[1]),
+                rawurlencode(str_replace('+', ' ', $keyValues[0])),
+                rawurlencode(str_replace('+', ' ', $keyValues[1])),
             ));
         }
         sort($encodedParts);
