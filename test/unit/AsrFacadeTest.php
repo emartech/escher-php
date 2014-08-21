@@ -365,7 +365,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
         list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
 
-        $signingKey = hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
+        $signingKey = $this->hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
         $actualAuthHeader = AsrSigner::createAuthHeader(
             AsrSigner::createSignature($stringToSign, $signingKey, $matches['algorithm']),
             $credentialScope,
@@ -501,5 +501,21 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
 
         $this->assertEquals($expectedSignedHeaders, $signedHeaders);
+    }
+
+    public function hex2bin($hexstr)
+    {
+        $n = strlen($hexstr);
+        $sbin="";
+        $i=0;
+        while($i<$n)
+        {
+            $a =substr($hexstr,$i,2);
+            $c = pack("H*",$a);
+            if ($i==0){$sbin=$c;}
+            else {$sbin.=$c;}
+            $i+=2;
+        }
+        return $sbin;
     }
 }
