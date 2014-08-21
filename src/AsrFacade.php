@@ -5,8 +5,9 @@ class AsrFacade
     const DEFAULT_HASH_ALGORITHM = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
-    const DATE_FORMAT = self::ISO8601;
     const ISO8601 = 'Ymd\THis\Z';
+    const LONG_DATE = self::ISO8601;
+    const SHORT_DATE = "Ymd";
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
@@ -65,7 +66,7 @@ class AsrClient
 
     private function toLongDate(DateTime $date)
     {
-        return $date->format('Ymd\THis\Z');
+        return $date->format(AsrFacade::LONG_DATE);
     }
 
     public function addGetParameter($url, $key, $value)
@@ -156,7 +157,7 @@ class AsrClient
      */
     private function fullCredentialScope(DateTime $date)
     {
-        return $date->format("Ymd") . "/" . $this->credentialScope();
+        return $date->format(AsrFacade::SHORT_DATE) . "/" . $this->credentialScope();
     }
 
     /**
@@ -710,7 +711,7 @@ class AsrSigner
         $vendorPrefix
     ) {
         $date->setTimezone(new DateTimeZone("UTC"));
-        $formattedDate = $date->format('Ymd\THis\Z');
+        $formattedDate = $date->format(AsrFacade::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
         $lines[] = $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo);
