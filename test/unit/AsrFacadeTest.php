@@ -425,13 +425,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function canonicalize_Perfect_Perfect($rawRequest, $canonicalRequestString)
     {
-        $rawRequestArray = $this->parseRawRequest($rawRequest);
-        $headersToSign = array_unique(array_map('strtolower', array_keys($rawRequestArray['headers'])));
+        list($method, $requestUri, $body, $headers) = $this->parseRawRequest($rawRequest);
+        $headersToSign = array_unique(array_map('strtolower', array_keys($headers)));
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
-            $rawRequestArray['method'],
-            $rawRequestArray['requestUri'],
-            $rawRequestArray['body'],
-            $rawRequestArray['headers'],
+            $method,
+            $requestUri,
+            $body,
+            $headers,
             $headersToSign,
             'sha256'
         );
@@ -470,10 +470,10 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $body = isset($body) ? $body : "";
 
         return array(
-            'method'     => $method,
-            'requestUri' => $requestUri,
-            'headers'    => $headers ? $headers : array(),
-            'body'       => $body
+            $method,
+            $requestUri,
+            $body,
+            $headers ? $headers : array(),
         );
     }
 
