@@ -3,7 +3,7 @@
 class AsrFacadeTest extends PHPUnit_Framework_TestCase
 {
     private $defaultEmsDate = '20110909T233600Z';
-    private $secretKey = 'AWS4wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
+    private $secretKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
     private $accessKeyId = 'AKIDEXAMPLE';
     private $region = 'us-east-1';
     private $service = 'iam';
@@ -95,7 +95,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($this->service, $authHeader->getService());
         $this->assertEquals($this->requestType, $authHeader->getRequestType());
         $this->assertEquals(array('content-type','host','x-ems-date'), $authHeader->getSignedHeaders());
-        $this->assertEquals('89fedf8ddad1397d53fdbe4767687ef58d488a32026b2db18c41b128178bc095', $authHeader->getSignature());
+        $this->assertEquals('f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', $authHeader->getSignature());
     }
 
     /**
@@ -242,7 +242,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'EMS-HMAC-SHA256 '.
             'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
             'SignedHeaders=content-type;host;x-ems-date, '.
-            'Signature=89fedf8ddad1397d53fdbe4767687ef58d488a32026b2db18c41b128178bc095';
+            'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
     }
 
     /**
