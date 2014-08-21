@@ -179,11 +179,16 @@ class AsrClient
 
     private function calculateSignature($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
+        // canonicalization works with raw headers
+        $rawHeaderLines = array();
+        foreach ($headerList as $headerKey => $headerValue) {
+            $rawHeaderLines []= $headerKey . ':' . $headerValue;
+        }
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
             $method,
             $path . ($query ? '?'. $query : ''),
             $requestBody,
-            $headerList,
+            implode("\n", $rawHeaderLines),
             $headersToSign,
             $this->hashAlgo
         );
@@ -631,7 +636,7 @@ class AsrException extends Exception
 
 class AsrRequestCanonicalizer
 {
-    public static function canonicalize($method, $requestUri, $payload, array $headerList, array $headersToSign, $hashAlgo)
+    public static function canonicalize($method, $requestUri, $payload, $rawHeaders, array $headersToSign, $hashAlgo)
     {
         list($path, $query) = array_pad(explode('?', $requestUri, 2), 2, '');
         $lines = array();
@@ -639,7 +644,7 @@ class AsrRequestCanonicalizer
         $lines[] = self::normalizePath($path);
         $lines[] = self::urlEncodeQueryString($query);
 
-        $lines = array_merge($lines, self::addHeaderLines($headerList, $headersToSign));
+        $lines = array_merge($lines, self::canonicalizeHeaders($rawHeaders, $headersToSign));
 
         $lines[] = '';
         $lines[] = implode(";", $headersToSign);
@@ -689,25 +694,52 @@ class AsrRequestCanonicalizer
     }
 
     /**
-     * @param $headerList
+     * @param $rawHeaders
      * @param $headersToSign
      * @return array
      */
-    private static function addHeaderLines($headerList, $headersToSign)
+    private static function canonicalizeHeaders($rawHeaders, array $headersToSign)
     {
         $elements = array();
-        foreach ($headerList as $key => $value) {
-            if (!in_array(strtolower($key), $headersToSign)) {
+        foreach (explode("\n", $rawHeaders) as $header) {
+            // TODO: add multiline header handling
+            list ($key, $value) = explode(':', $header, 2);
+            $lowerKey = strtolower($key);
+            $trimmedValue = trim($value);
+            if (!in_array($lowerKey, $headersToSign)) {
                 continue;
             }
-            if (is_array($value)) {
-                sort($value);
-                $value = implode(',', $value);
+            if (isset($elements[$lowerKey])) {
+                $elements[$lowerKey][] = $trimmedValue;
+            } else {
+                $elements[$lowerKey] = array($trimmedValue);
             }
-            $elements[] = strtolower($key) . ":" . trim($value);
         }
-        sort($elements);
-        return $elements;
+        ksort($elements);
+        $canonicalizedHeaders = array();
+        foreach ($elements as $headerKey => $headerValues) {
+            sort($headerValues);
+            $canonicalizedHeaders []= $headerKey . ':' . implode(',', $headerValues);
+        }
+        return $canonicalizedHeaders;
+    }
+
+    function http_parse_headers($rawHeaderLines)
+    {
+        $headers = array();
+
+        foreach($rawHeaderLines as $headerLine) {
+            $currentKey = strtolower($headerLine[0]);
+            $headers[$currentKey] = array_merge(isset($headers[$currentKey]) ? $headers[$currentKey] : array(), array(trim($headerLine[1])));
+        }
+
+        return array_reduce(array_map('implode_header_multivalues', array_keys($headers), array_values($headers)), 'array_merge', array());
+    }
+
+    function implode_header_multivalues($key, $value)
+    {
+        sort($value);
+        return array($key => implode(',', $value));
     }
 }
 

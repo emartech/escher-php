@@ -425,14 +425,20 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function canonicalize_Perfect_Perfect($rawRequest, $canonicalRequestString)
     {
-        list($method, $requestUri, $body, $headers) = $this->parseRawRequest($rawRequest);
-        $headersToSign = array_unique(array_map('strtolower', array_keys($headers)));
+        list($method, $requestUri, $body, $headerLines) = $this->parseRawRequest($rawRequest);
+        $headersToSign = array();
+        foreach ($headerLines as $headerLine) {
+            if ("\t" != $headerLine{0} && false !== strpos($headerLine, ':')) {
+                list ($headerKey) = explode(':', $headerLine, 2);
+                $headersToSign[]= $headerKey;
+            }
+        }
         $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
             $method,
             $requestUri,
             $body,
-            $headers,
-            $headersToSign,
+            implode("\n", $headerLines),
+            array_unique(array_map('strtolower', $headersToSign)),
             'sha256'
         );
         $this->assertEquals($canonicalRequestString, $canonicalizedRequest);
@@ -453,27 +459,12 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $rows = explode("\n", $content);
         list($method, $requestUri) = explode(' ', $rows[0]);
-        unset($rows[0]);
-
-        $headerRows = array();
-        foreach ($rows as $key => $row) {
-            if ($row == "") {
-                unset($rows[$key]);
-                break;
-            }
-            $headerRows[] = $row;
-            unset($rows[$key]);
-        }
-        $headers = http_parse_headers($headerRows);
-
-        $body = implode("\n", $rows);
-        $body = isset($body) ? $body : "";
 
         return array(
             $method,
             $requestUri,
-            $body,
-            $headers ? $headers : array(),
+            $rows[count($rows) - 1],
+            array_slice($rows, 1, -2),
         );
     }
 
@@ -510,39 +501,5 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
 
         $this->assertEquals($expectedSignedHeaders, $signedHeaders);
-    }
-}
-
-if (!function_exists('http_parse_headers'))
-{
-    function http_parse_headers($rawHeaderLines)
-    {
-        $headers = array();
-        $previousKey = ''; // [+]
-
-        foreach($rawHeaderLines as $headerLine) {
-            $headerLine = explode(':', $headerLine, 2);
-
-            if (isset($headerLine[1])) {
-                $currentKey = strtolower($headerLine[0]);
-                $headers[$currentKey] = array_merge(isset($headers[$currentKey]) ? $headers[$currentKey] : array(), array(trim($headerLine[1])));
-                $previousKey = $currentKey;
-            } else {
-                $trimmedValuePart = trim($headerLine[0]);
-                if ($headerLine[0]{0} == "\t") {
-                    $headers[$previousKey][count($headers[$previousKey] - 1)] .= ' '. $trimmedValuePart;
-                } elseif (!$previousKey) {
-                    $headers[0] = array($trimmedValuePart);
-                }
-            }
-        }
-
-        return array_reduce(array_map('implode_header_multivalues', array_keys($headers), array_values($headers)), 'array_merge', array());
-    }
-
-    function implode_header_multivalues($key, $value)
-    {
-        sort($value);
-        return array($key => implode(',', $value));
     }
 }
