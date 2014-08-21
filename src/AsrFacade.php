@@ -42,35 +42,27 @@ class AsrClient
         $this->hashAlgo     = $hashAlgo;
     }
 
-    public function getSignedUrl($url, $expiresInSeconds = 86400)
+    public function getSignedUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
     {
-        $date = new DateTime('now', new DateTimeZone('UTC'));
+        $date = $date ? $date : $this->now();
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $signature = $this->calculateSignature($date,  'GET', $path, $query, array('host' => $host), array('host'), 'UNSIGNED-PAYLOAD');
+        $headerList += array('host' => $host);
 
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Algorithm', $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo));
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Credential', $this->accessKeyId . $this->fullCredentialScope($date));
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Date', $this->toLongDate($date));
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Expires', $expiresInSeconds);
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-SignedHeaders', 'host');
-        $url = $this->addGetParameter($url, 'X-' . $this->vendorPrefix . '-Signature', $signature);
-        return $url;
-    }
+        $signingParams = array(
+            'Algorithm'     => $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo),
+            'Credentials'   => $this->accessKeyId . $this->fullCredentialScope($date),
+            'Date'          => $this->toLongDate($date),
+            'Expires'       => $expires,
+            'SignedHeaders' => 'host',
+            'Signature'     => $this->calculateSignature($date, 'GET', $path, $query, 'UNSIGNED-PAYLOAD', $headerList, $headersToSign),
+        );
 
-    private function toLongDate(DateTime $date)
-    {
-        return $date->format(AsrFacade::LONG_DATE);
-    }
-
-    public function addGetParameter($url, $key, $value)
-    {
-        if (strpos($url, '?') === false) {
-            $url .= '?';
-        } else {
-            $url .= '&';
+        foreach ($signingParams as $param => $value) {
+            $url = $this->addGetParameter($url, 'X-'.$this->vendorPrefix.'-'.$param, $value);
         }
-        return $url . $key . '=' . urlencode($value);
+
+        return $url;
     }
 
     public function getSignedHeaders(
@@ -83,11 +75,7 @@ class AsrClient
         $authHeaderKey = "X-Ems-Auth"
     )
     {
-        if(empty($date))
-        {
-            $date = new DateTime('now', new DateTimeZone('UTC'));
-        }
-
+        $date = $date ? $date : $this->now();
         list($host, $path, $query) = $this->parseUrl($url);
 
         $headerList = AsrUtils::keysToLower($headerList);
@@ -123,6 +111,21 @@ class AsrClient
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
+    }
+
+    private function toLongDate(DateTime $date)
+    {
+        return $date->format(AsrFacade::LONG_DATE);
+    }
+
+    private function addGetParameter($url, $key, $value)
+    {
+        if (strpos($url, '?') === false) {
+            $url .= '?';
+        } else {
+            $url .= '&';
+        }
+        return $url . $key . '=' . urlencode($value);
     }
 
     /**
@@ -206,6 +209,14 @@ class AsrClient
             $this->hashAlgo
         );
         return $signature;
+    }
+
+    /**
+     * @return DateTime
+     */
+    private function now()
+    {
+        return new DateTime('now', new DateTimeZone('UTC'));
     }
 }
 
@@ -605,14 +616,14 @@ class AsrException extends Exception
 
 class AsrRequestCanonicalizer
 {
-    public static function canonicalize($method, $path, $query, $payload, array $headers, array $headersToSign, $hashAlgo)
+    public static function canonicalize($method, $path, $query, $payload, array $headerList, array $headersToSign, $hashAlgo)
     {
         $lines = array();
         $lines[] = strtoupper($method);
         $lines[] = self::normalizePath($path);
         $lines[] = self::urlEncodeQueryString($query);
 
-        $lines = array_merge($lines, self::addHeaderLines($headers, $headersToSign));
+        $lines = array_merge($lines, self::addHeaderLines($headerList, $headersToSign));
 
         $lines[] = '';
         $lines[] = implode(";", $headersToSign);
@@ -663,14 +674,14 @@ class AsrRequestCanonicalizer
     }
 
     /**
-     * @param $headers
+     * @param $headerList
      * @param $headersToSign
      * @return array
      */
-    private static function addHeaderLines($headers, $headersToSign)
+    private static function addHeaderLines($headerList, $headersToSign)
     {
         $elements = array();
-        foreach ($headers as $key => $value) {
+        foreach ($headerList as $key => $value) {
             if (!in_array(strtolower($key), $headersToSign)) {
                 continue;
             }
