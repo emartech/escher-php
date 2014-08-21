@@ -286,4 +286,285 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         return new DateTime($this->defaultEmsDate, new DateTimeZone("UTC"));
     }
+
+    private $testFiles = array(
+        'get-header-key-duplicate',
+        'get-header-value-order',
+        'get-header-value-trim',
+        'get-relative-relative',
+        'get-relative',
+        'get-slash-dot-slash',
+        'get-slash-pointless-dot',
+        'get-slash',
+        'get-slashes',
+        'get-space',
+        'get-unreserved',
+        'get-utf8',
+        'get-vanilla-empty-query-key',
+        'get-vanilla-query-order-key-case',
+        'get-vanilla-query-order-key',
+        'get-vanilla-query-order-value',
+        'get-vanilla-query-unreserved',
+        'get-vanilla-query',
+        'get-vanilla-ut8-query',
+        'get-vanilla',
+        'post-header-key-case',
+        'post-header-key-sort',
+        'post-header-value-case',
+        'post-vanilla-empty-query-value',
+//        'post-vanilla-query-nonunreserved',
+        'post-vanilla-query-space',
+        'post-vanilla-query',
+        'post-vanilla',
+        'post-x-www-form-urlencoded-parameters',
+        'post-x-www-form-urlencoded',
+    );
+
+    /**
+     * @test
+     * @dataProvider StringToSignFileList
+     */
+    public function createStringToSign_Perfect_Perfect($canonicalRequestString, $expectedStringToSign)
+    {
+        $credentialScope = 'us-east-1/host/aws4_request';
+        $actualStringToSign = AsrSigner::createStringToSign(
+            $credentialScope,
+            $canonicalRequestString,
+            new DateTime("09 Sep 2011 23:36:00 GMT"),
+            'sha256',
+            'AWS4'
+        );
+        $this->assertEquals($expectedStringToSign, $actualStringToSign);
+    }
+
+    /**
+     * @test
+     */
+    public function calculateSigningKey_Perfect_Perfect()
+    {
+        $actualSigningKey = AsrSigner::calculateSigningKey(
+            "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+            "20110909/us-east-1/iam/aws4_request",
+            'sha256',
+            'AWS4'
+        );
+
+        $this->assertEquals(
+            "98f1d889fec4f4421adc522bab0ce1f82e6929c262ed15e5a94c90efd1e3b0e7",
+            bin2hex($actualSigningKey)
+        );
+    }
+
+    /**
+     * @test
+     * @dataProvider headerFileList
+     */
+    public function createAuthHeader_Perfect_Perfect($stringToSign, $expectedAuthHeaders)
+    {
+
+        $pattern = '/'.
+            '^AWS4-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
+            'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
+            'SignedHeaders=(?P<signed_headers>[a-z\-;]+), '.
+            'Signature=(?P<signature>[0-9a-f]{64})'.
+            '$/';
+        preg_match($pattern, $expectedAuthHeaders, $matches);
+
+        list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
+
+        $signerKey = $this->hextobin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
+        $signedHeaders = $matches['signed_headers'];
+
+        $actualAuthHeader = AsrSigner::createAuthHeader(
+            AsrSigner::createSignature($stringToSign, $signerKey, $matches['algorithm']),
+            $credentialScope,
+            $signedHeaders,
+            $matches['algorithm'],
+            'AWS4',
+            $accessKey
+        );
+        $this->assertEquals($expectedAuthHeaders,$actualAuthHeader);
+    }
+
+    public function stringToSignFileList()
+    {
+        $returnArray = array();
+        foreach($this->testFiles as $file) {
+            $awsFixture = $this->getRequestContents($file);
+            $returnArray[$file] = array($awsFixture['canonicalRequestString'], $awsFixture['stringToSign']);
+        }
+
+        return $returnArray;
+    }
+
+    public function headerFileList()
+    {
+        $returnArray = array();
+        foreach($this->testFiles as $file) {
+            $awsFixture = $this->getRequestContents($file);
+            $returnArray[$file] = array($awsFixture['stringToSign'], $awsFixture['authHeader']);
+        }
+
+        return $returnArray;
+    }
+
+    private function getRequestContents($request)
+    {
+        $path = $this->awsFixtures();
+
+        return array(
+            "rawRequest"             => file_get_contents($path . $request . ".req"),
+            "canonicalRequestString" => file_get_contents($path . $request . ".creq"),
+            "stringToSign"           => file_get_contents($path . $request . ".sts"),
+            "authHeader"             => file_get_contents($path . $request . ".authz"),
+        );
+    }
+
+    public function hextobin($hexstr)
+    {
+        $n = strlen($hexstr);
+        $sbin="";
+        $i=0;
+        while($i<$n)
+        {
+            $a =substr($hexstr,$i,2);
+            $c = pack("H*",$a);
+            if ($i==0){$sbin=$c;}
+            else {$sbin.=$c;}
+            $i+=2;
+        }
+        return $sbin;
+    }
+
+    /**
+     * @return string
+     */
+    private function awsFixtures()
+    {
+        return dirname(__FILE__) . '/../fixtures/aws4_testsuite/';
+    }
+
+    /**
+     * @test
+     * @dataProvider canonicalizeFixtures
+     */
+    public function canonicalize_Perfect_Perfect($rawRequest, $canonicalRequestString)
+    {
+        $rawRequestArray = $this->parseRawRequest($rawRequest);
+        $headersToSign = array_unique(array_map('strtolower', array_keys($rawRequestArray['headers'])));
+        $canonizedRequest = AsrRequestCanonizer::canonize($rawRequestArray, $headersToSign, 'sha256');
+        $this->assertEquals($canonicalRequestString, $canonizedRequest);
+    }
+
+    public function canonicalizeFixtures()
+    {
+        $returnArray = array();
+        foreach($this->testFiles as $file) {
+            $awsFixture = $this->getRequestContents($file);
+            $returnArray[$file] = array($awsFixture['rawRequest'], $awsFixture['canonicalRequestString']);
+        }
+
+        return $returnArray;
+    }
+
+    private function parseRawRequest($content)
+    {
+        $rows = explode("\n", $content);
+        $pattern = "/^(?P<method>GET|POST|PUT) (?P<path>.*)(\?(?P<query>.*))? http\/1\.1$/U";
+        preg_match($pattern, $rows[0], $matches);
+        unset($rows[0]);
+
+        $headerRows = array();
+        foreach ($rows as $key => $row) {
+            if ($row == "") {
+                unset($rows[$key]);
+                break;
+            }
+            $headerRows[] = $row;
+            unset($rows[$key]);
+        }
+        $body = implode("\n", $rows);
+        $headers = http_parse_headers($headerRows);
+
+        $query = isset($matches['query']) ? $matches['query'] : "";
+        $headers = $headers ? $headers : array();
+        $body = isset($body) ? $body : "";
+
+        return array(
+            'method'  => $matches['method'],
+            'path'    => $matches['path'],
+            'query'   => $query,
+            'headers' => $headers,
+            'body'    => $body
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function getSignedHeaders_EveryParameterSet_ReturnsSignedHeaders()
+    {
+        $party = new AsrParty('us-east-1', 'host', 'aws4_request');
+        $secret = "very_secure";
+        $key = "th3K3y";
+
+        $hashAlgo = "sha256";
+        $vendorPrefix = "EMS";
+
+        $client = new AsrClient($party, $secret, $key, $hashAlgo, $vendorPrefix);
+
+        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
+        $signedHeaders = $client->getSignedHeaders(
+            "GET",
+            "http://example.com/something",
+            "",
+            array('Some-Custom-Header' => 'FooBar'),
+            array('Host', 'X-Ems-Date'),
+            $date,
+            'x-ems-auth'
+        );
+
+        $expectedSignedHeaders = array(
+            'some-custom-header' => 'FooBar',
+            'host'               => 'example.com',
+            'x-ems-date'         => '20110511T120000Z',
+            'x-ems-auth'         => 'EMS-HMAC-SHA256 Credential=th3K3y/20110511/us-east-1/host/aws4_request, SignedHeaders=host;x-ems-date, Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4'
+        );
+
+        $this->assertEquals($expectedSignedHeaders, $signedHeaders);
+    }
+}
+
+if (!function_exists('http_parse_headers'))
+{
+    function http_parse_headers($rawHeaderLines)
+    {
+        $headers = array();
+        $previousKey = ''; // [+]
+
+        foreach($rawHeaderLines as $headerLine) {
+            $headerLine = explode(':', $headerLine, 2);
+
+            if (isset($headerLine[1])) {
+                $currentKey = strtolower($headerLine[0]);
+                $headers[$currentKey] = array_merge(isset($headers[$currentKey]) ? $headers[$currentKey] : array(), array(trim($headerLine[1])));
+                $previousKey = $currentKey;
+            } else {
+                $trimmedValuePart = trim($headerLine[0]);
+                if ($headerLine[0]{0} == "\t") {
+                    $headers[$previousKey][count($headers[$previousKey] - 1)] .= ' '. $trimmedValuePart;
+                } elseif (!$previousKey) {
+                    $headers[0] = array($trimmedValuePart);
+                }
+            }
+        }
+
+        return array_reduce(array_map('implode_header_multivalues', array_keys($headers), array_values($headers)), 'array_merge', array());
+    }
+
+    function implode_header_multivalues($key, $value)
+    {
+        sort($value);
+        return array($key => implode(',', $value));
+    }
 }
