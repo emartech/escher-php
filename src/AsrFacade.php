@@ -50,6 +50,7 @@ class AsrClient
         list($host, $path, $query) = $this->parseUrl($url);
 
         $headerList += array('host' => $host);
+        $headersToSign = array_unique(array_merge(array('host'), $headersToSign));
 
         $signingParams = array(
             'Algorithm'     => $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo),

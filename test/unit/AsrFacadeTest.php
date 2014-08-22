@@ -181,34 +181,57 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldGenerateSignedHeaders()
     {
-        $party = new AsrParty('us-east-1', 'host', 'aws4_request');
-        $secret = "very_secure";
-        $key = "th3K3y";
-
-        $hashAlgo = "sha256";
-        $vendorPrefix = "EMS";
-
-        $client = new AsrClient($party, $secret, $key, $hashAlgo, $vendorPrefix);
+        $example = AsrExample::getCustom();
+        $client = $example->createClient();
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
         $signedHeaders = $client->getSignedHeaders(
-            "GET",
+            $example->method,
             "http://example.com/something",
             "",
             array('Some-Custom-Header' => 'FooBar'),
-            array('Host', 'X-Ems-Date'),
+            array(),
             $date,
             'x-ems-auth'
         );
 
-        $expectedSignedHeaders = array(
-            'some-custom-header' => 'FooBar',
-            'host'               => 'example.com',
-            'x-ems-date'         => '20110511T120000Z',
-            'x-ems-auth'         => 'EMS-HMAC-SHA256 Credential=th3K3y/20110511/us-east-1/host/aws4_request, SignedHeaders=host;x-ems-date, Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4'
-        );
+        $expectedSignedHeaders = array('some-custom-header' => 'FooBar') + $example->dateHeader() + $example->authorizationHeader('x-ems-auth') + $example->hostHeader();
 
-        $this->assertEquals($expectedSignedHeaders, $signedHeaders);
+        $this->assertEqualMaps($expectedSignedHeaders, $signedHeaders);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldGenerateSignedUrl()
+    {
+        $example = AsrExample::getCustom();
+        $client = $example->createClient();
+
+        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
+        $expires = 123456;
+        $signedUrl = $client->getSignedUrl('http://example.com/something?foo=bar&baz=barbaz', $date, $expires);
+
+        $expectedSignedUrl = $example->signedUrl;
+
+        $this->assertEquals($expectedSignedUrl, $signedUrl);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldAutomagicallyAddMandatoryHeaders()
+    {
+        $example = AsrExample::getCustom();
+        $client = $example->createClient();
+
+        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
+        $expires = 123456;
+        $signedUrl = $client->getSignedUrl('http://example.com/something?foo=bar&baz=barbaz', $date, $expires, array(), array());
+
+        $expectedSignedUrl = $example->signedUrl;
+
+        $this->assertEquals($expectedSignedUrl, $signedUrl);
     }
 
     /**
@@ -496,6 +519,8 @@ class AsrExample
     public $headers;
     public $signature;
     public $method;
+    public $authHeaderValue;
+    public $signedUrl;
 
     /**
      * @return AsrExample
@@ -519,6 +544,34 @@ class AsrExample
             'host' => $result->host,
             'x-ems-date' => $result->date,
         );
+        $result->authHeaderValue = 'EMS-HMAC-SHA256 '.
+            'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
+            'SignedHeaders=content-type;host;x-ems-date, '.
+            'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
+        $result->signedUrl = '';
+        return $result;
+    }
+
+    public static function getCustom()
+    {
+        $result = self::getDefault();
+        $result->accessKeyId = "th3K3y";
+        $result->secretKey = "very_secure";
+        $result->method = 'GET';
+        $result->host = 'example.com';
+        $result->service = 'host';
+        $result->date = '20110511T120000Z';
+        $result->authHeaderValue = 'EMS-HMAC-SHA256 '.
+            'Credential=th3K3y/20110511/us-east-1/host/aws4_request, '.
+            'SignedHeaders=host;x-ems-date, '.
+            'Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4';
+        $result->signedUrl = 'http://example.com/something?foo=bar&baz=barbaz&' .
+            'X-EMS-Algorithm=EMS-HMAC-SHA256&'.
+            'X-EMS-Credentials=th3K3y20110511%2Fus-east-1%2Fhost%2Faws4_request&'.
+            'X-EMS-Date=20110511T120000Z&'.
+            'X-EMS-Expires=123456&'.
+            'X-EMS-SignedHeaders=host&'.
+            'X-EMS-Signature=af68c501bd4cc0f6d803d9a514e189a74d2e2ca4e0714a75135a3c19eb419ffe';
         return $result;
     }
 
@@ -539,11 +592,7 @@ class AsrExample
 
     public function authorizationHeaderValue()
     {
-        return
-            'EMS-HMAC-SHA256 '.
-            'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
-            'SignedHeaders=content-type;host;x-ems-date, '.
-            'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
+        return $this->authHeaderValue;
     }
 
     public function shortDate()
