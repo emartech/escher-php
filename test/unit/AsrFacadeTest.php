@@ -43,7 +43,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $example = AsrExample::getDefault();
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
         $headerList = $example->defaultHeaders();
-        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
     /**
@@ -54,7 +54,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $headerList = $example->contentTypeHeader();
-        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
     /**
@@ -65,7 +65,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type');
         $headerList = $example->contentTypeHeader();
-        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
     /**
@@ -79,8 +79,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $contentType = $example->contentTypeHeader();
 
         $expected = $example->allHeaders() + $extra;
-        ksort($expected);
-        $this->assertEquals($expected, $this->callSignRequest($example, $contentType + $extra, $headersToSign));
+        $this->assertEqualMaps($expected, $this->callSignRequest($example, $contentType + $extra, $headersToSign));
     }
 
     /**
@@ -101,8 +100,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'Authorization'
         );
         $expected = $example->allHeaders();
-        ksort($expected);
-        $this->assertEquals($expected, $actual);
+        $this->assertEqualMaps($expected, $actual);
     }
 
     /**
@@ -117,14 +115,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $example->method,
             $example->url(),
             $example->requestBody,
-            $example->getHeadersByKeys(array('content-type','host','x-ems-date')),
+            $example->defaultHeaders(),
             $headersToSign,
             $example->defaultDateTime(),
             'CustomHeader'
         );
         $expected = $example->allHeaders('CustomHeader');
-        ksort($expected);
-        $this->assertEquals($expected, $actual);
+        $this->assertEqualMaps($expected, $actual);
     }
 
     /**
@@ -141,7 +138,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'EMS'
         );
 
-        $this->assertEquals($example->defaultEmsDate, $authHeader->getLongDate());
+        $this->assertEquals($example->date, $authHeader->getLongDate());
         $this->assertEquals($example->accessKeyId, $authHeader->getAccessKeyId());
         $this->assertEquals($example->shortDate(), $authHeader->getShortDate());
         $this->assertEquals($example->region, $authHeader->getRegion());
@@ -164,6 +161,59 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     /**
      * @test
      */
+    public function itShouldCalculateSigningKey()
+    {
+        $actualSigningKey = AsrSigner::calculateSigningKey(
+            "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+            "20110909/us-east-1/iam/aws4_request",
+            'sha256',
+            'AWS4'
+        );
+
+        $this->assertEquals(
+            "98f1d889fec4f4421adc522bab0ce1f82e6929c262ed15e5a94c90efd1e3b0e7",
+            bin2hex($actualSigningKey)
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldGenerateSignedHeaders()
+    {
+        $party = new AsrParty('us-east-1', 'host', 'aws4_request');
+        $secret = "very_secure";
+        $key = "th3K3y";
+
+        $hashAlgo = "sha256";
+        $vendorPrefix = "EMS";
+
+        $client = new AsrClient($party, $secret, $key, $hashAlgo, $vendorPrefix);
+
+        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
+        $signedHeaders = $client->getSignedHeaders(
+            "GET",
+            "http://example.com/something",
+            "",
+            array('Some-Custom-Header' => 'FooBar'),
+            array('Host', 'X-Ems-Date'),
+            $date,
+            'x-ems-auth'
+        );
+
+        $expectedSignedHeaders = array(
+            'some-custom-header' => 'FooBar',
+            'host'               => 'example.com',
+            'x-ems-date'         => '20110511T120000Z',
+            'x-ems-auth'         => 'EMS-HMAC-SHA256 Credential=th3K3y/20110511/us-east-1/host/aws4_request, SignedHeaders=host;x-ems-date, Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4'
+        );
+
+        $this->assertEquals($expectedSignedHeaders, $signedHeaders);
+    }
+
+    /**
+     * @test
+     */
     public function itShouldParseHeaders()
     {
         $example = AsrExample::getDefault();
@@ -176,8 +226,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
         $requestBody = 'BODY';
         $helper = $this->createRequestHelper($serverVars, $requestBody);
-        $this->assertEquals($example->getHeadersByKeys(array('content-type', 'host')), $helper->getHeaderList());
         $this->assertEquals($requestBody, $helper->getRequestBody());
+        $this->assertEqualMaps($example->contentTypeHeader() + $example->hostHeader(), $helper->getHeaderList());
     }
 
     /**
@@ -212,7 +262,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private function goodServerVars(AsrExample $example)
     {
         return array(
-            'HTTP_X_EMS_DATE' => $example->defaultEmsDate,
+            'HTTP_X_EMS_DATE' => $example->date,
             'HTTP_X_EMS_AUTH' => $example->authorizationHeaderValue(),
             'REQUEST_TIME' => $example->getTimeStamp() + rand(0, 100),
             'REQUEST_METHOD' => $example->method,
@@ -229,8 +279,8 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', '20110909T113600Z', 'One of the date headers are invalid'),
-            'wrong auth header'     => array('HTTP_X_EMS_AUTH', '', 'Could not parse authorization header.'),
+            'wrong date'            => array('HTTP_X_EMS_DATE', $example->tamperDate(), 'One of the date headers are invalid'),
+            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed', 'Could not parse authorization header.'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', $example->tamperSignature(), 'The signatures do not match'),
             'wrong hash algo'       => array('HTTP_X_EMS_AUTH', $example->tamperHashAlgo(), 'Only SHA256 and SHA512 hash algorithms are allowed.'),
             'host not signed'       => array('HTTP_X_EMS_AUTH', $example->unsignHost(), 'Host header not signed'),
@@ -256,16 +306,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $example->defaultDateTime(),
             'Authorization'
         );
-    }
-
-    private function processFixtures($input, $output)
-    {
-        $returnArray = array();
-        foreach($this->allFixtures as $name) {
-            $awsFixture = new AwsFixture($name);
-            $returnArray[$name] = array($awsFixture->contents[$input], $awsFixture->contents[$output]);
-        }
-        return $returnArray;
     }
 
     /**
@@ -360,6 +400,16 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($canonicalRequestString, $canonicalizedRequest);
     }
 
+    private function processFixtures($input, $output)
+    {
+        $returnArray = array();
+        foreach($this->allFixtures as $name) {
+            $awsFixture = new AwsFixture($name);
+            $returnArray[$name] = array($awsFixture->contents[$input], $awsFixture->contents[$output]);
+        }
+        return $returnArray;
+    }
+
     public function canonicalizeFixtures()
     {
         return $this->processFixtures('rawRequest', 'canonicalRequestString');
@@ -378,42 +428,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
     }
 
-
-    /**
-     * @test
-     */
-    public function getSignedHeaders_EveryParameterSet_ReturnsSignedHeaders()
-    {
-        $party = new AsrParty('us-east-1', 'host', 'aws4_request');
-        $secret = "very_secure";
-        $key = "th3K3y";
-
-        $hashAlgo = "sha256";
-        $vendorPrefix = "EMS";
-
-        $client = new AsrClient($party, $secret, $key, $hashAlgo, $vendorPrefix);
-
-        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $signedHeaders = $client->getSignedHeaders(
-            "GET",
-            "http://example.com/something",
-            "",
-            array('Some-Custom-Header' => 'FooBar'),
-            array('Host', 'X-Ems-Date'),
-            $date,
-            'x-ems-auth'
-        );
-
-        $expectedSignedHeaders = array(
-            'some-custom-header' => 'FooBar',
-            'host'               => 'example.com',
-            'x-ems-date'         => '20110511T120000Z',
-            'x-ems-auth'         => 'EMS-HMAC-SHA256 Credential=th3K3y/20110511/us-east-1/host/aws4_request, SignedHeaders=host;x-ems-date, Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4'
-        );
-
-        $this->assertEquals($expectedSignedHeaders, $signedHeaders);
-    }
-
     public function hex2bin($hexstr)
     {
         $n = strlen($hexstr);
@@ -428,6 +442,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $i+=2;
         }
         return $sbin;
+    }
+
+    private function assertEqualMaps(array $expected, array $actual, $message = '')
+    {
+        ksort($expected);
+        ksort($actual);
+        $this->assertEquals($expected, $actual, $message);
     }
 }
 
@@ -463,7 +484,7 @@ class AwsFixture
 
 class AsrExample
 {
-    public $defaultEmsDate;
+    public $date;
     public $secretKey;
     public $accessKeyId;
     public $region;
@@ -482,7 +503,7 @@ class AsrExample
     public static function getDefault()
     {
         $result = new AsrExample();
-        $result->defaultEmsDate = '20110909T233600Z';
+        $result->date = '20110909T233600Z';
         $result->secretKey = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY';
         $result->accessKeyId = 'AKIDEXAMPLE';
         $result->region = 'us-east-1';
@@ -496,32 +517,19 @@ class AsrExample
         $result->headers = array(
             'content-type' => $result->contentType,
             'host' => $result->host,
-            'x-ems-date' => $result->defaultEmsDate,
+            'x-ems-date' => $result->date,
         );
         return $result;
     }
 
     public function getTimeStamp()
     {
-        return strtotime($this->defaultEmsDate);
-    }
-
-    public function getHeadersByKeys($headerKeys)
-    {
-        $result = array();
-        foreach ($this->headers as $key => $value) {
-            if (in_array($key, $headerKeys)) {
-                $result[$key] = $value;
-            }
-        }
-        return $result;
+        return strtotime($this->date);
     }
 
     public function allHeaders($authHeaderName = 'authorization')
     {
-        $result = $this->contentTypeHeader() + $this->hostHeader() + $this->dateHeader() + $this->authorizationHeader($authHeaderName);
-        ksort($result);
-        return $result;
+        return $this->contentTypeHeader() + $this->hostHeader() + $this->dateHeader() + $this->authorizationHeader($authHeaderName);
     }
 
     public function authorizationHeader($authHeaderKey = 'authorization')
@@ -540,7 +548,7 @@ class AsrExample
 
     public function shortDate()
     {
-        return substr($this->defaultEmsDate, 0, 8);
+        return substr($this->date, 0, 8);
     }
 
     public function headerKeys()
