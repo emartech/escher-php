@@ -86,7 +86,9 @@ class AsrClient
 
         $authHeader = $this->calculateAuthHeader($date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
 
-        $headerList += array($authHeaderKey => $authHeader);
+        $headerList += array(strtolower($authHeaderKey) => $authHeader);
+
+        ksort($headerList);
 
         return $headerList;
     }

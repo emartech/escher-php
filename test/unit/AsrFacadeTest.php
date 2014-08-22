@@ -43,7 +43,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $example = AsrExample::getDefault();
         $headersToSign =  array('content-type','host','x-ems-date');
         $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
-        $this->assertEquals($example->allHeaders($headerList), $this->callSignRequest($example, $headerList, $headersToSign));
+        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
     /**
@@ -54,7 +54,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type','host','x-ems-date');
         $headerList = $example->getHeadersByKeys(array('content-type'));
-        $this->assertEquals($example->allHeaders($headerList), $this->callSignRequest($example, $headerList, $headersToSign));
+        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
     /**
@@ -64,11 +64,12 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type','host','x-ems-date');
-        $headerList = array(
-            'content-type' => $example->contentType,
-            'x-a-header' => 'that/should/not/be/signed'
-        );
-        $this->assertEquals($example->allHeaders($headerList), $this->callSignRequest($example, $headerList, $headersToSign));
+        $extra = array('x-a-header' => 'that/should/not/be/signed');
+        $contentType = $example->contentTypeHeader();
+
+        $expected = $example->allHeaders() + $extra;
+        ksort($expected);
+        $this->assertEquals($expected, $this->callSignRequest($example, $contentType + $extra, $headersToSign));
     }
 
     /**
@@ -78,10 +79,20 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type','host','x-ems-date');
-        $headerList = $example->getHeadersByKeys($headersToSign);
+        $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
         $_SERVER['REQUEST_TIME'] = $example->getTimeStamp();
-        $actual = $example->createClient()->getSignedHeaders('POST', $example->url(), $example->requestBody, $headerList, $headersToSign, $example->defaultDateTime());
-        $this->assertEquals($example->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY) + $headerList + $example->hostHeader(), $actual);
+        $actual = $example->createClient()->getSignedHeaders(
+            $example->method,
+            $example->url(),
+            $example->requestBody,
+            $headerList,
+            $headersToSign,
+            $example->defaultDateTime(),
+            'Authorization'
+        );
+        $expected = $example->authorizationHeaders() + $headerList + $example->hostHeader();
+        ksort($expected);
+        $this->assertEquals($expected, $actual);
     }
 
     /**
@@ -470,12 +481,14 @@ class AsrExample
         return $result;
     }
 
-    public function allHeaders($headerList)
+    public function allHeaders()
     {
-        return $headerList + $this->authorizationHeaders() + $this->hostHeader();
+        $result = $this->contentTypeHeader() + $this->authorizationHeaders() + $this->hostHeader();
+        ksort($result);
+        return $result;
     }
 
-    public function authorizationHeaders($authHeaderKey = 'Authorization')
+    public function authorizationHeaders($authHeaderKey = 'authorization')
     {
         return array(
             $authHeaderKey   => $this->authorizationHeaderValue(),
@@ -552,5 +565,10 @@ class AsrExample
     public function defaultDateTime()
     {
         return new DateTime($this->defaultEmsDate, new DateTimeZone("UTC"));
+    }
+
+    public function contentTypeHeader()
+    {
+        return array('content-type' => $this->contentType);
     }
 }
