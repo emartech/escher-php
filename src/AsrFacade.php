@@ -437,7 +437,15 @@ class AsrRequestHelper
     public function getAuthElements($vendorPrefix)
     {
         $headerList = AsrUtils::keysToLower($this->getHeaderList());
-        return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
+
+        if (isset($headerList[strtolower($this->authHeaderKey)])) {
+            return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
+        } else if($this->getRequestMethod() == 'GET') {
+            $queryParams = $_GET;
+            if (isset($queryParams)) {
+                return AsrAuthElements::parseFromQuery($queryParams, $vendorPrefix);
+            }
+        }
     }
 
     public function getTimeStamp()
