@@ -5,6 +5,7 @@ class AsrFacade
     const DEFAULT_HASH_ALGORITHM = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
+    const DEFAULT_DATE_HEADER_KEY = 'X-Ems-Date';
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";
@@ -250,12 +251,12 @@ class AsrServer
         $this->vendorPrefix = $vendorPrefix;
     }
 
-    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
+    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
-        $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey);
+        $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
         $authHeader = $helper->getAuthHeaders($this->vendorPrefix);
 
         $this->validateMandatorySignedHeaders($authHeader);
@@ -422,12 +423,14 @@ class AsrRequestHelper
     private $serverVars;
     private $requestBody;
     private $authHeaderKey;
+    private $dateHeaderKey;
 
-    public function __construct(array $serverVars, $requestBody, $authHeaderKey)
+    public function __construct(array $serverVars, $requestBody, $authHeaderKey, $dateHeaderKey)
     {
         $this->serverVars = $serverVars;
         $this->requestBody = $requestBody;
         $this->authHeaderKey = $authHeaderKey;
+        $this->dateHeaderKey = $dateHeaderKey;
     }
 
     public function getRequestMethod()
@@ -442,7 +445,7 @@ class AsrRequestHelper
 
     public function getAuthHeaders($vendorPrefix)
     {
-        return AsrAuthHeader::parse($this->getHeaderList(), strtolower($this->authHeaderKey), $vendorPrefix);
+        return AsrAuthHeader::parse($this->getHeaderList(), $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
     }
 
     public function getTimeStamp()
@@ -521,11 +524,11 @@ class AsrAuthHeader
         $this->host = $host;
     }
 
-    public static function parse(array $headerList, $authHeaderKey, $vendorPrefix)
+    public static function parse(array $headerList, $authHeaderKey, $dateHeaderKey, $vendorPrefix)
     {
         $headerList = AsrUtils::keysToLower($headerList);
-        if (!isset($headerList['x-ems-date'])) {
-            throw new AsrException('The X-Ems-Date header is missing');
+        if (!isset($headerList[strtolower($dateHeaderKey)])) {
+            throw new AsrException('The '.$dateHeaderKey.' header is missing');
         }
 
         if (!isset($headerList['host'])) {
@@ -541,7 +544,7 @@ class AsrAuthHeader
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
         }
-        return new AsrAuthHeader($matches, $credentialParts, $headerList['x-ems-date'], $headerList['host']);
+        return new AsrAuthHeader($matches, $credentialParts, $headerList[strtolower($dateHeaderKey)], $headerList['host']);
     }
 
     private static function regex($vendorPrefix)

@@ -118,14 +118,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     /**
      * @test
-     * @dataProvider authHeaderNames
+     * @dataProvider headerNames
      */
-    public function itShouldParseAuthorizationHeader($authHeaderName)
+    public function itShouldParseAuthorizationHeader($authHeaderName, $dateHeaderName)
     {
         $example = AsrExample::getDefault();
         $authHeader = AsrAuthHeader::parse(
-            $example->authorizationHeader($authHeaderName) + $example->dateHeader() + $example->hostHeader(),
+            $example->authorizationHeader($authHeaderName) + $example->dateHeader($dateHeaderName) + $example->hostHeader(),
             $authHeaderName,
+            $dateHeaderName,
             'EMS'
         );
 
@@ -139,13 +140,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($example->signature, $authHeader->getSignature());
     }
 
-    public function authHeaderNames()
+    public function headerNames()
     {
         return array(
-            'default'       => array('authorization'),
-            'upcase'        => array('Authorization'),
-            'custom'        => array('x-ems-auth'),
-            'custom upcase' => array('X-Ems-Auth'),
+            'default'       => array('authorization', 'date'),
+            'upcase'        => array('Authorization', 'Date'),
+            'custom'        => array('x-ems-auth',    'x-ems-date'),
+            'custom upcase' => array('X-Ems-Auth',    'X-Ems-Date'),
         );
     }
 
@@ -230,7 +231,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     protected function createRequestHelper($serverVars, $requestBody)
     {
-        return new AsrRequestHelper($serverVars, $requestBody, 'Authorization');
+        return new AsrRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
     }
 
     public function callSignRequest(AsrExample $example, $headerList, $headersToSign)
@@ -592,8 +593,8 @@ class AsrExample
         return array('content-type' => $this->contentType);
     }
 
-    public function dateHeader()
+    public function dateHeader($dateHeaderName = 'x-ems-date')
     {
-        return array('x-ems-date' => $this->defaultEmsDate);
+        return array(strtolower($dateHeaderName) => $this->defaultEmsDate);
     }
 }
