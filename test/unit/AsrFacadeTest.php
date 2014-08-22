@@ -42,7 +42,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign =  array('content-type','host','x-ems-date');
-        $headerList = $example->getHeadersByKeys($headersToSign);
+        $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
         $this->assertEquals($example->allHeaders($headerList), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
