@@ -10,30 +10,40 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private $requestType = 'aws4_request';
     private $host = 'iam.amazonaws.com';
     private $contentType = 'application/x-www-form-urlencoded; charset=utf-8';
+    private $requestBody = 'Action=ListUsers&Version=2010-05-08';
 
-    /**
-     * @return string
-     */
-    public function url()
-    {
-        return 'http://'.$this->host . '/';
-    }
-
-    /**
-     * @return AsrClient
-     */
-    public function defaultClient()
-    {
-        return AsrFacade::createClient($this->secretKey, $this->accessKeyId, $this->region, $this->service, $this->requestType);
-    }
-
-    /**
-     * @return AsrServer
-     */
-    public function defaultServer()
-    {
-        return AsrFacade::createServer($this->region, $this->service, $this->requestType, array($this->accessKeyId => $this->secretKey));
-    }
+    private $allFixtures = array(
+        'get-header-key-duplicate',
+        'get-header-value-order',
+        'get-header-value-trim',
+        'get-relative-relative',
+        'get-relative',
+        'get-slash-dot-slash',
+        'get-slash-pointless-dot',
+        'get-slash',
+        'get-slashes',
+        'get-space',
+        'get-unreserved',
+        'get-utf8',
+        'get-vanilla-empty-query-key',
+        'get-vanilla-query-order-key-case',
+        'get-vanilla-query-order-key',
+        'get-vanilla-query-order-value',
+        'get-vanilla-query-unreserved',
+        'get-vanilla-query',
+        'get-vanilla-ut8-query',
+        'get-vanilla',
+        'post-header-key-case',
+        'post-header-key-sort',
+        'post-header-value-case',
+        'post-vanilla-empty-query-value',
+        'post-vanilla-query-nonunreserved',
+        'post-vanilla-query-space',
+        'post-vanilla-query',
+        'post-vanilla',
+        'post-x-www-form-urlencoded-parameters',
+        'post-x-www-form-urlencoded',
+    );
 
     /**
      * @test
@@ -41,7 +51,11 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldSignRequest()
     {
         $headersToSign = array('content-type','host','x-ems-date');
-        $headerList = $this->headers();
+        $headerList = array(
+            'content-type' => $this->contentType,
+            'host'         => $this->host,
+            'x-ems-date'   => $this->defaultEmsDate,
+        );
         $this->assertEquals($this->allHeaders($headerList), $this->callSignRequestWithDefaultParams($headerList, $headersToSign));
     }
 
@@ -73,10 +87,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldUseTheServersRequestTimeAsTheFullDate()
     {
-        $headerList = $this->headers();
+        $headerList = array(
+            'content-type' => $this->contentType,
+            'host' => $this->host,
+            'x-ems-date' => $this->defaultEmsDate,
+        );
         $headersToSign = array('content-type','host','x-ems-date');
         $_SERVER['REQUEST_TIME'] = strtotime($this->defaultEmsDate);
-        $actual = $this->defaultClient()->getSignedHeaders('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, $this->defaultDateTime());
+        $actual = $this->defaultClient()->getSignedHeaders('POST', $this->url(), $this->requestBody, $headerList, $headersToSign, $this->defaultDateTime());
         $this->assertEquals($this->authorizationHeaders(AsrFacade::DEFAULT_AUTH_HEADER_KEY) + $headerList + $this->hostHeader(), $actual);
     }
 
@@ -113,34 +131,31 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $requestBody = 'BODY';
         $helper = $this->createRequestHelper($serverVars, $requestBody);
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $helper->getHeaderList());
-        $this->assertEquals('BODY', $helper->getRequestBody());
+        $this->assertEquals($requestBody, $helper->getRequestBody());
     }
 
     /**
      * @test
      */
-    public function itShouldValidateRequest()
+    public function itShouldValidateRequestUsingAuthHeader()
     {
         $serverVars = $this->goodServerVars();
-        $this->defaultServer()->validateRequest($serverVars, $this->requestBody());
+        $this->defaultServer()->validateRequest($serverVars, $this->requestBody);
     }
 
     /**
      * @test
      * @dataProvider requestTamperingProvider
      */
-    public function itShouldFailForInvalidRequest($tamperedKey, $tamperedValue, $expectedErrorMessage)
+    public function itShouldFailForInvalidAuthHeader($tamperedKey, $tamperedValue, $expectedErrorMessage)
     {
         $serverVars = $this->goodServerVars();
         $serverVars[$tamperedKey] = $tamperedValue;
         $asrServer = $this->defaultServer();
-        $requestBody = $this->requestBody();
-        try
-        {
-            $asrServer->validateRequest($serverVars, $requestBody);
+        try {
+            $asrServer->validateRequest($serverVars, $this->requestBody);
             $this->fail('Should fail to validate');
-        }
-        catch (AsrException $ex)
+        } catch (AsrException $ex)
         {
             $this->assertEquals($expectedErrorMessage, $ex->getMessage());
         }
@@ -153,7 +168,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         return array(
             'HTTP_X_EMS_DATE' => $this->defaultEmsDate,
-            'HTTP_X_EMS_AUTH' => $this->authorizationHeader(),
+            'HTTP_X_EMS_AUTH' => $this->authorizationHeaderValue(),
             'REQUEST_TIME' => strtotime($this->defaultEmsDate) + rand(0, 100),
             'REQUEST_METHOD' => 'POST',
             'HTTP_HOST' => $this->host,
@@ -179,48 +194,25 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
     }
 
-    /**
-     * @return string
-     */
     private function headerWithTamperedSignature()
     {
-        $lastTenChars = substr($this->authorizationHeader(), -60);
-        return str_replace($lastTenChars, strrev($lastTenChars), $this->authorizationHeader());
+        $lastTenChars = substr($this->authorizationHeaderValue(), -60);
+        return str_replace($lastTenChars, strrev($lastTenChars), $this->authorizationHeaderValue());
     }
 
     private function headerWithWrongHashAlgo()
     {
-        return str_replace('SHA256', 'ASDA', $this->authorizationHeader());
+        return str_replace('SHA256', 'ASDA', $this->authorizationHeaderValue());
     }
 
     private function headerWithHostNotSigned()
     {
-        return str_replace(';host', '', $this->authorizationHeader());
+        return str_replace(';host', '', $this->authorizationHeaderValue());
     }
 
     private function headerWithDateNotSigned()
     {
-        return str_replace(';x-ems-date', '', $this->authorizationHeader());
-    }
-
-    /**
-     * @return array
-     */
-    private function headers()
-    {
-        return array(
-            'content-type' => $this->contentType,
-            'host' => $this->host,
-            'x-ems-date' => $this->defaultEmsDate,
-        );
-    }
-
-    /**
-     * @return string
-     */
-    private function requestBody()
-    {
-        return 'Action=ListUsers&Version=2010-05-08';
+        return str_replace(';x-ems-date', '', $this->authorizationHeaderValue());
     }
 
     /**
@@ -230,13 +222,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private function authorizationHeaders($headerKey = 'Authorization')
     {
         return array(
-            $headerKey   => $this->authorizationHeader(),
+            $headerKey   => $this->authorizationHeaderValue(),
             'x-ems-date' => $this->defaultEmsDate,
             'host'       => $this->host
         );
     }
 
-    private function authorizationHeader()
+    private function authorizationHeaderValue()
     {
         return
             'EMS-HMAC-SHA256 '.
@@ -262,7 +254,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function callSignRequestWithDefaultParams($headerList, $headersToSign)
     {
-        return $this->defaultClient()->getSignedHeaders('POST', $this->url(), $this->requestBody(), $headerList, $headersToSign, $this->defaultDateTime(), 'Authorization');
+        return $this->defaultClient()->getSignedHeaders('POST', $this->url(), $this->requestBody, $headerList, $headersToSign, $this->defaultDateTime(), 'Authorization');
     }
 
     private function hostHeader()
@@ -287,38 +279,15 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return new DateTime($this->defaultEmsDate, new DateTimeZone("UTC"));
     }
 
-    private $testFiles = array(
-        'get-header-key-duplicate',
-        'get-header-value-order',
-        'get-header-value-trim',
-        'get-relative-relative',
-        'get-relative',
-        'get-slash-dot-slash',
-        'get-slash-pointless-dot',
-        'get-slash',
-        'get-slashes',
-        'get-space',
-        'get-unreserved',
-        'get-utf8',
-        'get-vanilla-empty-query-key',
-        'get-vanilla-query-order-key-case',
-        'get-vanilla-query-order-key',
-        'get-vanilla-query-order-value',
-        'get-vanilla-query-unreserved',
-        'get-vanilla-query',
-        'get-vanilla-ut8-query',
-        'get-vanilla',
-        'post-header-key-case',
-        'post-header-key-sort',
-        'post-header-value-case',
-        'post-vanilla-empty-query-value',
-        'post-vanilla-query-nonunreserved',
-        'post-vanilla-query-space',
-        'post-vanilla-query',
-        'post-vanilla',
-        'post-x-www-form-urlencoded-parameters',
-        'post-x-www-form-urlencoded',
-    );
+    private function processFixtures($input, $output)
+    {
+        $returnArray = array();
+        foreach($this->allFixtures as $name) {
+            $awsFixture = new AwsFixture($name);
+            $returnArray[$name] = array($awsFixture->contents[$input], $awsFixture->contents[$output]);
+        }
+        return $returnArray;
+    }
 
     /**
      * @test
@@ -335,6 +304,11 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             'AWS4'
         );
         $this->assertEquals($expectedStringToSign, $actualStringToSign);
+    }
+
+    public function stringToSignFileList()
+    {
+        return $this->processFixtures('canonicalRequestString', 'stringToSign');
     }
 
     /**
@@ -377,46 +351,9 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expectedAuthHeaders, $actualAuthHeader);
     }
 
-    public function stringToSignFileList()
-    {
-        $returnArray = array();
-        foreach($this->testFiles as $file) {
-            $awsFixture = $this->getRequestContents($file);
-            $returnArray[$file] = array($awsFixture['canonicalRequestString'], $awsFixture['stringToSign']);
-        }
-
-        return $returnArray;
-    }
-
     public function headerFileList()
     {
-        $returnArray = array();
-        foreach($this->testFiles as $file) {
-            $awsFixture = $this->getRequestContents($file);
-            $returnArray[$file] = array($awsFixture['stringToSign'], $awsFixture['authHeader']);
-        }
-
-        return $returnArray;
-    }
-
-    private function getRequestContents($request)
-    {
-        $path = $this->awsFixtures();
-
-        return array(
-            "rawRequest"             => file_get_contents($path . $request . ".req"),
-            "canonicalRequestString" => file_get_contents($path . $request . ".creq"),
-            "stringToSign"           => file_get_contents($path . $request . ".sts"),
-            "authHeader"             => file_get_contents($path . $request . ".authz"),
-        );
-    }
-
-    /**
-     * @return string
-     */
-    private function awsFixtures()
-    {
-        return dirname(__FILE__) . '/../fixtures/aws4_testsuite/';
+        return $this->processFixtures('stringToSign', 'authHeader');
     }
 
     /**
@@ -446,13 +383,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     public function canonicalizeFixtures()
     {
-        $returnArray = array();
-        foreach($this->testFiles as $file) {
-            $awsFixture = $this->getRequestContents($file);
-            $returnArray[$file] = array($awsFixture['rawRequest'], $awsFixture['canonicalRequestString']);
-        }
-
-        return $returnArray;
+        return $this->processFixtures('rawRequest', 'canonicalRequestString');
     }
 
     private function parseRawRequest($content)
@@ -467,6 +398,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             array_slice($rows, 1, -2),
         );
     }
+
 
     /**
      * @test
@@ -503,6 +435,30 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($expectedSignedHeaders, $signedHeaders);
     }
 
+    /**
+     * @return string
+     */
+    public function url()
+    {
+        return 'http://'.$this->host . '/';
+    }
+
+    /**
+     * @return AsrClient
+     */
+    public function defaultClient()
+    {
+        return AsrFacade::createClient($this->secretKey, $this->accessKeyId, $this->region, $this->service, $this->requestType);
+    }
+
+    /**
+     * @return AsrServer
+     */
+    public function defaultServer()
+    {
+        return AsrFacade::createServer($this->region, $this->service, $this->requestType, array($this->accessKeyId => $this->secretKey));
+    }
+
     public function hex2bin($hexstr)
     {
         $n = strlen($hexstr);
@@ -517,5 +473,35 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $i+=2;
         }
         return $sbin;
+    }
+}
+
+class AwsFixture
+{
+    public $contents;
+
+    public function __construct($name)
+    {
+        $this->contents = $this->load($name);
+    }
+
+    private function load($request)
+    {
+        $path = $this->awsFixtures();
+
+        return array(
+            "rawRequest"             => file_get_contents($path . $request . ".req"),
+            "canonicalRequestString" => file_get_contents($path . $request . ".creq"),
+            "stringToSign"           => file_get_contents($path . $request . ".sts"),
+            "authHeader"             => file_get_contents($path . $request . ".authz"),
+        );
+    }
+
+    /**
+     * @return string
+     */
+    private function awsFixtures()
+    {
+        return dirname(__FILE__) . '/../fixtures/aws4_testsuite/';
     }
 }
