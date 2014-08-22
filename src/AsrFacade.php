@@ -82,13 +82,7 @@ class AsrClient
         list($host, $path, $query) = $this->parseUrl($url);
         list($headerList, $headersToSign) = $this->addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host);
 
-        $authHeader = $this->calculateAuthHeader($date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
-
-        $headerList += array(strtolower($authHeaderKey) => $authHeader);
-
-        ksort($headerList);
-
-        return $headerList;
+        return $headerList + $this->generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
     }
 
     public function getSignature(
@@ -146,27 +140,9 @@ class AsrClient
         return $date->format(AsrFacade::SHORT_DATE) . "/" . $this->credentialScope();
     }
 
-    /**
-     * @return string
-     */
-    private function dateHeaderKey()
+    private function generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
-        return "x-" . strtolower($this->vendorPrefix) . "-date";
-    }
-
-    /**
-     * @param $date
-     * @param $host
-     * @return array
-     */
-    private function mandatoryHeaders(DateTime $date, $host)
-    {
-        return array('host' => $host, $this->dateHeaderKey() => $this->toLongDate($date));
-    }
-
-    private function calculateAuthHeader($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
-    {
-        $authHeader = AsrSigner::createAuthHeader(
+        $authHeaderValue = AsrSigner::createAuthHeader(
             $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
@@ -174,7 +150,7 @@ class AsrClient
             $this->vendorPrefix,
             $this->accessKeyId
         );
-        return $authHeader;
+        return array(strtolower($authHeaderKey) => $authHeaderValue);
     }
 
     private function calculateSignature($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
