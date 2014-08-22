@@ -86,12 +86,13 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     /**
      * @test
+     * @dataProvider authHeaderNames
      */
-    public function itShouldParseAuthorizationHeader()
+    public function itShouldParseAuthorizationHeader($headerName)
     {
         $example = AsrExample::getDefault();
-        $headerList = $example->authorizationHeaders();
-        $authHeader = AsrAuthHeader::parse($headerList, 'authorization', 'EMS');
+        $headerList = $example->authorizationHeaders($headerName);
+        $authHeader = AsrAuthHeader::parse($headerList, $headerName, 'EMS');
 
         $this->assertEquals($example->defaultEmsDate, $authHeader->getLongDate());
         $this->assertEquals($example->accessKeyId, $authHeader->getAccessKeyId());
@@ -101,6 +102,16 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($example->requestType, $authHeader->getRequestType());
         $this->assertEquals($example->headerKeys(), $authHeader->getSignedHeaders());
         $this->assertEquals($example->signature, $authHeader->getSignature());
+    }
+
+    public function authHeaderNames()
+    {
+        return array(
+            'default'       => array('authorization'),
+            'upcase'        => array('Authorization'),
+            'custom'        => array('x-ems-auth'),
+            'custom upcase' => array('X-Ems-Auth'),
+        );
     }
 
     /**

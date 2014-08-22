@@ -530,11 +530,11 @@ class AsrAuthHeader
             throw new AsrException('The Host header is missing');
         }
 
-        if (!isset($headerList[$authHeaderKey])) {
+        if (!isset($headerList[strtolower($authHeaderKey)])) {
             throw new AsrException('The '.$authHeaderKey.' header is missing');
         }
 
-        $matches = self::parseAuthHeader($headerList[$authHeaderKey], $vendorPrefix);
+        $matches = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
         $credentialParts = explode('/', $matches['credentials']);
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
