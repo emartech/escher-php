@@ -380,14 +380,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $matches = AsrAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
-        list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
+        list($accessKey, $credentialScope) = explode("/", $matches['Credentials'], 2);
 
         $signingKey = $this->hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
         $actualAuthHeader = AsrSigner::createAuthHeader(
-            AsrSigner::createSignature($stringToSign, $signingKey, $matches['algorithm']),
+            AsrSigner::createSignature($stringToSign, $signingKey, $matches['Algorithm']),
             $credentialScope,
-            $matches['signed_headers'],
-            $matches['algorithm'],
+            $matches['SignedHeaders'],
+            $matches['Algorithm'],
             'AWS4',
             $accessKey
         );

@@ -502,7 +502,7 @@ class AsrAuthElements
     /**
      * @var array
      */
-    private $headerParts;
+    private $elementParts;
 
     /**
      * @var array
@@ -518,7 +518,7 @@ class AsrAuthElements
 
     public function __construct(array $headerParts, array $credentialParts, $dateTime, $host)
     {
-        $this->headerParts = $headerParts;
+        $this->elementParts = $headerParts;
         $this->credentialParts = $credentialParts;
         $this->dateTime = $dateTime;
         $this->host = $host;
@@ -534,8 +534,8 @@ class AsrAuthElements
      */
     public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $vendorPrefix)
     {
-        $matches = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
-        $credentialParts = explode('/', $matches['credentials']);
+        $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
+        $credentialParts = explode('/', $elementParts['Credentials']);
         if (count($credentialParts) != 5) {
             throw new AsrException('Invalid credential scope');
         }
@@ -548,7 +548,7 @@ class AsrAuthElements
             throw new AsrException('The '.$dateHeaderKey.' header is missing');
         }
 
-        return new AsrAuthElements($matches, $credentialParts, $headerList[strtolower($dateHeaderKey)], $headerList['host']);
+        return new AsrAuthElements($elementParts, $credentialParts, $headerList[strtolower($dateHeaderKey)], $headerList['host']);
     }
 
     /**
@@ -564,10 +564,10 @@ class AsrAuthElements
             throw new AsrException('Could not parse authorization header.');
         }
         return array(
-            'algorithm'      => self::match($vendorPrefix . '-HMAC-([A-Z0-9\,]+)', $parts[0]),
-            'credentials'    => self::match('Credential=([A-Za-z0-9\/\-_]+),',     $parts[1]),
-            'signed_headers' => self::match('SignedHeaders=([A-Za-z\-;]+),',       $parts[2]),
-            'signature'      => self::match('Signature=([0-9a-f]+)',               $parts[3]),
+            'Algorithm'     => self::match(self::algoPattern($vendorPrefix), $parts[0]),
+            'Credentials'   => self::match('Credential=([A-Za-z0-9\/\-_]+),',     $parts[1]),
+            'SignedHeaders' => self::match('SignedHeaders=([A-Za-z\-;]+),',       $parts[2]),
+            'Signature'     => self::match('Signature=([0-9a-f]+)',               $parts[3]),
         );
     }
 
@@ -577,6 +577,16 @@ class AsrAuthElements
             throw new AsrException('Could not parse authorization header.');
         }
         return $matches[1];
+    }
+
+
+    /**
+     * @param $vendorPrefix
+     * @return string
+     */
+    private static function algoPattern($vendorPrefix)
+    {
+        return $vendorPrefix . '-HMAC-([A-Z0-9\,]+)';
     }
 
     private function getCredentialPart($index, $name)
@@ -599,17 +609,17 @@ class AsrAuthElements
 
     public function getSignedHeaders()
     {
-        return explode(';', $this->headerParts['signed_headers']);
+        return explode(';', $this->elementParts['SignedHeaders']);
     }
 
     public function getSignature()
     {
-        return $this->headerParts['signature'];
+        return $this->elementParts['Signature'];
     }
 
     public function getAlgorithm()
     {
-        return $this->headerParts['algorithm'];
+        return $this->elementParts['Algorithm'];
     }
 
     public function getLongDate()
