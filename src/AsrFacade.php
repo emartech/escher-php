@@ -76,8 +76,8 @@ class AsrClient
         $headerList = array(),
         $headersToSign = array(),
         $date = null,
-        $authHeaderKey = 'X-Ems-Auth',
-        $dateHeaderKey = 'X-Ems-Date'
+        $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY,
+        $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY
     )
     {
         $date = $date ? $date : $this->now();
@@ -502,7 +502,7 @@ class AsrAuthElements
         $result = array();
         $paramKey = self::checkParam($queryParams, $vendorPrefix, 'Algorithm');
         $result['Algorithm'] = self::match(self::algoPattern($vendorPrefix), $queryParams[$paramKey]);
-        foreach (self::basicQueryParams() as $paramId) {
+        foreach (self::basicQueryParamKeys() as $paramId) {
             $paramKey = self::checkParam($queryParams, $vendorPrefix, $paramId);
             $result[$paramId] = $queryParams[$paramKey];
         }
@@ -510,7 +510,7 @@ class AsrAuthElements
         return new AsrAuthElements($result, $credentialParts, $result['Date'], self::checkHost($headerList), false);
     }
 
-    public static function basicQueryParams()
+    private static function basicQueryParamKeys()
     {
         return array(
             'Credentials',
@@ -519,6 +519,11 @@ class AsrAuthElements
             'SignedHeaders',
             'Signature'
         );
+    }
+
+    public static function allQueryParamKeys()
+    {
+        return array_merge(array('Algorithm'), self::basicQueryParamKeys());
     }
 
     /**
@@ -740,7 +745,7 @@ class AsrAuthElements
         if (count($parts) != 3) {
             return false;
         }
-        return true;
+        return $parts[0] == 'X' && $parts[1] == $vendorPrefix && in_array($parts[2], AsrAuthElements::allQueryParamKeys());
     }
 }
 
