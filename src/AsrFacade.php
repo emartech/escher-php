@@ -846,24 +846,6 @@ class AsrRequestCanonicalizer
         }
         return $canonicalizedHeaders;
     }
-
-    function http_parse_headers($rawHeaderLines)
-    {
-        $headers = array();
-
-        foreach($rawHeaderLines as $headerLine) {
-            $currentKey = strtolower($headerLine[0]);
-            $headers[$currentKey] = array_merge(isset($headers[$currentKey]) ? $headers[$currentKey] : array(), array(trim($headerLine[1])));
-        }
-
-        return array_reduce(array_map('implode_header_multivalues', array_keys($headers), array_values($headers)), 'array_merge', array());
-    }
-
-    function implode_header_multivalues($key, $value)
-    {
-        sort($value);
-        return array($key => implode(',', $value));
-    }
 }
 
 
