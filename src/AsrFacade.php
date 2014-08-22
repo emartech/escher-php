@@ -590,7 +590,8 @@ class AsrAuthElements
         if (substr($dateTime, 0, 8) != $this->getShortDate()) {
             throw new AsrException('The request date and credential date do not match.');
         }
-        if (abs($helper->getTimeStamp() - strtotime($dateTime)) >= AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE) {
+
+        if (!$this->isInAcceptableInterval($helper, $dateTime)) {
             throw new AsrException('Request date is not within the accepted time interval.');
         }
     }
@@ -746,6 +747,25 @@ class AsrAuthElements
             return false;
         }
         return $parts[0] == 'X' && $parts[1] == $vendorPrefix && in_array($parts[2], AsrAuthElements::allQueryParamKeys());
+    }
+
+    private function getExpiry()
+    {
+        return $this->isFromHeaders ? AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE : $this->elementParts['Expires'];
+    }
+
+    /**
+     * @param AsrRequestHelper $helper
+     * @param $dateTime
+     * @return bool
+     */
+    private function isInAcceptableInterval(AsrRequestHelper $helper, $dateTime)
+    {
+        if ($helper->getTimeStamp() > strtotime($dateTime)) {
+            return $helper->getTimeStamp() - strtotime($dateTime) <= $this->getExpiry();
+        } else {
+            return strtotime($dateTime) - $helper->getTimeStamp() <= AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+        }
     }
 }
 
