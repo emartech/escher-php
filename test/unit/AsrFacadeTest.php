@@ -111,7 +111,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldUseTheProvidedAuthHeaderName()
     {
         $example = AsrExample::getDefault();
-        $headersToSign = array('content-type','host','x-ems-date');
+        $headersToSign = array('content-type');
         $_SERVER['REQUEST_TIME'] = $example->getTimeStamp();
         $actual = $example->createClient()->getSignedHeaders(
             $example->method,
