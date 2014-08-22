@@ -131,7 +131,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldParseAuthorizationHeader($authHeaderName, $dateHeaderName)
     {
         $example = AsrExample::getDefault();
-        $authHeader = AsrAuthHeader::parse(
+        $authHeader = AsrAuthElements::parseFromHeaders(
             $example->authorizationHeader($authHeaderName) + $example->dateHeader($dateHeaderName) + $example->hostHeader(),
             $authHeaderName,
             $dateHeaderName,
@@ -212,7 +212,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $expires = 123456;
         $signedUrl = $client->getSignedUrl('http://example.com/something?foo=bar&baz=barbaz', $date, $expires);
 
-        $expectedSignedUrl = $example->signedUrl;
+        $expectedSignedUrl = 'http://example.com/something?foo=bar&baz=barbaz&' . $example->signedQueryParams;
 
         $this->assertEquals($expectedSignedUrl, $signedUrl);
     }
@@ -229,7 +229,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $expires = 123456;
         $signedUrl = $client->getSignedUrl('http://example.com/something?foo=bar&baz=barbaz', $date, $expires, array(), array());
 
-        $expectedSignedUrl = $example->signedUrl;
+        $expectedSignedUrl = 'http://example.com/something?foo=bar&baz=barbaz&' . $example->signedQueryParams;
 
         $this->assertEquals($expectedSignedUrl, $signedUrl);
     }
@@ -259,7 +259,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldValidateRequestUsingAuthHeader()
     {
         $example = AsrExample::getDefault();
-        $serverVars = $this->goodServerVars($example);
+        $serverVars = $this->goodServerVarsWithAuthHeaders($example);
         $example->createServer()->validateRequest($serverVars, $example->requestBody);
     }
 
@@ -270,7 +270,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldFailForInvalidAuthHeader($tamperedKey, $tamperedValue, $expectedErrorMessage)
     {
         $example = AsrExample::getDefault();
-        $serverVars = $this->goodServerVars($example);
+        $serverVars = $this->goodServerVarsWithAuthHeaders($example);
         $serverVars[$tamperedKey] = $tamperedValue;
         $asrServer = $example->createServer();
         try {
@@ -282,7 +282,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         }
     }
 
-    private function goodServerVars(AsrExample $example)
+    private function goodServerVarsWithAuthHeaders(AsrExample $example)
     {
         return array(
             'HTTP_X_EMS_DATE' => $example->date,
@@ -377,7 +377,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      */
     public function createAuthHeader_Perfect_Perfect($stringToSign, $expectedAuthHeaders)
     {
-        $matches = AsrAuthHeader::parseAuthHeader($expectedAuthHeaders, 'AWS4');
+        $matches = AsrAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
         list($accessKey, $credentialScope) = explode("/", $matches['credentials'], 2);
 
@@ -520,7 +520,7 @@ class AsrExample
     public $signature;
     public $method;
     public $authHeaderValue;
-    public $signedUrl;
+    public $signedQueryParams;
 
     /**
      * @return AsrExample
@@ -548,7 +548,7 @@ class AsrExample
             'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
             'SignedHeaders=content-type;host;x-ems-date, '.
             'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
-        $result->signedUrl = '';
+        $result->signedQueryParams = '';
         return $result;
     }
 
@@ -561,11 +561,12 @@ class AsrExample
         $result->host = 'example.com';
         $result->service = 'host';
         $result->date = '20110511T120000Z';
-        $result->authHeaderValue = 'EMS-HMAC-SHA256 '.
+        $result->authHeaderValue =
+            'EMS-HMAC-SHA256 '.
             'Credential=th3K3y/20110511/us-east-1/host/aws4_request, '.
             'SignedHeaders=host;x-ems-date, '.
             'Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4';
-        $result->signedUrl = 'http://example.com/something?foo=bar&baz=barbaz&' .
+        $result->signedQueryParams =
             'X-EMS-Algorithm=EMS-HMAC-SHA256&'.
             'X-EMS-Credentials=th3K3y20110511%2Fus-east-1%2Fhost%2Faws4_request&'.
             'X-EMS-Date=20110511T120000Z&'.

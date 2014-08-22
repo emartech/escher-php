@@ -248,7 +248,7 @@ class AsrServer
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
-        $authHeader = $helper->getAuthHeaders($this->vendorPrefix);
+        $authHeader = $helper->getAuthElements($this->vendorPrefix);
 
         $this->validateMandatorySignedHeaders($authHeader);
         $this->validateHashAlgo($authHeader);
@@ -258,14 +258,14 @@ class AsrServer
         $this->validateSignature($authHeader, $helper);
     }
 
-    private function validateDates(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    private function validateDates(AsrAuthElements $authHeader, AsrRequestHelper $helper)
     {
         if (!$this->checkDates($authHeader->getLongDate(), $authHeader->getShortDate(), $helper->getTimeStamp())) {
             throw new AsrException('One of the date headers are invalid');
         }
     }
 
-    private function validateHost(AsrAuthHeader $authHeader, AsrRequestHelper $helper)
+    private function validateHost(AsrAuthElements $authHeader, AsrRequestHelper $helper)
     {
         if($helper->getServerName() !== $authHeader->getHost()) {
             throw new AsrException('The host header does not match.');
@@ -278,7 +278,7 @@ class AsrServer
         && abs($serverTime - strtotime($dateTime)) < AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
     }
 
-    private function validateCredentials(AsrAuthHeader $authHeader)
+    private function validateCredentials(AsrAuthElements $authHeader)
     {
         if (!$this->checkCredentials($authHeader->getRegion(), $authHeader->getService(), $authHeader->getRequestType())) {
             throw new AsrException('Invalid credentials');
@@ -292,7 +292,7 @@ class AsrServer
         && $requestType == $this->party->getRequestType();
     }
 
-    private function validateSignature(AsrAuthHeader $authHeaderOfCurrentRequest, AsrRequestHelper $helper)
+    private function validateSignature(AsrAuthElements $authHeaderOfCurrentRequest, AsrRequestHelper $helper)
     {
         $secret = $this->lookupSecretKey($authHeaderOfCurrentRequest->getAccessKeyId());
         $key = $authHeaderOfCurrentRequest->getAccessKeyId();
@@ -347,7 +347,7 @@ class AsrServer
         return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
     }
 
-    private function validateHashAlgo(AsrAuthHeader $authHeader)
+    private function validateHashAlgo(AsrAuthElements $authHeader)
     {
         if(!in_array(strtoupper($authHeader->getAlgorithm()), array('SHA256','SHA512')))
         {
@@ -359,7 +359,7 @@ class AsrServer
      * @param $authHeader
      * @throws AsrException
      */
-    private function validateMandatorySignedHeaders(AsrAuthHeader $authHeader)
+    private function validateMandatorySignedHeaders(AsrAuthElements $authHeader)
     {
         $signedHeaders = $authHeader->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
@@ -434,9 +434,10 @@ class AsrRequestHelper
         return $this->requestBody;
     }
 
-    public function getAuthHeaders($vendorPrefix)
+    public function getAuthElements($vendorPrefix)
     {
-        return AsrAuthHeader::parse($this->getHeaderList(), $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
+        $headerList = AsrUtils::keysToLower($this->getHeaderList());
+        return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
     }
 
     public function getTimeStamp()
@@ -488,7 +489,7 @@ class AsrRequestHelper
 
 
 
-class AsrAuthHeader
+class AsrAuthElements
 {
     /**
      * @var array
@@ -515,37 +516,31 @@ class AsrAuthHeader
         $this->host = $host;
     }
 
-    public static function parse(array $headerList, $authHeaderKey, $dateHeaderKey, $vendorPrefix)
+    /**
+     * @param array $headerList
+     * @param $authHeaderKey
+     * @param $dateHeaderKey
+     * @param $vendorPrefix
+     * @return AsrAuthElements
+     * @throws AsrException
+     */
+    public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $vendorPrefix)
     {
-        $headerList = AsrUtils::keysToLower($headerList);
-        if (!isset($headerList[strtolower($dateHeaderKey)])) {
-            throw new AsrException('The '.$dateHeaderKey.' header is missing');
+        $matches = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
+        $credentialParts = explode('/', $matches['credentials']);
+        if (count($credentialParts) != 5) {
+            throw new AsrException('Invalid credential scope');
         }
 
         if (!isset($headerList['host'])) {
             throw new AsrException('The Host header is missing');
         }
 
-        if (!isset($headerList[strtolower($authHeaderKey)])) {
-            throw new AsrException('The '.$authHeaderKey.' header is missing');
+        if (!isset($headerList[strtolower($dateHeaderKey)])) {
+            throw new AsrException('The '.$dateHeaderKey.' header is missing');
         }
 
-        $matches = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
-        $credentialParts = explode('/', $matches['credentials']);
-        if (count($credentialParts) != 5) {
-            throw new AsrException('Invalid credential scope');
-        }
-        return new AsrAuthHeader($matches, $credentialParts, $headerList[strtolower($dateHeaderKey)], $headerList['host']);
-    }
-
-    private static function regex($vendorPrefix)
-    {
-        return '/'.
-        '^'.$vendorPrefix.'-HMAC-(?P<algorithm>[A-Z0-9\,]+) ' .
-        'Credential=(?P<credentials>[A-Za-z0-9\/\-_]+), '.
-        'SignedHeaders=(?P<signed_headers>[A-Za-z\-;]+), '.
-        'Signature=(?P<signature>[0-9a-f]+)'.
-        '$/';
+        return new AsrAuthElements($matches, $credentialParts, $headerList[strtolower($dateHeaderKey)], $headerList['host']);
     }
 
     /**
@@ -556,11 +551,24 @@ class AsrAuthHeader
      */
     public static function parseAuthHeader($headerContent, $vendorPrefix)
     {
-        $matches = array();
-        if (1 !== preg_match(self::regex($vendorPrefix), $headerContent, $matches)) {
+        $parts = explode(' ', $headerContent);
+        if (count($parts) != 4) {
             throw new AsrException('Could not parse authorization header.');
         }
-        return $matches;
+        return array(
+            'algorithm'      => self::match($vendorPrefix . '-HMAC-([A-Z0-9\,]+)', $parts[0]),
+            'credentials'    => self::match('Credential=([A-Za-z0-9\/\-_]+),',     $parts[1]),
+            'signed_headers' => self::match('SignedHeaders=([A-Za-z\-;]+),',       $parts[2]),
+            'signature'      => self::match('Signature=([0-9a-f]+)',               $parts[3]),
+        );
+    }
+
+    private static function match($pattern, $part)
+    {
+        if (!preg_match("/^$pattern$/", $part, $matches)) {
+            throw new AsrException('Could not parse authorization header.');
+        }
+        return $matches[1];
     }
 
     private function getCredentialPart($index, $name)
