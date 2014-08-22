@@ -82,6 +82,19 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEqualMaps($expected, $this->callSignRequest($example, $contentType + $extra, $headersToSign));
     }
 
+    public function callSignRequest(AsrExample $example, $headerList, $headersToSign)
+    {
+        return $example->createClient()->getSignedHeaders(
+            'POST',
+            $example->url(),
+            $example->requestBody,
+            $headerList,
+            $headersToSign,
+            $example->defaultDateTime(),
+            'Authorization'
+        );
+    }
+
     /**
      * @test
      */
@@ -253,6 +266,11 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         $this->assertEqualMaps($example->contentTypeHeader() + $example->hostHeader(), $helper->getHeaderList());
     }
 
+    protected function createRequestHelper($serverVars, $requestBody)
+    {
+        return new AsrRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
+    }
+
     /**
      * @test
      */
@@ -313,23 +331,6 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         );
     }
 
-    protected function createRequestHelper($serverVars, $requestBody)
-    {
-        return new AsrRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
-    }
-
-    public function callSignRequest(AsrExample $example, $headerList, $headersToSign)
-    {
-        return $example->createClient()->getSignedHeaders(
-            'POST',
-            $example->url(),
-            $example->requestBody,
-            $headerList,
-            $headersToSign,
-            $example->defaultDateTime(),
-            'Authorization'
-        );
-    }
 
     /**
      * @test
