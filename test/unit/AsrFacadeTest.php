@@ -41,7 +41,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldSignRequest()
     {
         $example = AsrExample::getDefault();
-        $headersToSign =  array('content-type','host','x-ems-date');
+        $headersToSign =  array('content-type', 'host', 'x-ems-date');
         $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
         $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
@@ -52,7 +52,18 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldAutomagicallyAddDateAndHostHeader()
     {
         $example = AsrExample::getDefault();
-        $headersToSign = array('content-type','host','x-ems-date');
+        $headersToSign = array('content-type', 'host', 'x-ems-date');
+        $headerList = $example->getHeadersByKeys(array('content-type'));
+        $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldAutomagicallyAddDateAndHostToSignedHeaders()
+    {
+        $example = AsrExample::getDefault();
+        $headersToSign = array('content-type');
         $headerList = $example->getHeadersByKeys(array('content-type'));
         $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
@@ -63,7 +74,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldOnlySignHeadersExplicitlySetToBeSigned()
     {
         $example = AsrExample::getDefault();
-        $headersToSign = array('content-type','host','x-ems-date');
+        $headersToSign = array('content-type', 'host', 'x-ems-date');
         $extra = array('x-a-header' => 'that/should/not/be/signed');
         $contentType = $example->contentTypeHeader();
 

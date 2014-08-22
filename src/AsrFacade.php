@@ -72,18 +72,15 @@ class AsrClient
         $url,
         $requestBody,
         $headerList = array(),
-        $headersToSign = array('host', 'x-ems-date'),
+        $headersToSign = array(),
         $date = null,
-        $authHeaderKey = "X-Ems-Auth"
+        $authHeaderKey = 'X-Ems-Auth',
+        $dateHeaderKey = 'X-Ems-Date'
     )
     {
         $date = $date ? $date : $this->now();
         list($host, $path, $query) = $this->parseUrl($url);
-
-        $headerList = AsrUtils::keysToLower($headerList);
-        $headersToSign = array_map('strtolower', $headersToSign);
-
-        $headerList += $this->mandatoryHeaders($date, $host);
+        list($headerList, $headersToSign) = $this->addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host);
 
         $authHeader = $this->calculateAuthHeader($date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
 
@@ -217,6 +214,23 @@ class AsrClient
             $this->hashAlgo
         );
         return $signature;
+    }
+
+    /**
+     * @param $headerList
+     * @param $headersToSign
+     * @param $dateHeaderKey
+     * @param $date
+     * @param $host
+     * @return array
+     */
+    private function addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host)
+    {
+        $mandatoryHeaders = array(strtolower($dateHeaderKey) => $this->toLongDate($date), 'host' => $host);
+        $headerList = AsrUtils::keysToLower($headerList) + $mandatoryHeaders;
+        $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array_keys($mandatoryHeaders)));
+        sort($headersToSign);
+        return array($headerList, $headersToSign);
     }
 
     /**
