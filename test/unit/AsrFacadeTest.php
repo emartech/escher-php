@@ -299,11 +299,31 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         }
     }
 
+    /**
+     * @test
+     * @expectedException AsrException
+     * @expectedExceptionMessage Date header not signed
+     */
+    public function itShouldValidateAgainstProvidedHeaderNames()
+    {
+        $example = AsrExample::getDefault();
+        $serverVars = $this->goodServerVarsWithCustomAuthHeaders($example);
+        $example->createServer()->validateRequest($serverVars, $example->requestBody, 'Custom-Auth', 'Custom-Date');
+    }
+
     private function goodServerVarsWithAuthHeaders(AsrExample $example)
     {
         return array(
             'HTTP_X_EMS_DATE' => $example->date,
             'HTTP_X_EMS_AUTH' => $example->authorizationHeaderValue(),
+        ) + $this->goodServerVars($example);
+    }
+
+    private function goodServerVarsWithCustomAuthHeaders(AsrExample $example)
+    {
+        return array(
+            'HTTP_CUSTOM_DATE' => $example->date,
+            'HTTP_CUSTOM_AUTH' => $example->authorizationHeaderValue(),
         ) + $this->goodServerVars($example);
     }
 

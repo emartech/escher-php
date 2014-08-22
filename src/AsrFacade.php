@@ -244,7 +244,7 @@ class AsrServer
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
         $authElements = $helper->getAuthElements($this->vendorPrefix);
 
-        $authElements->validateMandatorySignedHeaders();
+        $authElements->validateMandatorySignedHeaders($dateHeaderKey);
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper);
         $authElements->validateHost($helper);
@@ -651,15 +651,16 @@ class AsrAuthElements
     }
 
     /**
+     * @param string $dateHeaderKey
      * @throws AsrException
      */
-    public function validateMandatorySignedHeaders()
+    public function validateMandatorySignedHeaders($dateHeaderKey)
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
             throw new AsrException('Host header not signed');
         }
-        if ($this->isFromHeaders && !in_array('x-ems-date', $signedHeaders)) {
+        if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
             throw new AsrException('Date header not signed');
         }
     }
