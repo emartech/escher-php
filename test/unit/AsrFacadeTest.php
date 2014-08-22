@@ -42,7 +42,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
-        $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
+        $headerList = $example->defaultHeaders();
         $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
@@ -53,7 +53,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $headerList = $example->getHeadersByKeys(array('content-type'));
+        $headerList = $example->contentTypeHeader();
         $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
@@ -64,7 +64,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type');
-        $headerList = $example->getHeadersByKeys(array('content-type'));
+        $headerList = $example->contentTypeHeader();
         $this->assertEquals($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
     }
 
@@ -95,7 +95,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
             $example->method,
             $example->url(),
             $example->requestBody,
-            $example->getHeadersByKeys(array('content-type','host','x-ems-date')),
+            $example->defaultHeaders(),
             $headersToSign,
             $example->defaultDateTime(),
             'Authorization'
@@ -586,7 +586,7 @@ class AsrExample
 
     public function tamperDate()
     {
-        return strtotime(substr_replace($this->defaultEmsDate, '11', 9, 2));
+        return strtotime(substr_replace($this->date, '11', 9, 2));
     }
 
     public function url()
@@ -596,7 +596,7 @@ class AsrExample
 
     public function defaultDateTime()
     {
-        return new DateTime($this->defaultEmsDate, new DateTimeZone("UTC"));
+        return new DateTime($this->date, new DateTimeZone("UTC"));
     }
 
     public function contentTypeHeader()
@@ -606,6 +606,11 @@ class AsrExample
 
     public function dateHeader($dateHeaderName = 'x-ems-date')
     {
-        return array(strtolower($dateHeaderName) => $this->defaultEmsDate);
+        return array(strtolower($dateHeaderName) => $this->date);
+    }
+
+    public function defaultHeaders($dateHeaderName = 'x-ems-date')
+    {
+        return $this->contentTypeHeader() + $this->hostHeader() + $this->dateHeader($dateHeaderName);
     }
 }
