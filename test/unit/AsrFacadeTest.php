@@ -79,18 +79,39 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         $headersToSign = array('content-type','host','x-ems-date');
-        $headerList = $example->getHeadersByKeys(array('content-type','host','x-ems-date'));
         $_SERVER['REQUEST_TIME'] = $example->getTimeStamp();
         $actual = $example->createClient()->getSignedHeaders(
             $example->method,
             $example->url(),
             $example->requestBody,
-            $headerList,
+            $example->getHeadersByKeys(array('content-type','host','x-ems-date')),
             $headersToSign,
             $example->defaultDateTime(),
             'Authorization'
         );
-        $expected = $example->authorizationHeaders() + $headerList + $example->hostHeader();
+        $expected = $example->allHeaders();
+        ksort($expected);
+        $this->assertEquals($expected, $actual);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldUseTheProvidedAuthHeaderName()
+    {
+        $example = AsrExample::getDefault();
+        $headersToSign = array('content-type','host','x-ems-date');
+        $_SERVER['REQUEST_TIME'] = $example->getTimeStamp();
+        $actual = $example->createClient()->getSignedHeaders(
+            $example->method,
+            $example->url(),
+            $example->requestBody,
+            $example->getHeadersByKeys(array('content-type','host','x-ems-date')),
+            $headersToSign,
+            $example->defaultDateTime(),
+            'CustomHeader'
+        );
+        $expected = $example->allHeaders('CustomHeader');
         ksort($expected);
         $this->assertEquals($expected, $actual);
     }
@@ -99,11 +120,14 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
      * @test
      * @dataProvider authHeaderNames
      */
-    public function itShouldParseAuthorizationHeader($headerName)
+    public function itShouldParseAuthorizationHeader($authHeaderName)
     {
         $example = AsrExample::getDefault();
-        $headerList = $example->authorizationHeaders($headerName);
-        $authHeader = AsrAuthHeader::parse($headerList, $headerName, 'EMS');
+        $authHeader = AsrAuthHeader::parse(
+            $example->authorizationHeader($authHeaderName) + $example->dateHeader() + $example->hostHeader(),
+            $authHeaderName,
+            'EMS'
+        );
 
         $this->assertEquals($example->defaultEmsDate, $authHeader->getLongDate());
         $this->assertEquals($example->accessKeyId, $authHeader->getAccessKeyId());
@@ -481,20 +505,16 @@ class AsrExample
         return $result;
     }
 
-    public function allHeaders()
+    public function allHeaders($authHeaderName = 'authorization')
     {
-        $result = $this->contentTypeHeader() + $this->authorizationHeaders() + $this->hostHeader();
+        $result = $this->contentTypeHeader() + $this->hostHeader() + $this->dateHeader() + $this->authorizationHeader($authHeaderName);
         ksort($result);
         return $result;
     }
 
-    public function authorizationHeaders($authHeaderKey = 'authorization')
+    public function authorizationHeader($authHeaderKey = 'authorization')
     {
-        return array(
-            $authHeaderKey   => $this->authorizationHeaderValue(),
-            'x-ems-date' => $this->defaultEmsDate,
-            'host'       => $this->host
-        );
+        return array(strtolower($authHeaderKey) => $this->authorizationHeaderValue());
     }
 
     public function authorizationHeaderValue()
@@ -570,5 +590,10 @@ class AsrExample
     public function contentTypeHeader()
     {
         return array('content-type' => $this->contentType);
+    }
+
+    public function dateHeader()
+    {
+        return array('x-ems-date' => $this->defaultEmsDate);
     }
 }
