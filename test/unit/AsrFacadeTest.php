@@ -294,8 +294,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         try {
             $asrServer->validateRequest($serverVars, $example->requestBody);
             $this->fail('Should fail to validate');
-        } catch (AsrException $ex)
-        {
+        } catch (AsrException $ex) {
             $this->assertEquals($expectedErrorMessage, $ex->getMessage());
         }
     }
@@ -305,13 +304,19 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
         return array(
             'HTTP_X_EMS_DATE' => $example->date,
             'HTTP_X_EMS_AUTH' => $example->authorizationHeaderValue(),
+        ) + $this->goodServerVars($example);
+    }
+
+    private function goodServerVars(AsrExample $example)
+    {
+        return array(
             'REQUEST_TIME' => $example->getTimeStamp() + rand(0, 100),
             'REQUEST_METHOD' => $example->method,
             'HTTP_HOST' => $example->host,
             'CONTENT_TYPE' => $example->contentType,
-            'REQUEST_URI' => '/',
+            'REQUEST_URI' => $example->requestUri,
             'HTTPS' => null,
-            'SERVER_PORT' => null,
+            'SERVER_PORT' => '80',
             'SERVER_NAME' => $example->host,
         );
     }
@@ -320,17 +325,26 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $example = AsrExample::getDefault();
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', $example->tamperDate(), 'One of the date headers are invalid'),
+            'wrong date'            => array('HTTP_X_EMS_DATE', $example->tamperDate(), 'Invalid request date.'),
             'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed', 'Could not parse authorization header.'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', $example->tamperSignature(), 'The signatures do not match'),
             'wrong hash algo'       => array('HTTP_X_EMS_AUTH', $example->tamperHashAlgo(), 'Only SHA256 and SHA512 hash algorithms are allowed.'),
             'host not signed'       => array('HTTP_X_EMS_AUTH', $example->unsignHost(), 'Host header not signed'),
             'date not signed'       => array('HTTP_X_EMS_AUTH', $example->unsignDate(), 'Date header not signed'),
-            'wrong request time'    => array('REQUEST_TIME', $example->tamperDate(), 'One of the date headers are invalid'),
+            'wrong request time'    => array('REQUEST_TIME', $example->tamperDate(), 'Request date is not within the accepted time interval.'),
             'wrong host'            => array('HTTP_HOST', 'example.com', 'The host header does not match.'),
         );
     }
 
+    /**
+     * @test
+     */
+    public function itShouldValidateRequestUsingQueryString()
+    {
+        $example = AsrExample::getCustom();
+        $serverVars = $this->goodServerVars($example);
+        $example->createServer()->validateRequest($serverVars, $example->requestBody);
+    }
 
     /**
      * @test
@@ -522,6 +536,7 @@ class AsrExample
     public $method;
     public $authHeaderValue;
     public $signedQueryParams;
+    public $requestUri;
 
     /**
      * @return AsrExample
@@ -550,6 +565,7 @@ class AsrExample
             'SignedHeaders=content-type;host;x-ems-date, '.
             'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
         $result->signedQueryParams = '';
+        $result->requestUri = '/';
         return $result;
     }
 
@@ -562,6 +578,7 @@ class AsrExample
         $result->host = 'example.com';
         $result->service = 'host';
         $result->date = '20110511T120000Z';
+        $result->requestBody = '';
         $result->authHeaderValue =
             'EMS-HMAC-SHA256 '.
             'Credential=th3K3y/20110511/us-east-1/host/aws4_request, '.
@@ -569,11 +586,12 @@ class AsrExample
             'Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4';
         $result->signedQueryParams =
             'X-EMS-Algorithm=EMS-HMAC-SHA256&'.
-            'X-EMS-Credentials=th3K3y20110511%2Fus-east-1%2Fhost%2Faws4_request&'.
+            'X-EMS-Credentials=th3K3y%2F20110511%2Fus-east-1%2Fhost%2Faws4_request&'.
             'X-EMS-Date=20110511T120000Z&'.
             'X-EMS-Expires=123456&'.
             'X-EMS-SignedHeaders=host&'.
             'X-EMS-Signature=af68c501bd4cc0f6d803d9a514e189a74d2e2ca4e0714a75135a3c19eb419ffe';
+        $result->requestUri = '/something?foo=bar&baz=barbaz&'. $result->signedQueryParams;
         return $result;
     }
 
