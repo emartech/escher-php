@@ -368,6 +368,18 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
 
     /**
      * @test
+     * @expectedException AsrException
+     */
+    public function itShouldValidateNoQueryParamModifiedInRequestUsingQueryString()
+    {
+        $example = AsrExample::getCustom();
+        $serverVars = $this->goodServerVars($example);
+        $serverVars['REQUEST_URI'] = str_replace('123456', '86400', $serverVars['REQUEST_URI']);
+        $example->createServer()->validateRequest($serverVars, $example->requestBody);
+    }
+
+    /**
+     * @test
      * @dataProvider StringToSignFileList
      */
     public function createStringToSign_Perfect_Perfect($canonicalRequestString, $expectedStringToSign)
@@ -610,7 +622,7 @@ class AsrExample
             'X-EMS-Date=20110511T120000Z&'.
             'X-EMS-Expires=123456&'.
             'X-EMS-SignedHeaders=host&'.
-            'X-EMS-Signature=af68c501bd4cc0f6d803d9a514e189a74d2e2ca4e0714a75135a3c19eb419ffe';
+            'X-EMS-Signature=fbc9dbb91670e84d04ad2ae7505f4f52ab3ff9e192b8233feeae57e9022c2b67';
         $result->requestUri = '/something?foo=bar&baz=barbaz&'. $result->signedQueryParams;
         return $result;
     }

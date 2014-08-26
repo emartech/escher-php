@@ -48,25 +48,39 @@ class AsrClient
     public function getSignedUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
     {
         $date = $date ? $date : $this->now();
+
+        $url = $this->appendSigningParams($url, $date, $expires);
+
         list($host, $path, $query) = $this->parseUrl($url);
 
         $headerList += array('host' => $host);
         $headersToSign = array_unique(array_merge(array('host'), $headersToSign));
 
+        $signature = $this->calculateSignature($date, 'GET', $path, $query, AsrFacade::UNSIGNED_PAYLOAD, $headerList, $headersToSign);
+        $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
+
+        return $url;
+    }
+
+    private function appendSigningParams($url, $date, $expires)
+    {
         $signingParams = array(
             'Algorithm'     => $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo),
-            'Credentials'   => $this->accessKeyId .'/' . $this->fullCredentialScope($date),
+            'Credentials'   => $this->accessKeyId . '/' . $this->fullCredentialScope($date),
             'Date'          => $this->toLongDate($date),
             'Expires'       => $expires,
             'SignedHeaders' => 'host',
-            'Signature'     => $this->calculateSignature($date, 'GET', $path, $query, AsrFacade::UNSIGNED_PAYLOAD, $headerList, $headersToSign),
         );
-
-        foreach ($signingParams as $param => $value) {
-            $url = $this->addGetParameter($url, 'X-'.$this->vendorPrefix.'-'.$param, $value);
+        foreach ($signingParams as $param => $value)
+        {
+            $url = $this->addGetParameter($url, $this->generateParamName($param), $value);
         }
-
         return $url;
+    }
+
+    private function generateParamName($param)
+    {
+        return 'X-' . $this->vendorPrefix . '-' . $param;
     }
 
     public function getSignedHeaders(
@@ -521,11 +535,6 @@ class AsrAuthElements
         );
     }
 
-    public static function allQueryParamKeys()
-    {
-        return array_merge(array('Algorithm'), self::basicQueryParamKeys());
-    }
-
     /**
      * @param $vendorPrefix
      * @return string
@@ -733,20 +742,11 @@ class AsrAuthElements
 
         $query = array();
         foreach ($params as $key => $value) {
-            if (!$this->isAuthKey($key, $vendorPrefix)) {
+            if ($key != 'X-' . $vendorPrefix . '-Signature') {
                 $query[] = $key . '=' . $value;
             }
         }
         return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . implode('&', $query));
-    }
-
-    private function isAuthKey($key, $vendorPrefix)
-    {
-        $parts = explode('-', $key);
-        if (count($parts) != 3) {
-            return false;
-        }
-        return $parts[0] == 'X' && $parts[1] == $vendorPrefix && in_array($parts[2], AsrAuthElements::allQueryParamKeys());
     }
 
     private function getExpiry()
@@ -804,6 +804,7 @@ class AsrRequestCanonicalizer
         $encodedParts = array();
         foreach ($pairs as $pair) {
             $keyValues = array_pad(explode("=", $pair), 2, '');
+            $keyValues[1] = urldecode($keyValues[1]);
             if (strpos($keyValues[0], " ") !== false) {
                 $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], " "));
                 $keyValues[1] = "";
