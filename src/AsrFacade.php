@@ -804,11 +804,12 @@ class AsrRequestCanonicalizer
         $encodedParts = array();
         foreach ($pairs as $pair) {
             $keyValues = array_pad(explode("=", $pair), 2, '');
-            $keyValues[1] = urldecode($keyValues[1]);
             if (strpos($keyValues[0], " ") !== false) {
                 $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], " "));
                 $keyValues[1] = "";
             }
+            $keyValues[0] = urldecode($keyValues[0]);
+            $keyValues[1] = urldecode($keyValues[1]);
             $encodedParts[] = implode("=", array(
                 rawurlencode(str_replace('+', ' ', $keyValues[0])),
                 rawurlencode(str_replace('+', ' ', $keyValues[1])),
