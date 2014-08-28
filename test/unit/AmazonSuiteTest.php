@@ -139,7 +139,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
 
     private function hex2bin($hexstr)
     {
-        if (version_compare(PHP_VERSION, '5.4') == -1) {
+        if (version_compare(PHP_VERSION, '5.4') == 1) {
             return hex2bin($hexstr);
         }
         $n = strlen($hexstr);
