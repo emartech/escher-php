@@ -96,6 +96,7 @@ class SignRequestUsingHeaderTest extends TestBase
 
     /**
      * @test
+     * @group sign_request
      */
     public function itShouldUseTheProvidedAuthHeaderName()
     {
@@ -117,6 +118,34 @@ class SignRequestUsingHeaderTest extends TestBase
         $actualHeaders = $client->getSignedHeaders(
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $date, 'Custom-Auth-Header'
         );
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
+    }
+
+    /**
+     * @test
+     * @group sign_request
+     */
+    public function itShouldGenerateSignedHeaders()
+    {
+        $inputHeaders = array(
+            'Some-Custom-Header' => 'FooBar'
+        );
+
+        $example = AsrExample::getCustom();
+        $client = AsrFacade::createClient('very_secure', 'th3K3y', 'us-east-1', 'host', 'aws4_request');
+
+        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
+        $headersToSign = array();
+
+        $actualHeaders = $client->getSignedHeaders('GET', 'http://example.com/something', '', $inputHeaders, $headersToSign, $date, 'x-ems-auth');
+
+        $expectedHeaders = array(
+            'host' => 'example.com',
+            'some-custom-header' => 'FooBar',
+            'x-ems-date' => '20110511T120000Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=th3K3y/20110511/us-east-1/host/aws4_request, SignedHeaders=host;x-ems-date, Signature=e7c1c7b2616d27ecbe3cd81ed3464ea4f6e2a11ad6f7792b23d67f7867e9abb4',
+        );
+
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 }

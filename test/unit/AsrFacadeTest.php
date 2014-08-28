@@ -4,82 +4,6 @@ class AsrFacadeTest extends TestBase
 {
     /**
      * @test
-     * @dataProvider headerNames
-     */
-    public function itShouldParseAuthorizationHeader($authHeaderName, $dateHeaderName)
-    {
-        $example = AsrExample::getDefault();
-        $authHeader = AsrAuthElements::parseFromHeaders(
-            $example->authorizationHeader($authHeaderName) + $example->dateHeader($dateHeaderName) + $example->hostHeader(),
-            $authHeaderName,
-            $dateHeaderName,
-            'EMS'
-        );
-
-        $this->assertEquals($example->date, $authHeader->getLongDate());
-        $this->assertEquals($example->accessKeyId, $authHeader->getAccessKeyId());
-        $this->assertEquals($example->shortDate(), $authHeader->getShortDate());
-        $this->assertEquals($example->region, $authHeader->getRegion());
-        $this->assertEquals($example->service, $authHeader->getService());
-        $this->assertEquals($example->requestType, $authHeader->getRequestType());
-        $this->assertEquals($example->headerKeys(), $authHeader->getSignedHeaders());
-        $this->assertEquals($example->signature, $authHeader->getSignature());
-    }
-
-    public function headerNames()
-    {
-        return array(
-            'default'       => array('authorization', 'date'),
-            'upcase'        => array('Authorization', 'Date'),
-            'custom'        => array('x-ems-auth',    'x-ems-date'),
-            'custom upcase' => array('X-Ems-Auth',    'X-Ems-Date'),
-        );
-    }
-
-    /**
-     * @test
-     */
-    public function itShouldCalculateSigningKey()
-    {
-        $actualSigningKey = AsrSigner::calculateSigningKey(
-            "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
-            "20110909/us-east-1/iam/aws4_request",
-            'sha256',
-            'AWS4'
-        );
-
-        $this->assertEquals(
-            "98f1d889fec4f4421adc522bab0ce1f82e6929c262ed15e5a94c90efd1e3b0e7",
-            bin2hex($actualSigningKey)
-        );
-    }
-
-    /**
-     * @test
-     */
-    public function itShouldGenerateSignedHeaders()
-    {
-        $example = AsrExample::getCustom();
-        $client = $example->createClient();
-
-        $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $signedHeaders = $client->getSignedHeaders(
-            $example->method,
-            "http://example.com/something",
-            "",
-            array('Some-Custom-Header' => 'FooBar'),
-            array(),
-            $date,
-            'x-ems-auth'
-        );
-
-        $expectedSignedHeaders = array('some-custom-header' => 'FooBar') + $example->dateHeader() + $example->authorizationHeader('x-ems-auth') + $example->hostHeader();
-
-        $this->assertEqualMaps($expectedSignedHeaders, $signedHeaders);
-    }
-
-    /**
-     * @test
      */
     public function itShouldGenerateSignedUrl()
     {
@@ -236,24 +160,6 @@ class AsrFacadeTest extends TestBase
         $serverVars = $this->goodServerVars($example);
         $serverVars['REQUEST_URI'] = str_replace('123456', '86400', $serverVars['REQUEST_URI']);
         $example->createServer()->validateRequest($serverVars, $example->requestBody);
-    }
-
-    /**
-     * @test
-     */
-    public function calculateSigningKey_Perfect_Perfect()
-    {
-        $actualSigningKey = AsrSigner::calculateSigningKey(
-            "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
-            "20110909/us-east-1/iam/aws4_request",
-            'sha256',
-            'AWS4'
-        );
-
-        $this->assertEquals(
-            "98f1d889fec4f4421adc522bab0ce1f82e6929c262ed15e5a94c90efd1e3b0e7",
-            bin2hex($actualSigningKey)
-        );
     }
 }
 
