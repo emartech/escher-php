@@ -2,65 +2,96 @@
 
 class AsrFacadeTest extends PHPUnit_Framework_TestCase
 {
-
     /**
      * @test
+     * @group sign_request
      */
     public function itShouldSignRequest()
     {
-        $example = AsrExample::getDefault();
+        $inputHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+        );
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'x-ems-date' => '20110909T233600Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+        );
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
-        $headerList = $example->defaultHeaders();
-        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $client = AsrFacade::createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE', 'us-east-1', 'iam', 'aws4_request');
+        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
+        $actualHeaders = $client->getSignedHeaders('POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $date);
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 
     /**
      * @test
+     * @group sign_request
      */
-    public function itShouldAutomagicallyAddDateAndHostHeader()
+    public function itShouldAutomagicallyAddHostHeader()
     {
-        $example = AsrExample::getDefault();
+        $inputHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+        );
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'x-ems-date' => '20110909T233600Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+        );
+        $client = AsrFacade::createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE', 'us-east-1', 'iam', 'aws4_request');
+        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $headerList = $example->contentTypeHeader();
-        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $actualHeaders = $client->getSignedHeaders('POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $date);
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 
     /**
      * @test
+     * @group sign_request
      */
     public function itShouldAutomagicallyAddDateAndHostToSignedHeaders()
     {
-        $example = AsrExample::getDefault();
+        $inputHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+        );
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'x-ems-date' => '20110909T233600Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+        );
+        $client = AsrFacade::createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE', 'us-east-1', 'iam', 'aws4_request');
+        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type');
-        $headerList = $example->contentTypeHeader();
-        $this->assertEqualMaps($example->allHeaders(), $this->callSignRequest($example, $headerList, $headersToSign));
+        $actualHeaders = $client->getSignedHeaders('POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $date);
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 
     /**
      * @test
+     * @group sign_request
      */
     public function itShouldOnlySignHeadersExplicitlySetToBeSigned()
     {
-        $example = AsrExample::getDefault();
-        $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $extra = array('x-a-header' => 'that/should/not/be/signed');
-        $contentType = $example->contentTypeHeader();
-
-        $expected = $example->allHeaders() + $extra;
-        $this->assertEqualMaps($expected, $this->callSignRequest($example, $contentType + $extra, $headersToSign));
-    }
-
-    public function callSignRequest(AsrExample $example, $headerList, $headersToSign)
-    {
-        return $example->createClient()->getSignedHeaders(
-            'POST',
-            $example->url(),
-            $example->requestBody,
-            $headerList,
-            $headersToSign,
-            $example->defaultDateTime(),
-            'Authorization'
+        $inputHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'x-a-header' => 'that/should/not/be/signed',
         );
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'x-a-header' => 'that/should/not/be/signed',
+            'x-ems-date' => '20110909T233600Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+        );
+
+        $client = AsrFacade::createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE', 'us-east-1', 'iam', 'aws4_request');
+        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
+        $headersToSign = array('content-type', 'host', 'x-ems-date');
+        $actualHeaders = $client->getSignedHeaders('POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $date);
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 
     /**
@@ -412,10 +443,7 @@ class AsrExample
             'host' => $result->host,
             'x-ems-date' => $result->date,
         );
-        $result->authHeaderValue = 'EMS-HMAC-SHA256 '.
-            'Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, '.
-            'SignedHeaders=content-type;host;x-ems-date, '.
-            'Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
+        $result->authHeaderValue = 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd';
         $result->signedQueryParams = '';
         $result->requestUri = '/';
         return $result;
