@@ -137,8 +137,11 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
         );
     }
 
-    public function hex2bin($hexstr)
+    private function hex2bin($hexstr)
     {
+        if (version_compare(PHP_VERSION, '5.4') == -1) {
+            return hex2bin($hexstr);
+        }
         $n = strlen($hexstr);
         $sbin="";
         $i=0;
