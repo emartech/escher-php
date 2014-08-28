@@ -10,17 +10,18 @@ class AsrFacade
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";
     const VENDOR_PREFIX = 'EMS';
+    const ALGO_PREFIX = 'EMS';
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
-        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_PREFIX);
+        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_PREFIX, self::ALGO_PREFIX);
     }
 
     public static function createServer($region, $service, $requestType, $keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, self::VENDOR_PREFIX);
+        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, self::VENDOR_PREFIX, self::ALGO_PREFIX);
     }
 }
 
@@ -33,15 +34,17 @@ class AsrClient
     private $accessKeyId;
 
     private $vendorPrefix;
+    private $algoPrefix;
     private $hashAlgo;
 
-    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo, $vendorPrefix)
+    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo, $vendorPrefix, $algoPrefix)
     {
         $this->party        = $party;
         $this->secretKey    = $secretKey;
         $this->accessKeyId  = $accessKeyId;
 
         $this->vendorPrefix = $vendorPrefix;
+        $this->algoPrefix   = $algoPrefix;
         $this->hashAlgo     = $hashAlgo;
     }
 
@@ -65,7 +68,7 @@ class AsrClient
     private function appendSigningParams($url, $date, $expires)
     {
         $signingParams = array(
-            'Algorithm'     => $this->vendorPrefix . '-HMAC-' . strtoupper($this->hashAlgo),
+            'Algorithm'     => $this->algoPrefix . '-HMAC-' . strtoupper($this->hashAlgo),
             'Credentials'   => $this->accessKeyId . '/' . $this->fullCredentialScope($date),
             'Date'          => $this->toLongDate($date),
             'Expires'       => $expires,
@@ -243,11 +246,14 @@ class AsrServer
 
     private $vendorPrefix;
 
-    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorPrefix)
+    private $algoPrefix;
+
+    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorPrefix, $algoPrefix)
     {
         $this->party        = $party;
         $this->keyDB        = $keyDB;
         $this->vendorPrefix = $vendorPrefix;
+        $this->algoPrefix   = $algoPrefix;
     }
 
     public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY)
@@ -256,14 +262,14 @@ class AsrServer
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
         $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
-        $authElements = $helper->getAuthElements($this->vendorPrefix);
+        $authElements = $helper->getAuthElements($this->vendorPrefix, $this->algoPrefix);
 
         $authElements->validateMandatorySignedHeaders($dateHeaderKey);
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper);
         $authElements->validateHost($helper);
         $authElements->validateCredentials($this->party);
-        $authElements->validateSignature($helper, $this->party, $this->keyDB, $this->vendorPrefix);
+        $authElements->validateSignature($helper, $this->party, $this->keyDB, $this->vendorPrefix, $this->algoPrefix);
     }
 
     /**
@@ -341,14 +347,14 @@ class AsrRequestHelper
         return $this->requestBody;
     }
 
-    public function getAuthElements($vendorPrefix)
+    public function getAuthElements($vendorPrefix, $algoPrefix)
     {
         $headerList = AsrUtils::keysToLower($this->getHeaderList());
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
-            return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $vendorPrefix);
+            return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
         } else if($this->getRequestMethod() == 'GET' && isset($queryParams[$this->paramKey($vendorPrefix, 'Signature')])) {
-            return AsrAuthElements::parseFromQuery($headerList, $queryParams, $vendorPrefix);
+            return AsrAuthElements::parseFromQuery($headerList, $queryParams, $vendorPrefix, $algoPrefix);
         }
         throw new AsrException('Request has not been signed.');
     }
@@ -466,13 +472,13 @@ class AsrAuthElements
      * @param array $headerList
      * @param $authHeaderKey
      * @param $dateHeaderKey
-     * @param $vendorPrefix
+     * @param $algoPrefix
      * @return AsrAuthElements
      * @throws AsrException
      */
-    public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $vendorPrefix)
+    public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $algoPrefix)
     {
-        $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $vendorPrefix);
+        $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $algoPrefix);
         $credentialParts = self::checkCredentialParts($elementParts);
         $host = self::checkHost($headerList);
 
@@ -485,18 +491,18 @@ class AsrAuthElements
 
     /**
      * @param $headerContent
-     * @param $vendorPrefix
+     * @param $algoPrefix
      * @return array
      * @throws AsrException
      */
-    public static function parseAuthHeader($headerContent, $vendorPrefix)
+    public static function parseAuthHeader($headerContent, $algoPrefix)
     {
         $parts = explode(' ', $headerContent);
         if (count($parts) != 4) {
             throw new AsrException('Could not parse authorization header.');
         }
         return array(
-            'Algorithm'     => self::match(self::algoPattern($vendorPrefix), $parts[0]),
+            'Algorithm'     => self::match(self::algoPattern($algoPrefix), $parts[0]),
             'Credentials'   => self::match('Credential=([A-Za-z0-9\/\-_]+),',     $parts[1]),
             'SignedHeaders' => self::match('SignedHeaders=([A-Za-z\-;]+),',       $parts[2]),
             'Signature'     => self::match('Signature=([0-9a-f]+)',               $parts[3]),
@@ -511,11 +517,11 @@ class AsrAuthElements
         return $matches[1];
     }
 
-    public static function parseFromQuery($headerList, $queryParams, $vendorPrefix)
+    public static function parseFromQuery($headerList, $queryParams, $vendorPrefix, $algoPrefix)
     {
         $result = array();
         $paramKey = self::checkParam($queryParams, $vendorPrefix, 'Algorithm');
-        $result['Algorithm'] = self::match(self::algoPattern($vendorPrefix), $queryParams[$paramKey]);
+        $result['Algorithm'] = self::match(self::algoPattern($algoPrefix), $queryParams[$paramKey]);
         foreach (self::basicQueryParamKeys() as $paramId) {
             $paramKey = self::checkParam($queryParams, $vendorPrefix, $paramId);
             $result[$paramId] = $queryParams[$paramKey];
@@ -626,11 +632,11 @@ class AsrAuthElements
         && $this->getRequestType() == $party->getRequestType();
     }
 
-    public function validateSignature(AsrRequestHelper $helper, AsrParty $party, $keyDB, $vendorPrefix)
+    public function validateSignature(AsrRequestHelper $helper, AsrParty $party, $keyDB, $vendorPrefix, $algoPrefix)
     {
         $key = $this->getAccessKeyId();
         $secret = $this->lookupSecretKey($key, $keyDB);
-        $client = new AsrClient($party, $secret, $key, $this->getAlgorithm(), $vendorPrefix);
+        $client = new AsrClient($party, $secret, $key, $this->getAlgorithm(), $vendorPrefix, $algoPrefix);
 
         $headers = $helper->getHeaderList();
         $dateTime = $this->isFromHeaders ? $headers[strtolower("X-$vendorPrefix-Date")] : $this->elementParts['Date'];
@@ -888,13 +894,13 @@ class AsrSigner
         $canonicalRequestString,
         DateTime $date,
         $hashAlgo,
-        $vendorPrefix
+        $algoPrefix
     ) {
         $date->setTimezone(new DateTimeZone("UTC"));
         $formattedDate = $date->format(AsrFacade::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
-        $lines[] = $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo);
+        $lines[] = $algoPrefix . "-HMAC-" . strtoupper($hashAlgo);
         $lines[] = $formattedDate;
         $lines[] = $scope;
         $lines[] = hash($hashAlgo, $canonicalRequestString);
@@ -915,9 +921,9 @@ class AsrSigner
         return $key;
     }
 
-    public static function createAuthHeader($signature, $credentialScope, $signedHeaders, $hashAlgo, $vendorPrefix, $accessKey)
+    public static function createAuthHeader($signature, $credentialScope, $signedHeaders, $hashAlgo, $algoPrefix, $accessKey)
     {
-        return $vendorPrefix . "-HMAC-" . strtoupper($hashAlgo)
+        return $algoPrefix . "-HMAC-" . strtoupper($hashAlgo)
         . " Credential="
         . $accessKey . "/"
         . $credentialScope
