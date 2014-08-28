@@ -39,8 +39,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
     {
         $returnArray = array();
         foreach($this->allFixtures as $name) {
-            $awsFixture = new AwsFixture($name);
-            $returnArray[$name] = array($awsFixture->contents[$input], $awsFixture->contents[$output]);
+            $returnArray[$name] = array($this->awsFixture($name, $input), $this->awsFixture($name, $output));
         }
         return $returnArray;
     }
@@ -64,7 +63,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
 
     public function stringToSignFileList()
     {
-        return $this->processFixtures('canonicalRequestString', 'stringToSign');
+        return $this->processFixtures('creq', 'sts');
     }
 
     /**
@@ -91,7 +90,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
 
     public function headerFileList()
     {
-        return $this->processFixtures('stringToSign', 'authHeader');
+        return $this->processFixtures('sts', 'authz');
     }
 
     /**
@@ -121,7 +120,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
 
     public function canonicalizeFixtures()
     {
-        return $this->processFixtures('rawRequest', 'canonicalRequestString');
+        return $this->processFixtures('req', 'creq');
     }
 
     private function parseRawRequest($content)
@@ -155,34 +154,9 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
         }
         return $sbin;
     }
-}
 
-class AwsFixture
-{
-    public $contents;
-
-    public function __construct($name)
+    private function awsFixture($name, $extension)
     {
-        $this->contents = $this->load($name);
-    }
-
-    private function load($request)
-    {
-        $path = $this->awsFixtures();
-
-        return array(
-            "rawRequest"             => file_get_contents($path . $request . ".req"),
-            "canonicalRequestString" => file_get_contents($path . $request . ".creq"),
-            "stringToSign"           => file_get_contents($path . $request . ".sts"),
-            "authHeader"             => file_get_contents($path . $request . ".authz"),
-        );
-    }
-
-    /**
-     * @return string
-     */
-    private function awsFixtures()
-    {
-        return dirname(__FILE__) . '/../fixtures/aws4_testsuite/';
+        return file_get_contents(dirname(__FILE__) . '/../fixtures/aws4_testsuite/'.$name.'.'.$extension);
     }
 }
