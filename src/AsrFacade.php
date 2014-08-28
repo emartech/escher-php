@@ -5,6 +5,7 @@ class AsrFacade
     const SHA256 = 'sha256';
     // TODO: properly document (http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html)
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
+    const DEFAULT_AUTH_HEADER_KEY = 'X-Amz-Auth';
 
     public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
     {
@@ -70,21 +71,23 @@ class AsrClient
         $this->accessKeyId = $accessKeyId;
     }
 
-    public function signRequest($method, $url, $requestBody, $headerList, $headersToSign, $timeStamp = null, $algorithmName = AsrFacade::SHA256)
+    public function signRequest($method, $url, $requestBody, $headerList, $headersToSign, $timeStamp = null, $algorithmName = AsrFacade::SHA256, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
         list($host, $path, $query) = $this->parseUrl($url);
+        $request = new AsrRequestToSign($method, $path, $query, $requestBody);
+
         return AsrBuilder::create($timeStamp, $algorithmName)
-            ->useRequest(new AsrRequestToSign($method, $path, $query, $requestBody))
+            ->useRequest($request)
             ->useHeaders($host, $headerList, $headersToSign)
             ->useCredentials($this->accessKeyId, $this->party)
-            ->buildAuthHeaders($this->secretKey);
+            ->buildAuthHeaders($this->secretKey, $authHeaderKey);
     }
 
     /**
      * @param $url
      * @return array
      */
-    public function parseUrl($url)
+    private function parseUrl($url)
     {
         $urlParts = parse_url($url);
         $host = $urlParts['host'];
@@ -173,12 +176,12 @@ class AsrRequestToValidate
     /**
      * @var array
      */
-    private $serverVars;
+    private $headerList;
 
     /**
-     * @var array
+     * @var int
      */
-    private $headerList;
+    private $requestTime;
 
     /**
      * @var string
@@ -196,16 +199,23 @@ class AsrRequestToValidate
     private $query;
 
     /**
-     * @param array $serverVars
+     * @var string
+     */
+    private $method;
+
+    /**
      * @param array $headerList
+     * @param int $requestTime
+     * @param string $method
      * @param string $path
      * @param string $query
      * @param string $requestBody
      */
-    public function __construct(array $serverVars, array $headerList, $path, $query, $requestBody)
+    public function __construct(array $headerList, $requestTime, $method, $path, $query, $requestBody)
     {
-        $this->serverVars  = $serverVars;
         $this->headerList  = $headerList;
+        $this->requestTime = $requestTime;
+        $this->method      = $method;
         $this->path        = $path;
         $this->query       = $query;
         $this->requestBody = $requestBody;
@@ -222,7 +232,7 @@ class AsrRequestToValidate
         $requestBody = null === $requestBody ? file_get_contents('php://input') : $requestBody;
         $headerList = self::fetchHeaders($serverVars);
         list ($path, $query) = array_pad(explode('?', $serverVars['REQUEST_URI'], 2), 2, '');
-        return new AsrRequestToValidate($serverVars, $headerList, $path, $query, $requestBody);
+        return new AsrRequestToValidate($headerList, $serverVars['REQUEST_TIME'], $serverVars['REQUEST_METHOD'], $path, $query, $requestBody);
     }
 
     /**
@@ -251,7 +261,7 @@ class AsrRequestToValidate
 
     public function getTimeStamp()
     {
-        return $this->serverVars['REQUEST_TIME'];
+        return $this->requestTime;
     }
 
     public function getHost()
@@ -259,29 +269,14 @@ class AsrRequestToValidate
         return $this->headerList['host'];
     }
 
-    public function getMethod()
+    public function getAuthHeaders($authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY)
     {
-        return $this->serverVars['REQUEST_METHOD'];
+        return AsrAuthHeader::parse($this->headerList, strtolower($authHeaderKey));
     }
 
-    public function getPath()
+    public function asRequestToSign()
     {
-        return $this->path;
-    }
-
-    public function getQuery()
-    {
-        return $this->query;
-    }
-
-    public function getBody()
-    {
-        return $this->requestBody;
-    }
-
-    public function getAuthHeaders()
-    {
-        return AsrAuthHeader::parse($this->headerList);
+        return new AsrRequestToSign($this->method, $this->path, $this->query, $this->requestBody);
     }
 }
 
@@ -390,13 +385,14 @@ class AsrBuilder
         return $this->algorithm->hmac($stringToSign, $signingKey, false);
     }
 
-    public function buildAuthHeaders($secretKey)
+    public function buildAuthHeaders($secretKey, $authHeaderKey)
     {
         return $this->dateHeader() + AsrAuthHeader::build(
             $this->algorithm,
             $this->credentials->createScope($this->amazonDateTime),
             $this->headers,
-            $this->calculateSignature($secretKey)
+            $this->calculateSignature($secretKey),
+            $authHeaderKey
         );
     }
 
@@ -460,17 +456,17 @@ class AsrAuthHeader
         $this->amazonDateTime = $amazonDateTime;
     }
 
-    public static function parse(array $headerList)
+    public static function parse(array $headerList, $authHeaderKey)
     {
         $headerList = AsrHeaders::canonicalize($headerList);
         if (!isset($headerList['x-amz-date'])) {
             throw new AsrException('The X-Amz-Date header is missing');
         }
-        if (!isset($headerList['authorization'])) {
-            throw new AsrException('The Authorization header is missing');
+        if (!isset($headerList[strtolower($authHeaderKey)])) {
+            throw new AsrException('The '.$authHeaderKey.' header is missing');
         }
         $matches = array();
-        if (1 !== preg_match(self::regex(), $headerList['authorization'], $matches)) {
+        if (1 !== preg_match(self::regex(), $headerList[strtolower($authHeaderKey)], $matches)) {
             throw new AsrException('Could not parse authorization header.');
         }
         $credentialParts = explode('/', $matches['credentials']);
@@ -490,9 +486,9 @@ class AsrAuthHeader
         '$/';
     }
 
-    public static function build(AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature)
+    public static function build(AsrSigningAlgorithm $algorithm, AsrCredentialScope $credentialScope, AsrHeaders $headers, $signature, $authHeaderKey)
     {
-        return array('Authorization' => $algorithm->toHeaderString() . ' ' .
+        return array($authHeaderKey => $algorithm->toHeaderString() . ' ' .
             "Credential={$credentialScope->toHeaderString()}, " .
             "SignedHeaders={$headers->toHeaderString()}, ".
             "Signature=$signature");

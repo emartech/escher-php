@@ -39,10 +39,11 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function requestHeadersToValidate($requestTime)
     {
         $request = AsrRequestToValidate::create(array(
+            'REQUEST_METHOD' => 'GET',
             'REQUEST_URI' => '/',
             'REQUEST_TIME' => strtotime($requestTime),
             'HTTP_X_AMZ_DATE' => $this->defaultAmzDate,
-            'HTTP_AUTHORIZATION' => $this->authorizationHeader()
+            'HTTP_X_AMZ_AUTH' => $this->authorizationHeader()
         ), '');
         return $request;
     }
@@ -121,7 +122,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     public function itShouldParseAuthorizationHeader()
     {
         $headerList = $this->authorizationHeaders();
-        $authHeader = AsrAuthHeader::parse($headerList);
+        $authHeader = AsrAuthHeader::parse($headerList, 'X-Amz-Auth');
 
         $this->assertEquals($this->defaultAmzDate, $authHeader->getLongDate());
         $this->assertEquals('SHA256', $authHeader->getAlgorithm());
@@ -141,14 +142,16 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     {
         $request = AsrRequestToValidate::create(
             array(
+                'REQUEST_TIME' => time(),
+                'REQUEST_METHOD' => 'GET',
                 'HTTP_HOST' => $this->host,
                 'CONTENT_TYPE' => $this->contentType,
                 'REQUEST_URI' => '/path?query=string'
         ), 'BODY');
         $this->assertEquals(array('host' => $this->host, 'content-type' => $this->contentType), $request->getHeaderList());
-        $this->assertEquals('/path', $request->getPath());
-        $this->assertEquals('query=string', $request->getQuery());
-        $this->assertEquals('BODY', $request->getBody());
+        $this->assertEquals('/path', $request->asRequestToSign()->getPath());
+        $this->assertEquals('query=string', $request->asRequestToSign()->getQuery());
+        $this->assertEquals('BODY', $request->asRequestToSign()->getBody());
     }
 
     /**
@@ -199,7 +202,7 @@ class AsrFacadeTest extends PHPUnit_Framework_TestCase
     private function authorizationHeaders()
     {
         return array(
-            'Authorization' => $this->authorizationHeader(),
+            'X-Amz-Auth' => $this->authorizationHeader(),
             'X-Amz-Date'    => $this->defaultAmzDate,
         );
     }
