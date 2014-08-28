@@ -811,8 +811,8 @@ class AsrRequestCanonicalizer
             $keyValues[0] = urldecode($keyValues[0]);
             $keyValues[1] = urldecode($keyValues[1]);
             $encodedParts[] = implode("=", array(
-                rawurlencode(str_replace('+', ' ', $keyValues[0])),
-                rawurlencode(str_replace('+', ' ', $keyValues[1])),
+                self::rawUrlEncode(str_replace('+', ' ', $keyValues[0])),
+                self::rawUrlEncode(str_replace('+', ' ', $keyValues[1])),
             ));
         }
         sort($encodedParts);
@@ -867,6 +867,15 @@ class AsrRequestCanonicalizer
             $canonicalizedHeaders []= $headerKey . ':' . implode(',', $headerValues);
         }
         return $canonicalizedHeaders;
+    }
+
+    private static function rawUrlEncode($urlComponent)
+    {
+        $result = rawurlencode($urlComponent);
+        if (version_compare(PHP_VERSION, '5.3.4') == -1) {
+            $result = str_replace('%7E', '~', $result);
+        }
+        return $result;
     }
 }
 
