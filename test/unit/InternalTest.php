@@ -19,4 +19,27 @@ class InternalTest extends TestBase
             bin2hex($actualSigningKey)
         );
     }
+
+    /**
+     * @test
+     */
+    public function itShouldCollectBodyAndHeadersFromServerVariables()
+    {
+        $example = AsrExample::getDefault();
+        $serverVars = array(
+            'REQUEST_TIME' => time(),
+            'REQUEST_METHOD' => 'GET',
+            'HTTP_HOST' => 'iam.amazonaws.com',
+            'CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI' => '/path?query=string'
+        );
+        $requestBody = 'BODY';
+        $helper = new AsrRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
+        $this->assertEquals($requestBody, $helper->getRequestBody());
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host' => 'iam.amazonaws.com',
+        );
+        $this->assertEqualMaps($expectedHeaders, $helper->getHeaderList());
+    }
 }

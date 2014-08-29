@@ -5,25 +5,6 @@ class AsrFacadeTest extends TestBase
     /**
      * @test
      */
-    public function itShouldParseHeaders()
-    {
-        $example = AsrExample::getDefault();
-        $serverVars = array(
-            'REQUEST_TIME' => time(),
-            'REQUEST_METHOD' => 'GET',
-            'HTTP_HOST' => $example->host,
-            'CONTENT_TYPE' => $example->contentType,
-            'REQUEST_URI' => '/path?query=string'
-        );
-        $requestBody = 'BODY';
-        $helper = new AsrRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
-        $this->assertEquals($requestBody, $helper->getRequestBody());
-        $this->assertEqualMaps($example->contentTypeHeader() + $example->hostHeader(), $helper->getHeaderList());
-    }
-
-    /**
-     * @test
-     */
     public function itShouldValidateRequestUsingAuthHeader()
     {
         $example = AsrExample::getDefault();
