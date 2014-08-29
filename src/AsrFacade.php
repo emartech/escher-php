@@ -158,7 +158,7 @@ class AsrClient
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
             $this->hashAlgo,
-            $this->vendorKey,
+            $this->algoPrefix,
             $this->accessKeyId
         );
         return array(strtolower($authHeaderKey) => $authHeaderValue);
@@ -186,14 +186,14 @@ class AsrClient
             $canonicalizedRequest,
             $date,
             $this->hashAlgo,
-            $this->vendorKey
+            $this->algoPrefix
         );
 
         $signerKey = AsrSigner::calculateSigningKey(
             $this->secretKey,
             $this->fullCredentialScope($date),
             $this->hashAlgo,
-            $this->vendorKey
+            $this->algoPrefix
         );
 
         $signature = AsrSigner::createSignature(
