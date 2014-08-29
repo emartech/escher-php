@@ -8,13 +8,12 @@ class ValidateRequestUsingHeaderTest extends TestBase
      */
     public function itShouldParseAuthorizationHeader($authHeaderName, $dateHeaderName)
     {
-        $example = AsrExample::getDefault();
-        $authHeader = AsrAuthElements::parseFromHeaders(
-            $example->authorizationHeader($authHeaderName) + $example->dateHeader($dateHeaderName) + $example->hostHeader(),
-            $authHeaderName,
-            $dateHeaderName,
-            'EMS'
+        $headerList = array(
+            'host'          => 'iam.amazonaws.com',
+            $dateHeaderName => '20110909T233600Z',
+            $authHeaderName => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
+        $authHeader = AsrAuthElements::parseFromHeaders($headerList, $authHeaderName, $dateHeaderName, 'EMS');
 
         $this->assertEquals('20110909T233600Z', $authHeader->getLongDate());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());

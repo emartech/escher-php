@@ -478,6 +478,7 @@ class AsrAuthElements
      */
     public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $algoPrefix)
     {
+        $headerList = AsrUtils::keysToLower($headerList);
         $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $algoPrefix);
         $credentialParts = self::checkCredentialParts($elementParts);
         $host = self::checkHost($headerList);
