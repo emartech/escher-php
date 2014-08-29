@@ -459,9 +459,9 @@ class AsrAuthElements
      */
     private $isFromHeaders;
 
-    public function __construct(array $headerParts, array $credentialParts, $dateTime, $host, $isFromHeaders)
+    public function __construct(array $elementParts, array $credentialParts, $dateTime, $host, $isFromHeaders)
     {
-        $this->elementParts = $headerParts;
+        $this->elementParts = $elementParts;
         $this->credentialParts = $credentialParts;
         $this->dateTime = $dateTime;
         $this->host = $host;
@@ -520,15 +520,15 @@ class AsrAuthElements
 
     public static function parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix)
     {
-        $result = array();
+        $elementParts = array();
         $paramKey = self::checkParam($queryParams, $vendorKey, 'Algorithm');
-        $result['Algorithm'] = self::match(self::algoPattern($algoPrefix), $queryParams[$paramKey]);
+        $elementParts['Algorithm'] = self::match(self::algoPattern($algoPrefix), $queryParams[$paramKey]);
         foreach (self::basicQueryParamKeys() as $paramId) {
             $paramKey = self::checkParam($queryParams, $vendorKey, $paramId);
-            $result[$paramId] = $queryParams[$paramKey];
+            $elementParts[$paramId] = $queryParams[$paramKey];
         }
-        $credentialParts = self::checkCredentialParts($result);
-        return new AsrAuthElements($result, $credentialParts, $result['Date'], self::checkHost($headerList), false);
+        $credentialParts = self::checkCredentialParts($elementParts);
+        return new AsrAuthElements($elementParts, $credentialParts, $elementParts['Date'], self::checkHost($headerList), false);
     }
 
     private static function basicQueryParamKeys()
