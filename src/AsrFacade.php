@@ -640,7 +640,7 @@ class AsrAuthElements
         $client = new AsrClient($party, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
 
         $headers = $helper->getHeaderList();
-        $dateTime = $this->isFromHeaders ? $headers[strtolower("X-$vendorKey-Date")] : $this->elementParts['Date'];
+        $dateTime = $this->dateTime;
 
         $calculated = $client->getSignature(
             new DateTime($dateTime, new DateTimeZone("UTC")),
