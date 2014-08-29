@@ -152,7 +152,6 @@ class SignRequestUsingHeaderTest extends TestBase
             'Some-Custom-Header' => 'FooBar'
         );
 
-        $example = AsrExample::getCustom();
         $client = AsrFacade::createClient('very_secure', 'th3K3y', 'us-east-1', 'host', 'aws4_request');
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
