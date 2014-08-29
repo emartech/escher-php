@@ -543,12 +543,12 @@ class AsrAuthElements
     }
 
     /**
-     * @param $vendorKey
+     * @param $algoPrefix
      * @return string
      */
-    private static function algoPattern($vendorKey)
+    private static function algoPattern($algoPrefix)
     {
-        return $vendorKey . '-HMAC-([A-Z0-9\,]+)';
+        return $algoPrefix . '-HMAC-([A-Z0-9\,]+)';
     }
 
     /**
