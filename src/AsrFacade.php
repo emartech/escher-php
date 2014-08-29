@@ -642,7 +642,7 @@ class AsrAuthElements
         $headers = $helper->getHeaderList();
         $dateTime = $this->isFromHeaders ? $headers[strtolower("X-$vendorKey-Date")] : $this->elementParts['Date'];
 
-        $compareSignature = $client->getSignature(
+        $calculated = $client->getSignature(
             new DateTime($dateTime, new DateTimeZone("UTC")),
             $helper->getRequestMethod(),
             $this->stripAuthParams($helper, $vendorKey),
@@ -651,8 +651,9 @@ class AsrAuthElements
             $this->getSignedHeaders()
         );
 
-        if ($compareSignature != $this->getSignature()) {
-            throw new AsrException('The signatures do not match');
+        $provided = $this->getSignature();
+        if ($calculated != $provided) {
+            throw new AsrException("The signatures do not match (provided: $provided, calculated: $calculated)");
         }
     }
 

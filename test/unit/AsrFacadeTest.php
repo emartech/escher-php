@@ -26,7 +26,7 @@ class AsrFacadeTest extends TestBase
             $asrServer->validateRequest($serverVars, $example->requestBody);
             $this->fail('Should fail to validate');
         } catch (AsrException $ex) {
-            $this->assertEquals($expectedErrorMessage, $ex->getMessage());
+            $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
         }
     }
 
