@@ -1,6 +1,6 @@
 <?php
 
-class AsrFacadeTest extends TestBase
+class ValidateRequestTest extends TestBase
 {
     /**
      * @test
@@ -110,3 +110,4 @@ class AsrFacadeTest extends TestBase
         AsrFacade::createServer('us-east-1', 'host', 'aws4_request', $keyDB)->validateRequest($serverVars, '');
     }
 }
+ 
