@@ -889,13 +889,8 @@ class AsrRequestCanonicalizer
 
 class AsrSigner
 {
-    public static function createStringToSign(
-        $credentialScope,
-        $canonicalRequestString,
-        DateTime $date,
-        $hashAlgo,
-        $algoPrefix
-    ) {
+    public static function createStringToSign($credentialScope, $canonicalRequestString, DateTime $date, $hashAlgo, $algoPrefix)
+    {
         $date->setTimezone(new DateTimeZone("UTC"));
         $formattedDate = $date->format(AsrFacade::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
@@ -907,13 +902,9 @@ class AsrSigner
         return implode("\n", $lines);
     }
 
-    public static function calculateSigningKey(
-        $secret,
-        $credentialScope,
-        $hashAlgo,
-        $vendorKey
-    ) {
-        $key = $vendorKey . $secret;
+    public static function calculateSigningKey($secret, $credentialScope, $hashAlgo, $algoPrefix)
+    {
+        $key = $algoPrefix . $secret;
         $credentials = explode("/", $credentialScope);
         foreach ($credentials as $data) {
             $key = hash_hmac($hashAlgo, $data, $key, true);
