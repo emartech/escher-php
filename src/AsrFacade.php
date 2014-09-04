@@ -795,6 +795,7 @@ class AsrRequestCanonicalizer
         $lines[] = self::normalizePath($path);
         $lines[] = self::urlEncodeQueryString($query);
 
+        sort($headersToSign);
         $lines = array_merge($lines, self::canonicalizeHeaders($rawHeaders, $headersToSign));
 
         $lines[] = '';
@@ -853,7 +854,7 @@ class AsrRequestCanonicalizer
      */
     private static function canonicalizeHeaders($rawHeaders, array $headersToSign)
     {
-        $elements = array();
+        $result = array();
         foreach (explode("\n", $rawHeaders) as $header) {
             // TODO: add multiline header handling
             list ($key, $value) = explode(':', $header, 2);
@@ -862,18 +863,14 @@ class AsrRequestCanonicalizer
             if (!in_array($lowerKey, $headersToSign)) {
                 continue;
             }
-            if (isset($elements[$lowerKey])) {
-                $elements[$lowerKey][] = $trimmedValue;
+            if (isset($result[$lowerKey])) {
+                $result[$lowerKey] .= ',' . $trimmedValue;
             } else {
-                $elements[$lowerKey] = array($trimmedValue);
+                $result[$lowerKey] =  $lowerKey . ':' . $trimmedValue;
             }
         }
-        ksort($elements);
-        $canonicalizedHeaders = array();
-        foreach ($elements as $headerKey => $headerValues) {
-            $canonicalizedHeaders []= $headerKey . ':' . implode(',', $headerValues);
-        }
-        return $canonicalizedHeaders;
+        sort($result);
+        return $result;
     }
 
     private static function rawUrlEncode($urlComponent)
