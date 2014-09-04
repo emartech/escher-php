@@ -1,0 +1,6 @@
+POST / http/1.1
+A-Funny-Header:     "   foo   bar   "
+Date:Mon, 09 Sep 2011 23:36:00 GMT
+Host:host.foo.com
+Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=a-funny-header;date;host, Signature=5d63db6df1454e99cdff20966ac2fe0c6ed6cd330b0c7dbcb0e3155e164e49d7
+

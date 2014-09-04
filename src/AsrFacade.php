@@ -888,7 +888,11 @@ class AsrRequestCanonicalizer
      */
     private static function nomalizeHeaderValue($value)
     {
-        return preg_replace('/\s+/', ' ', trim($value));
+        $result = array();
+        foreach (explode('"', trim($value)) as $index => $piece) {
+            $result[] = $index % 2 == 1 ? $piece : preg_replace('/\s+/', ' ', $piece);
+        }
+        return implode('"', $result);
     }
 }
 

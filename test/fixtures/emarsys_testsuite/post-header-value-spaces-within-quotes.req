@@ -1,0 +1,5 @@
+POST / http/1.1
+A-Funny-Header:     "   foo   bar   "    
+Date:Mon, 09 Sep 2011 23:36:00 GMT
+Host:host.foo.com
+
