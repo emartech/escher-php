@@ -859,7 +859,7 @@ class AsrRequestCanonicalizer
             // TODO: add multiline header handling
             list ($key, $value) = explode(':', $header, 2);
             $lowerKey = strtolower($key);
-            $trimmedValue = trim($value);
+            $trimmedValue = self::nomalizeHeaderValue($value);
             if (!in_array($lowerKey, $headersToSign)) {
                 continue;
             }
@@ -880,6 +880,15 @@ class AsrRequestCanonicalizer
             $result = str_replace('%7E', '~', $result);
         }
         return $result;
+    }
+
+    /**
+     * @param $value
+     * @return string
+     */
+    private static function nomalizeHeaderValue($value)
+    {
+        return preg_replace('/\s+/', ' ', trim($value));
     }
 }
 
