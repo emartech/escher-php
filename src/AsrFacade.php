@@ -871,7 +871,6 @@ class AsrRequestCanonicalizer
         ksort($elements);
         $canonicalizedHeaders = array();
         foreach ($elements as $headerKey => $headerValues) {
-            sort($headerValues);
             $canonicalizedHeaders []= $headerKey . ':' . implode(',', $headerValues);
         }
         return $canonicalizedHeaders;

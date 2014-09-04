@@ -14,10 +14,10 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
         'post-x-www-form-urlencoded-parameters',
 
         'get-header-value-trim',
-        'get-header-key-duplicate',
+//        'get-header-key-duplicate',
         'post-header-key-case',
         'post-header-key-sort',
-        'get-header-value-order',
+//        'get-header-value-order',
         'post-header-value-case',
 
         'get-vanilla-query-order-value',
@@ -39,6 +39,8 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
     );
 
     private $emarsysFixtures = array(
+        'get-header-key-duplicate',
+        'get-header-value-order',
     );
 
     private function processFixtures($input, $output)
