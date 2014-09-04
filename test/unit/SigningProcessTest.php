@@ -1,8 +1,8 @@
 <?php
 
-class AmazonSuite extends PHPUnit_Framework_TestCase
+class SigningProcessTest extends PHPUnit_Framework_TestCase
 {
-    private $allFixtures = array(
+    private $amazonFixtures = array(
         'get-vanilla',
         'post-vanilla',
         'get-vanilla-query',
@@ -38,20 +38,27 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
         'get-relative-relative',
     );
 
+    private $emarsysFixtures = array(
+    );
+
     private function processFixtures($input, $output)
     {
-        $returnArray = array();
-        foreach($this->allFixtures as $name) {
-            $returnArray[$name] = array($this->awsFixture($name, $input), $this->awsFixture($name, $output));
+        $fixtures = array();
+        foreach(array('aws4' => $this->amazonFixtures, 'emarsys' => $this->emarsysFixtures) as $suiteName => $suiteFixtures) {
+            foreach ($suiteFixtures as $fixtureName) {
+                $inputFixture = $this->fixture($suiteName, $fixtureName, $input);
+                $outputFixture = $this->fixture($suiteName, $fixtureName, $output);
+                $fixtures["$suiteName : $fixtureName"] = array($inputFixture, $outputFixture);
+            }
         }
-        return $returnArray;
+        return $fixtures;
     }
 
     /**
      * @test
      * @dataProvider StringToSignFileList
      */
-    public function createStringToSign_Perfect_Perfect($canonicalRequestString, $expectedStringToSign)
+    public function itShouldCreateStringToSign($canonicalRequestString, $expectedStringToSign)
     {
         $credentialScope = 'us-east-1/host/aws4_request';
         $actualStringToSign = AsrSigner::createStringToSign(
@@ -73,7 +80,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
      * @test
      * @dataProvider headerFileList
      */
-    public function createAuthHeader_Perfect_Perfect($stringToSign, $expectedAuthHeaders)
+    public function itShouldBuildAuthHeader($stringToSign, $expectedAuthHeaders)
     {
         $matches = AsrAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
@@ -100,7 +107,7 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
      * @test
      * @dataProvider canonicalizeFixtures
      */
-    public function canonicalize_Perfect_Perfect($rawRequest, $canonicalRequestString)
+    public function itShouldCalculateCanonicalRequest($rawRequest, $canonicalRequestString)
     {
         list($method, $requestUri, $body, $headerLines) = $this->parseRawRequest($rawRequest);
         $headersToSign = array();
@@ -158,8 +165,8 @@ class AmazonSuite extends PHPUnit_Framework_TestCase
         return $sbin;
     }
 
-    private function awsFixture($name, $extension)
+    private function fixture($suiteName, $fixtureName, $extension)
     {
-        return file_get_contents(dirname(__FILE__) . '/../fixtures/aws4_testsuite/'.$name.'.'.$extension);
+        return file_get_contents(dirname(__FILE__) . "/../fixtures/{$suiteName}_testsuite/{$fixtureName}.{$extension}");
     }
 }
