@@ -1,8 +1,45 @@
 {
+    "name": "emartech/escher",
+    "description": "Library for HTTP request signing (PHP implementation)",
+    "version": "0.0.3",
+    "homepage": "https://github.com/emartech/escher-php",
+    "authors": [
+        {
+            "name": "Emarsys Technologies",
+            "homepage": "http://emarsys.com/",
+            "role": "company"
+        },
+        {
+            "name": "Andras Barthazi",
+            "email": "andras@barthazi.hu",
+            "homepage": "https://github.com/boogie/",
+            "role": "lead"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/emartech/escher-php/issues"
+    },
+    "license": [
+        "MIT"
+    ],
+    "type": "library",
     "require": {
         "php": "~5.2"
     },
     "require-dev": {
         "phpunit/phpunit": "3.7.*"
-    }
+    },
+    "keywords": [
+        "escher",
+        "php",
+        "hmac",
+        "sha",
+        "aws",
+        "signature",
+        "http",
+        "request",
+        "rest",
+        "authentication",
+        "api"
+    ]
 }
