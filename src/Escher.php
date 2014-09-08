@@ -3,8 +3,8 @@
 class Escher
 {
     const DEFAULT_HASH_ALGORITHM = 'SHA256';
-    const ALGO_PREFIX = 'Escher';
-    const VENDOR_KEY = 'Escher';
+    const DEFAULT_ALGO_PREFIX = 'Escher';
+    const DEFAULT_VENDOR_KEY = 'Escher';
     const DEFAULT_AUTH_HEADER_KEY = 'X-Escher-Auth';
     const DEFAULT_DATE_HEADER_KEY = 'X-Escher-Date';
     const ISO8601 = 'Ymd\THis\Z';
@@ -15,48 +15,21 @@ class Escher
 
     private $credentialScope;
     private $date;
-    private $hashAlgo;
-    private $algoPrefix;
-    private $vendorKey;
-    private $dateHeaderKey;
-    private $authHeaderKey;
+    private $hashAlgo = self::DEFAULT_HASH_ALGORITHM;
+    private $algoPrefix = self::DEFAULT_ALGO_PREFIX;
+    private $vendorKey = self::DEFAULT_VENDOR_KEY;
+    private $authHeaderKey = self::DEFAULT_AUTH_HEADER_KEY;
+    private $dateHeaderKey = self::DEFAULT_DATE_HEADER_KEY;
 
-    public function __construct(
-        $credentialScope,
-        DateTime $date,
-        $hashAlgo,
-        $algoPrefix,
-        $vendorKey,
-        $authHeaderKey,
-        $dateHeaderKey
-    ) {
+    public function __construct($credentialScope, DateTime $date)
+    {
         $this->credentialScope = $credentialScope;
         $this->date = $date;
-        $this->hashAlgo = $hashAlgo;
-        $this->algoPrefix = $algoPrefix;
-        $this->vendorKey = $vendorKey;
-        $this->authHeaderKey = $authHeaderKey;
-        $this->dateHeaderKey = $dateHeaderKey;
     }
 
-    public static function create(
-        $credentialScope,
-        DateTime $date = null,
-        $hashAlgo = self::DEFAULT_HASH_ALGORITHM,
-        $algoPrefix = self::ALGO_PREFIX,
-        $vendorKey = self::VENDOR_KEY,
-        $authHeaderKey = self::DEFAULT_AUTH_HEADER_KEY,
-        $dateHeaderKey = self::DEFAULT_DATE_HEADER_KEY
-    ) {
-        return new Escher(
-            $credentialScope,
-            $date ? $date : self::now(),
-            $hashAlgo,
-            $algoPrefix,
-            $vendorKey,
-            $authHeaderKey,
-            $dateHeaderKey
-        );
+    public static function create($credentialScope, DateTime $date = null)
+    {
+        return new Escher($credentialScope, $date ? $date : self::now());
     }
 
     /**
@@ -78,6 +51,55 @@ class Escher
         return new EscherServer($this, $keyDB);
     }
 
+    /**
+     * @param $hashAlgo
+     * @return Escher
+     */
+    public function setHashAlgo($hashAlgo)
+    {
+        $this->hashAlgo = $hashAlgo;
+        return $this;
+    }
+
+    /**
+     * @param $algoPrefix
+     * @return Escher
+     */
+    public function setAlgoPrefix($algoPrefix)
+    {
+        $this->algoPrefix = $algoPrefix;
+        return $this;
+    }
+
+    /**
+     * @param $vendorKey
+     * @return Escher
+     */
+    public function setVendorKey($vendorKey)
+    {
+        $this->vendorKey = $vendorKey;
+        return $this;
+    }
+
+    /**
+     * @param $authHeaderKey
+     * @return Escher
+     */
+    public function setAuthHeaderKey($authHeaderKey)
+    {
+        $this->authHeaderKey = $authHeaderKey;
+        return $this;
+    }
+
+    /**
+     * @param $dateHeaderKey
+     * @return Escher
+     */
+    public function setDateHeaderKey($dateHeaderKey)
+    {
+        $this->dateHeaderKey = $dateHeaderKey;
+        return $this;
+    }
     public function getDate()
     {
         return $this->date;

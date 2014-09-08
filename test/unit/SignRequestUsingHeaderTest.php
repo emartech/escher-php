@@ -139,7 +139,8 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
-        $escher = Escher::create('us-east-1/iam/aws4_request', $date, 'SHA256', 'EMS', 'EMS', 'X-Ems-Auth', 'X-Ems-Date');
+        $escher = Escher::create('us-east-1/iam/aws4_request', $date)
+            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $escher->createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE')->getSignedHeaders(
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
@@ -158,8 +159,9 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $client = Escher::create('us-east-1/host/aws4_request', $date, 'SHA256', 'EMS', 'EMS', 'X-Ems-Auth', 'X-Ems-Date')
-            ->createClient('very_secure', 'th3K3y');
+        $escher = Escher::create('us-east-1/host/aws4_request', $date)
+            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
+        $client = $escher->createClient('very_secure', 'th3K3y');
 
         $actualHeaders = $client->getSignedHeaders('GET', 'http://example.com/something', '', $inputHeaders, array());
 
@@ -175,14 +177,8 @@ class SignRequestUsingHeaderTest extends TestBase
 
     protected function createClient($date, $authHeaderName = 'X-Ems-Auth')
     {
-        return Escher::create(
-            'us-east-1/iam/aws4_request',
-            $date,
-            Escher::DEFAULT_HASH_ALGORITHM,
-            'EMS',
-            Escher::VENDOR_KEY,
-            $authHeaderName,
-            'X-Ems-Date'
-        )->createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE');
+        return Escher::create('us-east-1/iam/aws4_request', $date)
+            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey($authHeaderName)->setDateHeaderKey('X-Ems-Date')
+            ->createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE');
     }
 }
