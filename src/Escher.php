@@ -2,7 +2,7 @@
 
 class Escher
 {
-    const DEFAULT_HASH_ALGORITHM = 'sha256';
+    const DEFAULT_HASH_ALGORITHM = 'SHA256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
     const DEFAULT_DATE_HEADER_KEY = 'X-Ems-Date';
@@ -13,15 +13,39 @@ class Escher
     const ALGO_PREFIX = 'EMS';
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
-    public static function createClient($secretKey, $accessKeyId, $credentialScope)
-    {
-        return new EscherClient($credentialScope, $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_KEY, self::ALGO_PREFIX);
+    private $credentialScope;
+    private $hashAlgo;
+    private $algoPrefix;
+    private $vendorKey;
+
+    public function __construct(
+        $credentialScope,
+        $hashAlgo = self::DEFAULT_HASH_ALGORITHM,
+        $algoPrefix = self::ALGO_PREFIX,
+        $vendorKey = self::VENDOR_KEY
+    ) {
+        $this->credentialScope = $credentialScope;
+        $this->hashAlgo = $hashAlgo;
+        $this->algoPrefix = $algoPrefix;
+        $this->vendorKey = $vendorKey;
     }
 
-    public static function createServer($credentialScope, $keyDB)
+    public static function create($credentialScope)
+    {
+        return new Escher($credentialScope);
+    }
+
+    public function createClient($secretKey, $accessKeyId)
+    {
+        return new EscherClient(
+            $this->credentialScope, $secretKey, $accessKeyId, $this->hashAlgo, $this->vendorKey, $this->algoPrefix
+        );
+    }
+
+    public function createServer($keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new EscherServer($credentialScope, $keyDB, self::VENDOR_KEY, self::ALGO_PREFIX);
+        return new EscherServer($this->credentialScope, $keyDB, $this->vendorKey, $this->algoPrefix);
     }
 }
 
@@ -47,7 +71,7 @@ class EscherClient
         $this->vendorKey    = $vendorKey;
     }
 
-    public function presignUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
+    public function presignUrl($url, $date = null, $expires = 86400)
     {
         $date = $date ? $date : $this->now();
 
@@ -55,10 +79,9 @@ class EscherClient
 
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $headerList += array('host' => $host);
-        $headersToSign = array_unique(array_merge(array('host'), $headersToSign));
-
-        $signature = $this->calculateSignature($date, 'GET', $path, $query, Escher::UNSIGNED_PAYLOAD, $headerList, $headersToSign);
+        $signature = $this->calculateSignature(
+            $date, 'GET', $path, $query, Escher::UNSIGNED_PAYLOAD, array('host' => $host), (array('host'))
+        );
         $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
 
         return $url;
