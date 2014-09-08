@@ -120,7 +120,7 @@ class ValidateRequestTest extends TestBase
 
     private function strtotime($dateString)
     {
-        return EscherUtils::parseLongDate($dateString)->getTimestamp();
+        return EscherUtils::parseLongDate($dateString)->format('U');
     }
 }
  
