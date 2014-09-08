@@ -139,7 +139,7 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
-        $escher = Escher::create('us-east-1/iam/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, Escher::ALGO_PREFIX, 'EMS');
+        $escher = Escher::create('us-east-1/iam/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, 'EMS');
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $escher->createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE')->getSignedHeaders(
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
@@ -158,7 +158,8 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $client = Escher::create('us-east-1/host/aws4_request', $date)->createClient('very_secure', 'th3K3y');
+        $client = Escher::create('us-east-1/host/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, 'EMS')
+            ->createClient('very_secure', 'th3K3y');
 
         $actualHeaders = $client->getSignedHeaders('GET', 'http://example.com/something', '', $inputHeaders, array());
 
@@ -174,7 +175,7 @@ class SignRequestUsingHeaderTest extends TestBase
 
     protected function createClient($date, $authHeaderName = Escher::DEFAULT_AUTH_HEADER_KEY)
     {
-        return Escher::create('us-east-1/iam/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, Escher::ALGO_PREFIX, Escher::VENDOR_KEY, $authHeaderName)
+        return Escher::create('us-east-1/iam/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, 'EMS', Escher::VENDOR_KEY, $authHeaderName)
             ->createClient('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', 'AKIDEXAMPLE');
     }
 }

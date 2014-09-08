@@ -8,7 +8,8 @@ class SignRequestUsingQueryStringTest extends TestBase
     public function itShouldGenerateSignedUrl()
     {
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $client = Escher::create('us-east-1/host/aws4_request', $date)->createClient('very_secure', 'th3K3y');
+        $client = Escher::create('us-east-1/host/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, 'EMS')
+            ->createClient('very_secure', 'th3K3y');
 
         $expires = 123456;
         $signedUrl = $client->presignUrl('http://example.com/something?foo=bar&baz=barbaz', $expires);

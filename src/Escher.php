@@ -3,14 +3,14 @@
 class Escher
 {
     const DEFAULT_HASH_ALGORITHM = 'SHA256';
-    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
+    const ALGO_PREFIX = 'Escher';
+    const VENDOR_KEY = 'EMS';
     const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
     const DEFAULT_DATE_HEADER_KEY = 'X-Ems-Date';
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";
-    const VENDOR_KEY = 'EMS';
-    const ALGO_PREFIX = 'EMS';
+    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;

@@ -20,7 +20,7 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'iam.amazonaws.com',
         );
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        Escher::create('us-east-1/iam/aws4_request')->createServer($keyDB)
+        $this->createServer('us-east-1/iam/aws4_request', $keyDB)
             ->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
     }
 
@@ -49,7 +49,8 @@ class ValidateRequestTest extends TestBase
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
 
         try {
-            Escher::create('us-east-1/iam/aws4_request')->createServer($keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+            $this->createServer('us-east-1/iam/aws4_request', $keyDB)
+                ->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
             $this->fail('Should fail to validate!');
         } catch (EscherException $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
@@ -86,7 +87,7 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'example.com',
         );
         $keyDB = array('th3K3y' => 'very_secure');
-        Escher::create('us-east-1/host/aws4_request')->createServer($keyDB)->validateRequest($serverVars, '');
+        $this->createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
     }
 
     /**
@@ -108,7 +109,13 @@ class ValidateRequestTest extends TestBase
         );
 
         $keyDB = array('th3K3y' => 'very_secure');
-        Escher::create('us-east-1/host/aws4_request')->createServer($keyDB)->validateRequest($serverVars, '');
+        $this->createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
+    }
+
+    protected function createServer($credentialScope, $keyDB)
+    {
+        return Escher::create($credentialScope, null, Escher::DEFAULT_HASH_ALGORITHM, 'EMS')
+            ->createServer($keyDB);
     }
 }
  
