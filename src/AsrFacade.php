@@ -47,7 +47,7 @@ class AsrClient
         $this->vendorKey    = $vendorKey;
     }
 
-    public function getSignedUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
+    public function presignUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
     {
         $date = $date ? $date : $this->now();
 
