@@ -14,38 +14,103 @@ class Escher
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;
+    private $date;
     private $hashAlgo;
     private $algoPrefix;
     private $vendorKey;
+    private $dateHeaderKey;
+    private $authHeaderKey;
 
     public function __construct(
         $credentialScope,
-        $hashAlgo = self::DEFAULT_HASH_ALGORITHM,
-        $algoPrefix = self::ALGO_PREFIX,
-        $vendorKey = self::VENDOR_KEY
+        DateTime $date,
+        $hashAlgo,
+        $algoPrefix,
+        $vendorKey,
+        $authHeaderKey,
+        $dateHeaderKey
     ) {
         $this->credentialScope = $credentialScope;
+        $this->date = $date;
         $this->hashAlgo = $hashAlgo;
         $this->algoPrefix = $algoPrefix;
         $this->vendorKey = $vendorKey;
+        $this->authHeaderKey = $authHeaderKey;
+        $this->dateHeaderKey = $dateHeaderKey;
     }
 
-    public static function create($credentialScope)
+    public static function create(
+        $credentialScope,
+        DateTime $date = null,
+        $hashAlgo = self::DEFAULT_HASH_ALGORITHM,
+        $algoPrefix = self::ALGO_PREFIX,
+        $vendorKey = self::VENDOR_KEY,
+        $authHeaderKey = self::DEFAULT_AUTH_HEADER_KEY,
+        $dateHeaderKey = self::DEFAULT_DATE_HEADER_KEY
+    ) {
+        return new Escher(
+            $credentialScope,
+            $date ? $date : self::now(),
+            $hashAlgo,
+            $algoPrefix,
+            $vendorKey,
+            $authHeaderKey,
+            $dateHeaderKey
+        );
+    }
+
+    /**
+     * @return DateTime
+     */
+    private static function now()
     {
-        return new Escher($credentialScope);
+        return new DateTime('now', new DateTimeZone('UTC'));
     }
 
     public function createClient($secretKey, $accessKeyId)
     {
-        return new EscherClient(
-            $this->credentialScope, $secretKey, $accessKeyId, $this->hashAlgo, $this->vendorKey, $this->algoPrefix
-        );
+        return new EscherClient($this, $secretKey, $accessKeyId);
     }
 
     public function createServer($keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new EscherServer($this->credentialScope, $keyDB, $this->vendorKey, $this->algoPrefix);
+        return new EscherServer($this, $keyDB);
+    }
+
+    public function getDate()
+    {
+        return $this->date;
+    }
+
+    public function getVendorKey()
+    {
+        return $this->vendorKey;
+    }
+
+    public function getDateHeaderKey()
+    {
+        return $this->dateHeaderKey;
+    }
+
+    public function getAuthHeaderKey()
+    {
+        return $this->authHeaderKey;
+    }
+
+    public function getAlgoPrefix()
+    {
+        return strtoupper($this->algoPrefix);
+    }
+
+    public function getHashAlgo()
+    {
+        return strtoupper($this->hashAlgo);
+    }
+
+    public function getCredentialScope()
+    {
+        return $this->credentialScope;
     }
 }
 
@@ -53,34 +118,31 @@ class Escher
 
 class EscherClient
 {
-    private $credentialScope;
+    private $escher;
     private $secretKey;
     private $accessKeyId;
 
-    private $vendorKey;
-    private $algoPrefix;
-    private $hashAlgo;
-
-    public function __construct($credentialScope, $secretKey, $accessKeyId, $hashAlgo, $vendorKey, $algoPrefix)
+    public function __construct(Escher $escher, $secretKey, $accessKeyId)
     {
-        $this->credentialScope = $credentialScope;
-        $this->secretKey       = $secretKey;
-        $this->accessKeyId     = $accessKeyId;
-        $this->hashAlgo     = $hashAlgo;
-        $this->algoPrefix   = $algoPrefix;
-        $this->vendorKey    = $vendorKey;
+        $this->escher      = $escher;
+        $this->secretKey   = $secretKey;
+        $this->accessKeyId = $accessKeyId;
     }
 
-    public function presignUrl($url, $date = null, $expires = 86400)
+    public function presignUrl($url, $expires = 86400)
     {
-        $date = $date ? $date : $this->now();
-
-        $url = $this->appendSigningParams($url, $date, $expires);
+        $url = $this->appendSigningParams($url, $this->escher->getDate(), $expires);
 
         list($host, $path, $query) = $this->parseUrl($url);
 
         $signature = $this->calculateSignature(
-            $date, 'GET', $path, $query, Escher::UNSIGNED_PAYLOAD, array('host' => $host), (array('host'))
+            $this->escher->getDate(),
+            'GET',
+            $path,
+            $query,
+            Escher::UNSIGNED_PAYLOAD,
+            array('host' => $host),
+            (array('host'))
         );
         $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
 
@@ -90,7 +152,7 @@ class EscherClient
     private function appendSigningParams($url, $date, $expires)
     {
         $signingParams = array(
-            'Algorithm'     => $this->algoPrefix . '-HMAC-' . strtoupper($this->hashAlgo),
+            'Algorithm'     => $this->escher->getAlgoPrefix(). '-HMAC-' . $this->escher->getHashAlgo(),
             'Credentials'   => $this->accessKeyId . '/' . $this->fullCredentialScope($date),
             'Date'          => $this->toLongDate($date),
             'Expires'       => $expires,
@@ -105,25 +167,20 @@ class EscherClient
 
     private function generateParamName($param)
     {
-        return 'X-' . $this->vendorKey . '-' . $param;
+        return 'X-' . $this->escher->getVendorKey() . '-' . $param;
     }
 
-    public function getSignedHeaders(
-        $method,
-        $url,
-        $requestBody,
-        $headerList = array(),
-        $headersToSign = array(),
-        $date = null,
-        $authHeaderKey = Escher::DEFAULT_AUTH_HEADER_KEY,
-        $dateHeaderKey = Escher::DEFAULT_DATE_HEADER_KEY
-    )
+    public function getSignedHeaders($method, $url, $requestBody, $headerList = array(), $headersToSign = array())
     {
-        $date = $date ? $date : $this->now();
+        $date = $this->escher->getDate();
         list($host, $path, $query) = $this->parseUrl($url);
-        list($headerList, $headersToSign) = $this->addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host);
+        list($headerList, $headersToSign) = $this->addMandatoryHeaders(
+            $headerList, $headersToSign, $this->escher->getDateHeaderKey(), $date, $host
+        );
 
-        return $headerList + $this->generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
+        return $headerList + $this->generateAuthHeader(
+            $this->escher->getAuthHeaderKey(), $date, $method, $path, $query, $requestBody, $headerList, $headersToSign
+        );
     }
 
     public function getSignature(DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
@@ -162,7 +219,7 @@ class EscherClient
      */
     private function fullCredentialScope(DateTime $date)
     {
-        return $date->format(Escher::SHORT_DATE) . "/" . $this->credentialScope;
+        return $date->format(Escher::SHORT_DATE) . "/" . $this->escher->getCredentialScope();
     }
 
     private function generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
@@ -171,8 +228,8 @@ class EscherClient
             $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
-            $this->hashAlgo,
-            $this->algoPrefix,
+            $this->escher->getHashAlgo(),
+            $this->escher->getAlgoPrefix(),
             $this->accessKeyId
         );
         return array(strtolower($authHeaderKey) => $authHeaderValue);
@@ -180,6 +237,8 @@ class EscherClient
 
     public function calculateSignature($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
+        $hashAlgo = $this->escher->getHashAlgo();
+        $algoPrefix = $this->escher->getAlgoPrefix();
         $requestUri = $path . ($query ? '?' . $query : '');
         // canonicalization works with raw headers
         $rawHeaderLines = array();
@@ -192,28 +251,28 @@ class EscherClient
             $requestBody,
             implode("\n", $rawHeaderLines),
             $headersToSign,
-            $this->hashAlgo
+            $hashAlgo
         );
 
         $stringToSign = EscherSigner::createStringToSign(
-            $this->credentialScope,
+            $this->escher->getCredentialScope(),
             $canonicalizedRequest,
             $date,
-            $this->hashAlgo,
-            $this->algoPrefix
+            $hashAlgo,
+            $algoPrefix
         );
 
         $signerKey = EscherSigner::calculateSigningKey(
             $this->secretKey,
             $this->fullCredentialScope($date),
-            $this->hashAlgo,
-            $this->algoPrefix
+            $hashAlgo,
+            $algoPrefix
         );
 
         $signature = EscherSigner::createSignature(
             $stringToSign,
             $signerKey,
-            $this->hashAlgo
+            $hashAlgo
         );
         return $signature;
     }
@@ -234,50 +293,39 @@ class EscherClient
         sort($headersToSign);
         return array($headerList, $headersToSign);
     }
-
-    /**
-     * @return DateTime
-     */
-    private function now()
-    {
-        return new DateTime('now', new DateTimeZone('UTC'));
-    }
 }
 
 
 
 class EscherServer
 {
-    private $credentialScope;
-
+    private $escher;
     private $keyDB;
 
-    private $vendorKey;
-
-    private $algoPrefix;
-
-    public function __construct($credentialScope, ArrayAccess $keyDB, $vendorKey, $algoPrefix)
+    public function __construct(Escher $escher, ArrayAccess $keyDB)
     {
-        $this->credentialScope = $credentialScope;
-        $this->keyDB           = $keyDB;
-        $this->vendorKey       = $vendorKey;
-        $this->algoPrefix      = $algoPrefix;
+        $this->escher = $escher;
+        $this->keyDB  = $keyDB;
     }
 
-    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = Escher::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = Escher::DEFAULT_DATE_HEADER_KEY)
+    public function validateRequest(array $serverVars = null, $requestBody = null)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
-        $helper = new EscherRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
-        $authElements = $helper->getAuthElements($this->vendorKey, $this->algoPrefix);
+        $algoPrefix = $this->escher->getAlgoPrefix();
+        $vendorKey = $this->escher->getVendorKey();
+        $helper = new EscherRequestHelper(
+           $serverVars, $requestBody, $this->escher->getAuthHeaderKey(), $this->escher->getDateHeaderKey()
+        );
+        $authElements = $helper->getAuthElements($this->escher->getVendorKey(), $algoPrefix);
 
-        $authElements->validateMandatorySignedHeaders($dateHeaderKey);
+        $authElements->validateMandatorySignedHeaders($this->escher->getDateHeaderKey());
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper);
         $authElements->validateHost($helper);
-        $authElements->validateCredentials($this->credentialScope);
-        $authElements->validateSignature($helper, $this->credentialScope, $this->keyDB, $this->vendorKey, $this->algoPrefix);
+        $authElements->validateCredentials($this->escher->getCredentialScope());
+        $authElements->validateSignature($helper, $this->escher, $this->keyDB, $vendorKey, $algoPrefix);
     }
 
     /**
@@ -572,11 +620,11 @@ class EscherAuthElements
         return $this->credentialScope == $credentialScope;
     }
 
-    public function validateSignature(EscherRequestHelper $helper, $credentialScope, $keyDB, $vendorKey, $algoPrefix)
+    public function validateSignature(EscherRequestHelper $helper, Escher $escher, $keyDB, $vendorKey, $algoPrefix)
     {
         $key = $this->accessKeyId;
         $secret = $this->lookupSecretKey($key, $keyDB);
-        $client = new EscherClient($credentialScope, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
+        $client = new EscherClient($escher, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
 
         $headers = $helper->getHeaderList();
         $dateTime = $this->dateTime;

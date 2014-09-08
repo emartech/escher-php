@@ -20,7 +20,8 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'iam.amazonaws.com',
         );
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        Escher::create('us-east-1/iam/aws4_request')->createServer($keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+        Escher::create('us-east-1/iam/aws4_request')->createServer($keyDB)
+            ->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
     }
 
     /**
