@@ -5,8 +5,8 @@ class Escher
     const DEFAULT_HASH_ALGORITHM = 'SHA256';
     const ALGO_PREFIX = 'Escher';
     const VENDOR_KEY = 'Escher';
-    const DEFAULT_AUTH_HEADER_KEY = 'X-Ems-Auth';
-    const DEFAULT_DATE_HEADER_KEY = 'X-Ems-Date';
+    const DEFAULT_AUTH_HEADER_KEY = 'X-Escher-Auth';
+    const DEFAULT_DATE_HEADER_KEY = 'X-Escher-Date';
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";

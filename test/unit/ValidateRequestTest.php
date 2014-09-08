@@ -114,7 +114,7 @@ class ValidateRequestTest extends TestBase
 
     protected function createServer($credentialScope, $keyDB)
     {
-        return Escher::create($credentialScope, null, Escher::DEFAULT_HASH_ALGORITHM, 'EMS', 'EMS')
+        return Escher::create($credentialScope, null, 'SHA256', 'EMS', 'EMS', 'X-Ems-Auth', 'X-Ems-Date')
             ->createServer($keyDB);
     }
 

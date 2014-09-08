@@ -8,7 +8,7 @@ class SignRequestUsingQueryStringTest extends TestBase
     public function itShouldGenerateSignedUrl()
     {
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $client = Escher::create('us-east-1/host/aws4_request', $date, Escher::DEFAULT_HASH_ALGORITHM, 'EMS', 'EMS')
+        $client = Escher::create('us-east-1/host/aws4_request', $date, 'SHA256', 'EMS', 'EMS', 'X-Ems-Auth', 'X-Ems-Date')
             ->createClient('very_secure', 'th3K3y');
 
         $expires = 123456;
