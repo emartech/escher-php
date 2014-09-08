@@ -13,15 +13,15 @@ class AsrFacade
     const ALGO_PREFIX = 'EMS';
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
-    public static function createClient($secretKey, $accessKeyId, $region, $service, $requestType)
+    public static function createClient($secretKey, $accessKeyId, $credentialScope)
     {
-        return new AsrClient(new AsrParty($region, $service, $requestType), $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_KEY, self::ALGO_PREFIX);
+        return new AsrClient($credentialScope, $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_KEY, self::ALGO_PREFIX);
     }
 
-    public static function createServer($region, $service, $requestType, $keyDB)
+    public static function createServer($credentialScope, $keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new AsrServer(new AsrParty($region, $service, $requestType), $keyDB, self::VENDOR_KEY, self::ALGO_PREFIX);
+        return new AsrServer($credentialScope, $keyDB, self::VENDOR_KEY, self::ALGO_PREFIX);
     }
 }
 
@@ -29,7 +29,7 @@ class AsrFacade
 
 class AsrClient
 {
-    private $party;
+    private $credentialScope;
     private $secretKey;
     private $accessKeyId;
 
@@ -37,15 +37,14 @@ class AsrClient
     private $algoPrefix;
     private $hashAlgo;
 
-    public function __construct(AsrParty $party, $secretKey, $accessKeyId, $hashAlgo, $vendorKey, $algoPrefix)
+    public function __construct($credentialScope, $secretKey, $accessKeyId, $hashAlgo, $vendorKey, $algoPrefix)
     {
-        $this->party        = $party;
-        $this->secretKey    = $secretKey;
-        $this->accessKeyId  = $accessKeyId;
-
-        $this->vendorKey = $vendorKey;
-        $this->algoPrefix   = $algoPrefix;
+        $this->credentialScope = $credentialScope;
+        $this->secretKey       = $secretKey;
+        $this->accessKeyId     = $accessKeyId;
         $this->hashAlgo     = $hashAlgo;
+        $this->algoPrefix   = $algoPrefix;
+        $this->vendorKey    = $vendorKey;
     }
 
     public function getSignedUrl($url, $date = null, $expires = 86400, $headerList = array(), $headersToSign = array('host'))
@@ -135,20 +134,12 @@ class AsrClient
     }
 
     /**
-     * @return string
-     */
-    private function credentialScope()
-    {
-        return implode("/", $this->party->toArray());
-    }
-
-    /**
      * @param $date
      * @return string
      */
     private function fullCredentialScope(DateTime $date)
     {
-        return $date->format(AsrFacade::SHORT_DATE) . "/" . $this->credentialScope();
+        return $date->format(AsrFacade::SHORT_DATE) . "/" . $this->credentialScope;
     }
 
     private function generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
@@ -182,7 +173,7 @@ class AsrClient
         );
 
         $stringToSign = AsrSigner::createStringToSign(
-            $this->credentialScope(),
+            $this->credentialScope,
             $canonicalizedRequest,
             $date,
             $this->hashAlgo,
@@ -234,26 +225,20 @@ class AsrClient
 
 class AsrServer
 {
-    /**
-     * @var AsrParty
-     */
-    private $party;
+    private $credentialScope;
 
-    /**
-     * @var ArrayAccess
-     */
     private $keyDB;
 
     private $vendorKey;
 
     private $algoPrefix;
 
-    public function __construct(AsrParty $party, ArrayAccess $keyDB, $vendorKey, $algoPrefix)
+    public function __construct($credentialScope, ArrayAccess $keyDB, $vendorKey, $algoPrefix)
     {
-        $this->party        = $party;
-        $this->keyDB        = $keyDB;
-        $this->vendorKey = $vendorKey;
-        $this->algoPrefix   = $algoPrefix;
+        $this->credentialScope = $credentialScope;
+        $this->keyDB           = $keyDB;
+        $this->vendorKey       = $vendorKey;
+        $this->algoPrefix      = $algoPrefix;
     }
 
     public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY)
@@ -268,8 +253,8 @@ class AsrServer
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper);
         $authElements->validateHost($helper);
-        $authElements->validateCredentials($this->party);
-        $authElements->validateSignature($helper, $this->party, $this->keyDB, $this->vendorKey, $this->algoPrefix);
+        $authElements->validateCredentials($this->credentialScope);
+        $authElements->validateSignature($helper, $this->credentialScope, $this->keyDB, $this->vendorKey, $this->algoPrefix);
     }
 
     /**
@@ -281,42 +266,6 @@ class AsrServer
     private function fetchRequestBodyFor($method)
     {
         return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
-    }
-}
-
-
-
-class AsrParty
-{
-    protected $region;
-    protected $service;
-    protected $requestType;
-
-    public function __construct($region, $service, $requestType)
-    {
-        $this->region = $region;
-        $this->service = $service;
-        $this->requestType = $requestType;
-    }
-
-    public function toArray()
-    {
-        return array($this->region, $this->service, $this->requestType);
-    }
-
-    public function getRegion()
-    {
-        return $this->region;
-    }
-
-    public function getService()
-    {
-        return $this->service;
-    }
-
-    public function getRequestType()
-    {
-        return $this->requestType;
     }
 }
 
@@ -434,35 +383,26 @@ class AsrRequestHelper
 
 class AsrAuthElements
 {
-    /**
-     * @var array
-     */
     private $elementParts;
 
-    /**
-     * @var array
-     */
-    private $credentialParts;
+    private $accessKeyId;
 
-    /**
-     * @var string
-     */
+    private $shortDate;
+
+    private $credentialScope;
+
     private $dateTime;
 
-    /**
-     * @var string
-     */
     private $host;
 
-    /**
-     * @var bool
-     */
     private $isFromHeaders;
 
-    public function __construct(array $elementParts, array $credentialParts, $dateTime, $host, $isFromHeaders)
+    public function __construct(array $elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, $isFromHeaders)
     {
         $this->elementParts = $elementParts;
-        $this->credentialParts = $credentialParts;
+        $this->accessKeyId = $accessKeyId;
+        $this->shortDate = $shortDate;
+        $this->credentialScope = $credentialScope;
         $this->dateTime = $dateTime;
         $this->host = $host;
         $this->isFromHeaders = $isFromHeaders;
@@ -480,14 +420,14 @@ class AsrAuthElements
     {
         $headerList = AsrUtils::keysToLower($headerList);
         $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $algoPrefix);
-        $credentialParts = self::checkCredentialParts($elementParts);
+        list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
         $host = self::checkHost($headerList);
 
         if (!isset($headerList[strtolower($dateHeaderKey)])) {
             throw new AsrException('The '.$dateHeaderKey.' header is missing');
         }
 
-        return new AsrAuthElements($elementParts, $credentialParts, $headerList[strtolower($dateHeaderKey)], $host, true);
+        return new AsrAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $headerList[strtolower($dateHeaderKey)], $host, true);
     }
 
     /**
@@ -503,10 +443,10 @@ class AsrAuthElements
             throw new AsrException('Could not parse authorization header.');
         }
         return array(
-            'Algorithm'     => self::match(self::algoPattern($algoPrefix), $parts[0]),
-            'Credentials'   => self::match('Credential=([A-Za-z0-9\/\-_]+),',     $parts[1]),
-            'SignedHeaders' => self::match('SignedHeaders=([A-Za-z\-;]+),',       $parts[2]),
-            'Signature'     => self::match('Signature=([0-9a-f]+)',               $parts[3]),
+            'Algorithm'     => self::match(self::algoPattern($algoPrefix),    $parts[0]),
+            'Credentials'   => self::match('Credential=([A-Za-z0-9\/\-_]+),', $parts[1]),
+            'SignedHeaders' => self::match('SignedHeaders=([A-Za-z\-;]+),',   $parts[2]),
+            'Signature'     => self::match('Signature=([0-9a-f]+)',           $parts[3]),
         );
     }
 
@@ -527,8 +467,8 @@ class AsrAuthElements
             $paramKey = self::checkParam($queryParams, $vendorKey, $paramId);
             $elementParts[$paramId] = $queryParams[$paramKey];
         }
-        $credentialParts = self::checkCredentialParts($elementParts);
-        return new AsrAuthElements($elementParts, $credentialParts, $elementParts['Date'], self::checkHost($headerList), false);
+        list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
+        return new AsrAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $elementParts['Date'], self::checkHost($headerList), false);
     }
 
     private static function basicQueryParamKeys()
@@ -567,34 +507,12 @@ class AsrAuthElements
         return $paramKey;
     }
 
-    /**
-     * @param $elementParts
-     * @return array
-     * @throws AsrException
-     */
-    private static function checkCredentialParts($elementParts)
-    {
-        $credentialParts = explode('/', $elementParts['Credentials']);
-        if (count($credentialParts) != 5) {
-            throw new AsrException('Invalid credential scope');
-        }
-        return $credentialParts;
-    }
-
     private static function checkHost($headerList)
     {
         if (!isset($headerList['host'])) {
             throw new AsrException('The Host header is missing');
         }
         return $headerList['host'];
-    }
-
-    private function getCredentialPart($index, $name)
-    {
-        if (!isset($this->credentialParts[$index])) {
-            throw new AsrException('Invalid credential scope: missing '.$name);
-        }
-        return $this->credentialParts[$index];
     }
 
     public function validateDates(AsrRequestHelper $helper)
@@ -619,25 +537,23 @@ class AsrAuthElements
         }
     }
 
-    public function validateCredentials(AsrParty $party)
+    public function validateCredentials($credentialScope)
     {
-        if (!$this->checkCredentials($party)) {
+        if (!$this->checkCredentials($credentialScope)) {
             throw new AsrException('Invalid credentials');
         }
     }
 
-    private function checkCredentials(AsrParty $party)
+    private function checkCredentials($credentialScope)
     {
-        return $this->getRegion() == $party->getRegion()
-        && $this->getService() == $party->getService()
-        && $this->getRequestType() == $party->getRequestType();
+        return $this->credentialScope == $credentialScope;
     }
 
-    public function validateSignature(AsrRequestHelper $helper, AsrParty $party, $keyDB, $vendorKey, $algoPrefix)
+    public function validateSignature(AsrRequestHelper $helper, $credentialScope, $keyDB, $vendorKey, $algoPrefix)
     {
-        $key = $this->getAccessKeyId();
+        $key = $this->accessKeyId;
         $secret = $this->lookupSecretKey($key, $keyDB);
-        $client = new AsrClient($party, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
+        $client = new AsrClient($credentialScope, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
 
         $headers = $helper->getHeaderList();
         $dateTime = $this->dateTime;
@@ -690,12 +606,12 @@ class AsrAuthElements
 
     public function getAccessKeyId()
     {
-        return $this->getCredentialPart(0, 'access key id');
+        return $this->accessKeyId;
     }
 
     public function getShortDate()
     {
-        return $this->getCredentialPart(1, 'credential date');
+        return $this->shortDate;
     }
 
     public function getSignedHeaders()
@@ -716,21 +632,6 @@ class AsrAuthElements
     public function getLongDate()
     {
         return $this->dateTime;
-    }
-
-    public function getRegion()
-    {
-        return $this->getCredentialPart(2, 'region');
-    }
-
-    public function getService()
-    {
-        return $this->getCredentialPart(3, 'service');
-    }
-
-    public function getRequestType()
-    {
-        return $this->getCredentialPart(4, 'request type');
     }
 
     public function getHost()
@@ -774,6 +675,11 @@ class AsrAuthElements
         } else {
             return strtotime($dateTime) - $helper->getTimeStamp() <= AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
         }
+    }
+
+    public function getCredentialScope()
+    {
+        return $this->credentialScope;
     }
 }
 

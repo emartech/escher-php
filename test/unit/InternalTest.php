@@ -58,9 +58,7 @@ class InternalTest extends TestBase
         $this->assertEquals('20110909T233600Z', $authHeader->getLongDate());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
-        $this->assertEquals('us-east-1', $authHeader->getRegion());
-        $this->assertEquals('iam', $authHeader->getService());
-        $this->assertEquals('aws4_request', $authHeader->getRequestType());
+        $this->assertEquals('us-east-1/iam/aws4_request', $authHeader->getCredentialScope());
         $this->assertEquals(array('content-type', 'host', 'x-ems-date'), $authHeader->getSignedHeaders());
         $this->assertEquals('f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', $authHeader->getSignature());
     }
