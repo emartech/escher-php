@@ -467,10 +467,14 @@ class EscherAuthElements
         if (strtolower($dateHeaderKey) !== 'date') {
             $dateTime = EscherUtils::parseLongDate($headerList[strtolower($dateHeaderKey)]);
         } else {
-            $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
+            try {
+                $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
+            } catch (Exception $ex) {
+                throw new EscherException('Invalid date format');
+            }
         }
         if (!$dateTime) {
-            throw new EscherException('Invalid request date');
+            throw new EscherException('Invalid date format');
         }
         return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
     }
@@ -515,7 +519,7 @@ class EscherAuthElements
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
         $dateTime = EscherUtils::parseLongDate($elementParts['Date']);
         if (!$dateTime) {
-            throw new EscherException('Invalid request date');
+            throw new EscherException('Invalid date format');
         }
         return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, self::checkHost($headerList), false);
     }
@@ -885,6 +889,9 @@ class EscherUtils
 {
     public static function parseLongDate($dateString)
     {
+        if (!preg_match('/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/', $dateString)) {
+            throw new EscherException('Invalid date format');
+        }
         if (!self::advancedDateTimeFunctionsAvailable()) {
             return new DateTime($dateString, new DateTimeZone('GMT'));
         }

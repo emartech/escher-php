@@ -60,7 +60,7 @@ class ValidateRequestTest extends TestBase
     public function requestTamperingProvider()
     {
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid request date'),
+            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid date format'),
             'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'Request date is not within the accepted time interval'),
             'wrong host'            => array('HTTP_HOST',       'example.com', 'The host header does not match'),
             'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse authorization header'),
