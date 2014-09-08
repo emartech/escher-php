@@ -7,14 +7,16 @@ class Escher
     const DEFAULT_VENDOR_KEY = 'Escher';
     const DEFAULT_AUTH_HEADER_KEY = 'X-Escher-Auth';
     const DEFAULT_DATE_HEADER_KEY = 'X-Escher-Date';
+    const DEFAULT_CLOCK_SKEW = 900;
+    const DEFAULT_EXPIRES = 86400;
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
     const SHORT_DATE = "Ymd";
-    const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;
     private $date;
+    private $clockSkew = self::DEFAULT_CLOCK_SKEW;
     private $hashAlgo = self::DEFAULT_HASH_ALGORITHM;
     private $algoPrefix = self::DEFAULT_ALGO_PREFIX;
     private $vendorKey = self::DEFAULT_VENDOR_KEY;
@@ -49,6 +51,16 @@ class Escher
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
         return new EscherServer($this, $keyDB);
+    }
+
+    /**
+     * @param $clockSkew
+     * @return Escher
+     */
+    public function setClockSkew($clockSkew)
+    {
+        $this->clockSkew = $clockSkew;
+        return $this;
     }
 
     /**
@@ -134,6 +146,11 @@ class Escher
     {
         return $this->credentialScope;
     }
+
+    public function getClockSkew()
+    {
+        return $this->clockSkew;
+    }
 }
 
 
@@ -151,7 +168,7 @@ class EscherClient
         $this->accessKeyId = $accessKeyId;
     }
 
-    public function presignUrl($url, $expires = 86400)
+    public function presignUrl($url, $expires = Escher::DEFAULT_EXPIRES)
     {
         $url = $this->appendSigningParams($url, $this->escher->getDate(), $expires);
 
@@ -344,7 +361,7 @@ class EscherServer
 
         $authElements->validateMandatorySignedHeaders($this->escher->getDateHeaderKey());
         $authElements->validateHashAlgo();
-        $authElements->validateDates($helper);
+        $authElements->validateDates($helper, $this->escher->getClockSkew());
         $authElements->validateHost($helper);
         $authElements->validateCredentials($this->escher->getCredentialScope());
         $authElements->validateSignature($helper, $this->escher, $this->keyDB, $vendorKey, $algoPrefix);
@@ -620,14 +637,14 @@ class EscherAuthElements
         return $headerList['host'];
     }
 
-    public function validateDates(EscherRequestHelper $helper)
+    public function validateDates(EscherRequestHelper $helper, $clockSkew)
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate != $this->getShortDate()) {
             throw new EscherException('The request date and credential date do not match.');
         }
 
-        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), $this->dateTime->getTimestamp())) {
+        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), $this->dateTime->getTimestamp(), $clockSkew)) {
             throw new EscherException('Request date is not within the accepted time interval.');
         }
     }
@@ -753,18 +770,15 @@ class EscherAuthElements
         return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . implode('&', $query));
     }
 
-    private function getExpiry()
+    private function getExpires()
     {
-        return $this->isFromHeaders ? Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE : $this->elementParts['Expires'];
+        return $this->isFromHeaders ? 0 : $this->elementParts['Expires'];
     }
 
-    private function isInAcceptableInterval($currentTimeStamp, $requestTimeStamp)
+    private function isInAcceptableInterval($currentTimeStamp, $requestTimeStamp, $clockSkew)
     {
-        if ($currentTimeStamp > $requestTimeStamp) {
-            return $currentTimeStamp - $requestTimeStamp <= $this->getExpiry();
-        } else {
-            return $requestTimeStamp - $currentTimeStamp <= Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
-        }
+        return ($requestTimeStamp - $clockSkew <= $currentTimeStamp)
+            && ($currentTimeStamp <= $requestTimeStamp + $this->getExpires() + $clockSkew);
     }
 
     public function getCredentialScope()
