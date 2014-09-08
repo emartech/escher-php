@@ -42,9 +42,9 @@ class Escher
         return new DateTime('now', new DateTimeZone('GMT'));
     }
 
-    public function createClient($secretKey, $accessKeyId)
+    public function createClient()
     {
-        return new EscherClient($this, $secretKey, $accessKeyId);
+        return new EscherClient($this);
     }
 
     public function validateRequest($keyDB, array $serverVars = null, $requestBody = null)
@@ -181,23 +181,20 @@ class Escher
 class EscherClient
 {
     private $escher;
-    private $secretKey;
-    private $accessKeyId;
 
-    public function __construct(Escher $escher, $secretKey, $accessKeyId)
+    public function __construct(Escher $escher)
     {
-        $this->escher      = $escher;
-        $this->secretKey   = $secretKey;
-        $this->accessKeyId = $accessKeyId;
+        $this->escher = $escher;
     }
 
-    public function presignUrl($url, $expires = Escher::DEFAULT_EXPIRES)
+    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES)
     {
-        $url = $this->appendSigningParams($url, $this->escher->getDate(), $expires);
+        $url = $this->appendSigningParams($accessKeyId, $url, $this->escher->getDate(), $expires);
 
         list($host, $path, $query) = $this->parseUrl($url);
 
         $signature = $this->calculateSignature(
+            $secretKey,
             $this->escher->getDate(),
             'GET',
             $path,
@@ -211,11 +208,11 @@ class EscherClient
         return $url;
     }
 
-    private function appendSigningParams($url, $date, $expires)
+    private function appendSigningParams($accessKeyId, $url, $date, $expires)
     {
         $signingParams = array(
             'Algorithm'     => $this->escher->getAlgoPrefix(). '-HMAC-' . $this->escher->getHashAlgo(),
-            'Credentials'   => $this->accessKeyId . '/' . $this->fullCredentialScope($date),
+            'Credentials'   => $accessKeyId . '/' . $this->fullCredentialScope($date),
             'Date'          => $this->toLongDate($date),
             'Expires'       => $expires,
             'SignedHeaders' => 'host',
@@ -232,7 +229,7 @@ class EscherClient
         return 'X-' . $this->escher->getVendorKey() . '-' . $param;
     }
 
-    public function getSignedHeaders($method, $url, $requestBody, $headerList = array(), $headersToSign = array())
+    public function getSignedHeaders($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array())
     {
         $date = $this->escher->getDate();
         list($host, $path, $query) = $this->parseUrl($url);
@@ -241,14 +238,23 @@ class EscherClient
         );
 
         return $headerList + $this->generateAuthHeader(
-            $this->escher->getAuthHeaderKey(), $date, $method, $path, $query, $requestBody, $headerList, $headersToSign
+            $secretKey,
+            $accessKeyId,
+            $this->escher->getAuthHeaderKey(),
+            $date,
+            $method,
+            $path,
+            $query,
+            $requestBody,
+            $headerList,
+            $headersToSign
         );
     }
 
-    public function getSignature(DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
+    public function getSignature($secretKey, DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
     {
         list(, $path, $query) = $this->parseUrl($url);
-        return $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $signedHeaders);
+        return $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $signedHeaders);
     }
 
     private function parseUrl($url)
@@ -284,20 +290,20 @@ class EscherClient
         return $date->format(Escher::SHORT_DATE) . "/" . $this->escher->getCredentialScope();
     }
 
-    private function generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
+    private function generateAuthHeader($secretKey, $accessKeyId, $authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
         $authHeaderValue = EscherSigner::createAuthHeader(
-            $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
+            $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
             $this->escher->getHashAlgo(),
             $this->escher->getAlgoPrefix(),
-            $this->accessKeyId
+            $accessKeyId
         );
         return array(strtolower($authHeaderKey) => $authHeaderValue);
     }
 
-    public function calculateSignature($date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
+    private function calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
         $hashAlgo = $this->escher->getHashAlgo();
         $algoPrefix = $this->escher->getAlgoPrefix();
@@ -325,7 +331,7 @@ class EscherClient
         );
 
         $signerKey = EscherSigner::calculateSigningKey(
-            $this->secretKey,
+            $secretKey,
             $this->fullCredentialScope($date),
             $hashAlgo,
             $algoPrefix
@@ -648,12 +654,12 @@ class EscherAuthElements
 
     public function validateSignature(EscherRequestHelper $helper, Escher $escher, $keyDB, $vendorKey, $algoPrefix)
     {
-        $key = $this->accessKeyId;
-        $secret = $this->lookupSecretKey($key, $keyDB);
-        $client = new EscherClient($escher, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
+        $secret = $this->lookupSecretKey($this->accessKeyId, $keyDB);
+        $client = new EscherClient($escher);
 
         $headers = $helper->getHeaderList();
         $calculated = $client->getSignature(
+            $secret,
             $this->dateTime,
             $helper->getRequestMethod(),
             $this->stripAuthParams($helper, $vendorKey),
