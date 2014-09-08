@@ -885,7 +885,7 @@ class EscherUtils
 {
     public static function parseLongDate($dateString)
     {
-        if (version_compare(PHP_VERSION, ' 5.3.0') == -1) {
+        if (version_compare(PHP_VERSION, '5.3.0') === -1) {
             return new DateTime($dateString, new DateTimeZone('GMT'));
         }
         return DateTime::createFromFormat('Ymd\THisT', $dateString, new DateTimeZone('GMT'));
