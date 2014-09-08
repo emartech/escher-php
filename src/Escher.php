@@ -571,7 +571,7 @@ class EscherAuthElements
             throw new EscherException('The request date and credential date do not match.');
         }
 
-        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), $this->dateTime->getTimestamp(), $clockSkew)) {
+        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), EscherUtils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
             throw new EscherException('Request date is not within the accepted time interval.');
         }
     }
@@ -885,7 +885,7 @@ class EscherUtils
 {
     public static function parseLongDate($dateString)
     {
-        if (version_compare(PHP_VERSION, '5.3.0') === -1) {
+        if (!self::advancedDateTimeFunctionsAvailable()) {
             return new DateTime($dateString, new DateTimeZone('GMT'));
         }
         return DateTime::createFromFormat('Ymd\THisT', $dateString, new DateTimeZone('GMT'));
@@ -898,5 +898,21 @@ class EscherUtils
             array_values($array)
         );
         return $result;
+    }
+
+    public static function getTimeStampOfDateTime($dateTime)
+    {
+        if (!self::advancedDateTimeFunctionsAvailable()) {
+            return $dateTime->format('U');
+        }
+        return $dateTime->getTimestamp();
+    }
+
+    /**
+     * @return bool
+     */
+    protected static function advancedDateTimeFunctionsAvailable()
+    {
+        return version_compare(PHP_VERSION, '5.3.0') !== -1;
     }
 }
