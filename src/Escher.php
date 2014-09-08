@@ -81,6 +81,27 @@ class Escher
         return $url;
     }
 
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array())
+    {
+        list($host, $path, $query) = $this->parseUrl($url);
+        list($headerList, $headersToSign) = $this->addMandatoryHeaders(
+            $headerList, $headersToSign, $this->dateHeaderKey, $this->date, $host
+        );
+
+        return $headerList + $this->generateAuthHeader(
+            $secretKey,
+            $accessKeyId,
+            $this->authHeaderKey,
+            $this->date,
+            $method,
+            $path,
+            $query,
+            $requestBody,
+            $headerList,
+            $headersToSign
+        );
+    }
+
     private function appendSigningParams($accessKeyId, $url, $date, $expires)
     {
         $signingParams = array(
@@ -100,27 +121,6 @@ class Escher
     private function generateParamName($param)
     {
         return 'X-' . $this->vendorKey . '-' . $param;
-    }
-
-    public function getSignedHeaders($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array())
-    {
-        list($host, $path, $query) = $this->parseUrl($url);
-        list($headerList, $headersToSign) = $this->addMandatoryHeaders(
-            $headerList, $headersToSign, $this->dateHeaderKey, $this->date, $host
-        );
-
-        return $headerList + $this->generateAuthHeader(
-            $secretKey,
-            $accessKeyId,
-            $this->authHeaderKey,
-            $this->date,
-            $method,
-            $path,
-            $query,
-            $requestBody,
-            $headerList,
-            $headersToSign
-        );
     }
 
     public function getSignature($secretKey, DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)

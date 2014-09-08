@@ -20,7 +20,7 @@ class SignRequestUsingHeaderTest extends TestBase
         );
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
-        $actualHeaders = $this->createEscher($date)->getSignedHeaders(
+        $actualHeaders = $this->createEscher($date)->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -44,7 +44,7 @@ class SignRequestUsingHeaderTest extends TestBase
         );
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date)->getSignedHeaders(
+        $actualHeaders = $this->createEscher($date)->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -68,7 +68,7 @@ class SignRequestUsingHeaderTest extends TestBase
         );
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type');
-        $actualHeaders = $this->createEscher($date)->getSignedHeaders(
+        $actualHeaders = $this->createEscher($date)->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -95,7 +95,7 @@ class SignRequestUsingHeaderTest extends TestBase
 
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date)->getSignedHeaders(
+        $actualHeaders = $this->createEscher($date)->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -120,7 +120,7 @@ class SignRequestUsingHeaderTest extends TestBase
 
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date, 'Custom-Auth-Header')->getSignedHeaders(
+        $actualHeaders = $this->createEscher($date, 'Custom-Auth-Header')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -147,7 +147,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $escher = Escher::create('us-east-1/iam/aws4_request', $date)
             ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $escher->getSignedHeaders(
+        $actualHeaders = $escher->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -168,7 +168,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $escher = Escher::create('us-east-1/host/aws4_request', $date)
             ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
 
-        $actualHeaders = $escher->getSignedHeaders(
+        $actualHeaders = $escher->signRequest(
             'th3K3y', 'very_secure',
             'GET', 'http://example.com/something', '', $inputHeaders, array()
         );
