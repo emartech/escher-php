@@ -47,10 +47,33 @@ class Escher
         return new EscherClient($this, $secretKey, $accessKeyId);
     }
 
-    public function createServer($keyDB)
+    public function validateRequest($keyDB, array $serverVars = null, $requestBody = null)
     {
-        $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new EscherServer($this, $keyDB);
+        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
+        $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
+
+        $algoPrefix = $this->algoPrefix;
+        $vendorKey = $this->vendorKey;
+        $helper = new EscherRequestHelper($serverVars, $requestBody, $this->authHeaderKey, $this->dateHeaderKey);
+        $authElements = $helper->getAuthElements($this->vendorKey, $algoPrefix);
+
+        $authElements->validateMandatorySignedHeaders($this->dateHeaderKey);
+        $authElements->validateHashAlgo();
+        $authElements->validateDates($helper, $this->clockSkew);
+        $authElements->validateHost($helper);
+        $authElements->validateCredentials($this->credentialScope);
+        $authElements->validateSignature($helper, $this, $keyDB, $vendorKey, $algoPrefix);
+    }
+
+    /**
+     * php://input may contain data even though the request body is empty, e.g. in GET requests
+     *
+     * @param string
+     * @return string
+     */
+    private function fetchRequestBodyFor($method)
+    {
+        return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
     }
 
     /**
@@ -331,51 +354,6 @@ class EscherClient
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array_keys($mandatoryHeaders)));
         sort($headersToSign);
         return array($headerList, $headersToSign);
-    }
-}
-
-
-
-class EscherServer
-{
-    private $escher;
-    private $keyDB;
-
-    public function __construct(Escher $escher, ArrayAccess $keyDB)
-    {
-        $this->escher = $escher;
-        $this->keyDB  = $keyDB;
-    }
-
-    public function validateRequest(array $serverVars = null, $requestBody = null)
-    {
-        $serverVars = null === $serverVars ? $_SERVER : $serverVars;
-        $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
-
-        $algoPrefix = $this->escher->getAlgoPrefix();
-        $vendorKey = $this->escher->getVendorKey();
-        $helper = new EscherRequestHelper(
-           $serverVars, $requestBody, $this->escher->getAuthHeaderKey(), $this->escher->getDateHeaderKey()
-        );
-        $authElements = $helper->getAuthElements($this->escher->getVendorKey(), $algoPrefix);
-
-        $authElements->validateMandatorySignedHeaders($this->escher->getDateHeaderKey());
-        $authElements->validateHashAlgo();
-        $authElements->validateDates($helper, $this->escher->getClockSkew());
-        $authElements->validateHost($helper);
-        $authElements->validateCredentials($this->escher->getCredentialScope());
-        $authElements->validateSignature($helper, $this->escher, $this->keyDB, $vendorKey, $algoPrefix);
-    }
-
-    /**
-     * php://input may contain data even though the request body is empty, e.g. in GET requests
-     *
-     * @param string
-     * @return string
-     */
-    private function fetchRequestBodyFor($method)
-    {
-        return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
     }
 }
 

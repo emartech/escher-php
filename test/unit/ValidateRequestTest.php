@@ -20,8 +20,8 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'iam.amazonaws.com',
         );
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        $this->createServer('us-east-1/iam/aws4_request', $keyDB)
-            ->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+        $this->createEscher('us-east-1/iam/aws4_request')
+            ->validateRequest($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
     }
 
     /**
@@ -49,8 +49,8 @@ class ValidateRequestTest extends TestBase
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
 
         try {
-            $this->createServer('us-east-1/iam/aws4_request', $keyDB)
-                ->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+            $this->createEscher('us-east-1/iam/aws4_request')
+                ->validateRequest($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
             $this->fail('Should fail to validate!');
         } catch (EscherException $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
@@ -87,7 +87,7 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'example.com',
         );
         $keyDB = array('th3K3y' => 'very_secure');
-        $this->createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
+        $this->createEscher('us-east-1/host/aws4_request')->validateRequest($keyDB, $serverVars, '');
     }
 
     /**
@@ -109,14 +109,13 @@ class ValidateRequestTest extends TestBase
         );
 
         $keyDB = array('th3K3y' => 'very_secure');
-        $this->createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
+        $this->createEscher('us-east-1/host/aws4_request')->validateRequest($keyDB, $serverVars, '');
     }
 
-    protected function createServer($credentialScope, $keyDB)
+    protected function createEscher($credentialScope)
     {
         return Escher::create($credentialScope, null)
-            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date')
-            ->createServer($keyDB);
+            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
     }
 
     private function strtotime($dateString)
