@@ -20,7 +20,7 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'iam.amazonaws.com',
         );
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        AsrFacade::createServer('us-east-1/iam/aws4_request', $keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+        Escher::createServer('us-east-1/iam/aws4_request', $keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
     }
 
     /**
@@ -48,9 +48,9 @@ class ValidateRequestTest extends TestBase
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
 
         try {
-            AsrFacade::createServer('us-east-1/iam/aws4_request', $keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
+            Escher::createServer('us-east-1/iam/aws4_request', $keyDB)->validateRequest($serverVars, 'Action=ListUsers&Version=2010-05-08');
             $this->fail('Should fail to validate!');
-        } catch (AsrException $ex) {
+        } catch (EscherException $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
         }
     }
@@ -85,12 +85,12 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'example.com',
         );
         $keyDB = array('th3K3y' => 'very_secure');
-        AsrFacade::createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
+        Escher::createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
     }
 
     /**
      * @test
-     * @expectedException AsrException
+     * @expectedException EscherException
      * @expectedExceptionMessage The signatures do not match
      */
     public function itShouldFailToValidateInvalidQueryStrings()
@@ -107,7 +107,7 @@ class ValidateRequestTest extends TestBase
         );
 
         $keyDB = array('th3K3y' => 'very_secure');
-        AsrFacade::createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
+        Escher::createServer('us-east-1/host/aws4_request', $keyDB)->validateRequest($serverVars, '');
     }
 }
  

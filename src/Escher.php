@@ -1,6 +1,6 @@
 <?php
 
-class AsrFacade
+class Escher
 {
     const DEFAULT_HASH_ALGORITHM = 'sha256';
     const ACCEPTABLE_REQUEST_TIME_DIFFERENCE = 900;
@@ -15,19 +15,19 @@ class AsrFacade
 
     public static function createClient($secretKey, $accessKeyId, $credentialScope)
     {
-        return new AsrClient($credentialScope, $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_KEY, self::ALGO_PREFIX);
+        return new EscherClient($credentialScope, $secretKey, $accessKeyId, self::DEFAULT_HASH_ALGORITHM, self::VENDOR_KEY, self::ALGO_PREFIX);
     }
 
     public static function createServer($credentialScope, $keyDB)
     {
         $keyDB = $keyDB instanceof ArrayAccess ? $keyDB : (is_array($keyDB) ? new ArrayObject($keyDB) : new ArrayObject(array()));
-        return new AsrServer($credentialScope, $keyDB, self::VENDOR_KEY, self::ALGO_PREFIX);
+        return new EscherServer($credentialScope, $keyDB, self::VENDOR_KEY, self::ALGO_PREFIX);
     }
 }
 
 
 
-class AsrClient
+class EscherClient
 {
     private $credentialScope;
     private $secretKey;
@@ -58,7 +58,7 @@ class AsrClient
         $headerList += array('host' => $host);
         $headersToSign = array_unique(array_merge(array('host'), $headersToSign));
 
-        $signature = $this->calculateSignature($date, 'GET', $path, $query, AsrFacade::UNSIGNED_PAYLOAD, $headerList, $headersToSign);
+        $signature = $this->calculateSignature($date, 'GET', $path, $query, Escher::UNSIGNED_PAYLOAD, $headerList, $headersToSign);
         $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
 
         return $url;
@@ -92,8 +92,8 @@ class AsrClient
         $headerList = array(),
         $headersToSign = array(),
         $date = null,
-        $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY,
-        $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY
+        $authHeaderKey = Escher::DEFAULT_AUTH_HEADER_KEY,
+        $dateHeaderKey = Escher::DEFAULT_DATE_HEADER_KEY
     )
     {
         $date = $date ? $date : $this->now();
@@ -120,7 +120,7 @@ class AsrClient
 
     private function toLongDate(DateTime $date)
     {
-        return $date->format(AsrFacade::LONG_DATE);
+        return $date->format(Escher::LONG_DATE);
     }
 
     private function addGetParameter($url, $key, $value)
@@ -139,12 +139,12 @@ class AsrClient
      */
     private function fullCredentialScope(DateTime $date)
     {
-        return $date->format(AsrFacade::SHORT_DATE) . "/" . $this->credentialScope;
+        return $date->format(Escher::SHORT_DATE) . "/" . $this->credentialScope;
     }
 
     private function generateAuthHeader($authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
-        $authHeaderValue = AsrSigner::createAuthHeader(
+        $authHeaderValue = EscherSigner::createAuthHeader(
             $this->calculateSignature($date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
@@ -163,7 +163,7 @@ class AsrClient
         foreach ($headerList as $headerKey => $headerValue) {
             $rawHeaderLines []= $headerKey . ':' . $headerValue;
         }
-        $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
+        $canonicalizedRequest = EscherRequestCanonicalizer::canonicalize(
             $method,
             $requestUri,
             $requestBody,
@@ -172,7 +172,7 @@ class AsrClient
             $this->hashAlgo
         );
 
-        $stringToSign = AsrSigner::createStringToSign(
+        $stringToSign = EscherSigner::createStringToSign(
             $this->credentialScope,
             $canonicalizedRequest,
             $date,
@@ -180,14 +180,14 @@ class AsrClient
             $this->algoPrefix
         );
 
-        $signerKey = AsrSigner::calculateSigningKey(
+        $signerKey = EscherSigner::calculateSigningKey(
             $this->secretKey,
             $this->fullCredentialScope($date),
             $this->hashAlgo,
             $this->algoPrefix
         );
 
-        $signature = AsrSigner::createSignature(
+        $signature = EscherSigner::createSignature(
             $stringToSign,
             $signerKey,
             $this->hashAlgo
@@ -206,7 +206,7 @@ class AsrClient
     private function addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host)
     {
         $mandatoryHeaders = array(strtolower($dateHeaderKey) => $this->toLongDate($date), 'host' => $host);
-        $headerList = AsrUtils::keysToLower($headerList) + $mandatoryHeaders;
+        $headerList = EscherUtils::keysToLower($headerList) + $mandatoryHeaders;
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array_keys($mandatoryHeaders)));
         sort($headersToSign);
         return array($headerList, $headersToSign);
@@ -223,7 +223,7 @@ class AsrClient
 
 
 
-class AsrServer
+class EscherServer
 {
     private $credentialScope;
 
@@ -241,12 +241,12 @@ class AsrServer
         $this->algoPrefix      = $algoPrefix;
     }
 
-    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = AsrFacade::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = AsrFacade::DEFAULT_DATE_HEADER_KEY)
+    public function validateRequest(array $serverVars = null, $requestBody = null, $authHeaderKey = Escher::DEFAULT_AUTH_HEADER_KEY, $dateHeaderKey = Escher::DEFAULT_DATE_HEADER_KEY)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
 
-        $helper = new AsrRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
+        $helper = new EscherRequestHelper($serverVars, $requestBody, $authHeaderKey, $dateHeaderKey);
         $authElements = $helper->getAuthElements($this->vendorKey, $this->algoPrefix);
 
         $authElements->validateMandatorySignedHeaders($dateHeaderKey);
@@ -271,7 +271,7 @@ class AsrServer
 
 
 
-class AsrRequestHelper
+class EscherRequestHelper
 {
     private $serverVars;
     private $requestBody;
@@ -298,14 +298,14 @@ class AsrRequestHelper
 
     public function getAuthElements($vendorKey, $algoPrefix)
     {
-        $headerList = AsrUtils::keysToLower($this->getHeaderList());
+        $headerList = EscherUtils::keysToLower($this->getHeaderList());
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
-            return AsrAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
+            return EscherAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
         } else if($this->getRequestMethod() == 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
-            return AsrAuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
+            return EscherAuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
-        throw new AsrException('Request has not been signed.');
+        throw new EscherException('Request has not been signed.');
     }
 
     public function getTimeStamp()
@@ -381,7 +381,7 @@ class AsrRequestHelper
 
 
 
-class AsrAuthElements
+class EscherAuthElements
 {
     private $elementParts;
 
@@ -413,34 +413,34 @@ class AsrAuthElements
      * @param $authHeaderKey
      * @param $dateHeaderKey
      * @param $algoPrefix
-     * @return AsrAuthElements
-     * @throws AsrException
+     * @return EscherAuthElements
+     * @throws EscherException
      */
     public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $algoPrefix)
     {
-        $headerList = AsrUtils::keysToLower($headerList);
+        $headerList = EscherUtils::keysToLower($headerList);
         $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $algoPrefix);
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
         $host = self::checkHost($headerList);
 
         if (!isset($headerList[strtolower($dateHeaderKey)])) {
-            throw new AsrException('The '.$dateHeaderKey.' header is missing');
+            throw new EscherException('The '.$dateHeaderKey.' header is missing');
         }
 
-        return new AsrAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $headerList[strtolower($dateHeaderKey)], $host, true);
+        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $headerList[strtolower($dateHeaderKey)], $host, true);
     }
 
     /**
      * @param $headerContent
      * @param $algoPrefix
      * @return array
-     * @throws AsrException
+     * @throws EscherException
      */
     public static function parseAuthHeader($headerContent, $algoPrefix)
     {
         $parts = explode(' ', $headerContent);
         if (count($parts) != 4) {
-            throw new AsrException('Could not parse authorization header.');
+            throw new EscherException('Could not parse authorization header.');
         }
         return array(
             'Algorithm'     => self::match(self::algoPattern($algoPrefix),    $parts[0]),
@@ -453,7 +453,7 @@ class AsrAuthElements
     private static function match($pattern, $part)
     {
         if (!preg_match("/^$pattern$/", $part, $matches)) {
-            throw new AsrException('Could not parse authorization header.');
+            throw new EscherException('Could not parse authorization header.');
         }
         return $matches[1];
     }
@@ -468,7 +468,7 @@ class AsrAuthElements
             $elementParts[$paramId] = $queryParams[$paramKey];
         }
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
-        return new AsrAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $elementParts['Date'], self::checkHost($headerList), false);
+        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $elementParts['Date'], self::checkHost($headerList), false);
     }
 
     private static function basicQueryParamKeys()
@@ -496,13 +496,13 @@ class AsrAuthElements
      * @param $vendorKey
      * @param $paramId
      * @return string
-     * @throws AsrException
+     * @throws EscherException
      */
     private static function checkParam($queryParams, $vendorKey, $paramId)
     {
         $paramKey = 'X-' . $vendorKey . '-' . $paramId;
         if (!isset($queryParams[$paramKey])) {
-            throw new AsrException('Missing query parameter: ' . $paramKey);
+            throw new EscherException('Missing query parameter: ' . $paramKey);
         }
         return $paramKey;
     }
@@ -510,37 +510,37 @@ class AsrAuthElements
     private static function checkHost($headerList)
     {
         if (!isset($headerList['host'])) {
-            throw new AsrException('The Host header is missing');
+            throw new EscherException('The Host header is missing');
         }
         return $headerList['host'];
     }
 
-    public function validateDates(AsrRequestHelper $helper)
+    public function validateDates(EscherRequestHelper $helper)
     {
         $dateTime = $this->getLongDate();
         if (!preg_match('/^\d{8}T\d{6}Z$/', $dateTime)) {
-            throw new AsrException('Invalid request date.');
+            throw new EscherException('Invalid request date.');
         }
         if (substr($dateTime, 0, 8) != $this->getShortDate()) {
-            throw new AsrException('The request date and credential date do not match.');
+            throw new EscherException('The request date and credential date do not match.');
         }
 
         if (!$this->isInAcceptableInterval($helper, $dateTime)) {
-            throw new AsrException('Request date is not within the accepted time interval.');
+            throw new EscherException('Request date is not within the accepted time interval.');
         }
     }
 
-    public function validateHost(AsrRequestHelper $helper)
+    public function validateHost(EscherRequestHelper $helper)
     {
         if($helper->getServerName() !== $this->getHost()) {
-            throw new AsrException('The host header does not match.');
+            throw new EscherException('The host header does not match.');
         }
     }
 
     public function validateCredentials($credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new AsrException('Invalid credentials');
+            throw new EscherException('Invalid credentials');
         }
     }
 
@@ -549,11 +549,11 @@ class AsrAuthElements
         return $this->credentialScope == $credentialScope;
     }
 
-    public function validateSignature(AsrRequestHelper $helper, $credentialScope, $keyDB, $vendorKey, $algoPrefix)
+    public function validateSignature(EscherRequestHelper $helper, $credentialScope, $keyDB, $vendorKey, $algoPrefix)
     {
         $key = $this->accessKeyId;
         $secret = $this->lookupSecretKey($key, $keyDB);
-        $client = new AsrClient($credentialScope, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
+        $client = new EscherClient($credentialScope, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
 
         $headers = $helper->getHeaderList();
         $dateTime = $this->dateTime;
@@ -562,21 +562,21 @@ class AsrAuthElements
             new DateTime($dateTime, new DateTimeZone("UTC")),
             $helper->getRequestMethod(),
             $this->stripAuthParams($helper, $vendorKey),
-            $this->isFromHeaders ? $helper->getRequestBody() : AsrFacade::UNSIGNED_PAYLOAD,
+            $this->isFromHeaders ? $helper->getRequestBody() : Escher::UNSIGNED_PAYLOAD,
             $headers,
             $this->getSignedHeaders()
         );
 
         $provided = $this->getSignature();
         if ($calculated != $provided) {
-            throw new AsrException("The signatures do not match (provided: $provided, calculated: $calculated)");
+            throw new EscherException("The signatures do not match (provided: $provided, calculated: $calculated)");
         }
     }
 
     private function lookupSecretKey($accessKeyId, $keyDB)
     {
         if (!isset($keyDB[$accessKeyId])) {
-            throw new AsrException('Invalid access key id');
+            throw new EscherException('Invalid access key id');
         }
         return $keyDB[$accessKeyId];
     }
@@ -585,22 +585,22 @@ class AsrAuthElements
     {
         if(!in_array(strtoupper($this->getAlgorithm()), array('SHA256','SHA512')))
         {
-            throw new AsrException('Only SHA256 and SHA512 hash algorithms are allowed.');
+            throw new EscherException('Only SHA256 and SHA512 hash algorithms are allowed.');
         }
     }
 
     /**
      * @param string $dateHeaderKey
-     * @throws AsrException
+     * @throws EscherException
      */
     public function validateMandatorySignedHeaders($dateHeaderKey)
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
-            throw new AsrException('Host header not signed');
+            throw new EscherException('Host header not signed');
         }
         if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
-            throw new AsrException('Date header not signed');
+            throw new EscherException('Date header not signed');
         }
     }
 
@@ -640,11 +640,11 @@ class AsrAuthElements
     }
 
     /**
-     * @param AsrRequestHelper $helper
+     * @param EscherRequestHelper $helper
      * @param $vendorKey
      * @return string
      */
-    private function stripAuthParams(AsrRequestHelper $helper, $vendorKey)
+    private function stripAuthParams(EscherRequestHelper $helper, $vendorKey)
     {
         $parts = parse_url($helper->getCurrentUrl());
         parse_str(isset($parts['query']) ? $parts['query'] : '', $params);
@@ -660,20 +660,20 @@ class AsrAuthElements
 
     private function getExpiry()
     {
-        return $this->isFromHeaders ? AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE : $this->elementParts['Expires'];
+        return $this->isFromHeaders ? Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE : $this->elementParts['Expires'];
     }
 
     /**
-     * @param AsrRequestHelper $helper
+     * @param EscherRequestHelper $helper
      * @param $dateTime
      * @return bool
      */
-    private function isInAcceptableInterval(AsrRequestHelper $helper, $dateTime)
+    private function isInAcceptableInterval(EscherRequestHelper $helper, $dateTime)
     {
         if ($helper->getTimeStamp() > strtotime($dateTime)) {
             return $helper->getTimeStamp() - strtotime($dateTime) <= $this->getExpiry();
         } else {
-            return strtotime($dateTime) - $helper->getTimeStamp() <= AsrFacade::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+            return strtotime($dateTime) - $helper->getTimeStamp() <= Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
         }
     }
 
@@ -685,13 +685,13 @@ class AsrAuthElements
 
 
 
-class AsrException extends Exception
+class EscherException extends Exception
 {
 }
 
 
 
-class AsrRequestCanonicalizer
+class EscherRequestCanonicalizer
 {
     public static function canonicalize($method, $requestUri, $payload, $rawHeaders, array $headersToSign, $hashAlgo)
     {
@@ -804,12 +804,12 @@ class AsrRequestCanonicalizer
 
 
 
-class AsrSigner
+class EscherSigner
 {
     public static function createStringToSign($credentialScope, $canonicalRequestString, DateTime $date, $hashAlgo, $algoPrefix)
     {
         $date->setTimezone(new DateTimeZone("UTC"));
-        $formattedDate = $date->format(AsrFacade::LONG_DATE);
+        $formattedDate = $date->format(Escher::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
         $lines[] = $algoPrefix . "-HMAC-" . strtoupper($hashAlgo);
@@ -845,7 +845,7 @@ class AsrSigner
     }
 }
 
-class AsrUtils
+class EscherUtils
 {
     public static function keysToLower($array)
     {

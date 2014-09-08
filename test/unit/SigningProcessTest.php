@@ -66,7 +66,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
     public function itShouldCreateStringToSign($canonicalRequestString, $expectedStringToSign)
     {
         $credentialScope = 'us-east-1/host/aws4_request';
-        $actualStringToSign = AsrSigner::createStringToSign(
+        $actualStringToSign = EscherSigner::createStringToSign(
             $credentialScope,
             $canonicalRequestString,
             new DateTime("09 Sep 2011 23:36:00 GMT"),
@@ -87,13 +87,13 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldBuildAuthHeader($stringToSign, $expectedAuthHeaders)
     {
-        $matches = AsrAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
+        $matches = EscherAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
         list($accessKey, $credentialScope) = explode("/", $matches['Credentials'], 2);
 
         $signingKey = $this->hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
-        $actualAuthHeader = AsrSigner::createAuthHeader(
-            AsrSigner::createSignature($stringToSign, $signingKey, $matches['Algorithm']),
+        $actualAuthHeader = EscherSigner::createAuthHeader(
+            EscherSigner::createSignature($stringToSign, $signingKey, $matches['Algorithm']),
             $credentialScope,
             $matches['SignedHeaders'],
             $matches['Algorithm'],
@@ -122,7 +122,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
                 $headersToSign[]= $headerKey;
             }
         }
-        $canonicalizedRequest = AsrRequestCanonicalizer::canonicalize(
+        $canonicalizedRequest = EscherRequestCanonicalizer::canonicalize(
             $method,
             $requestUri,
             $body,
