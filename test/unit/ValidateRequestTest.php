@@ -10,7 +10,7 @@ class ValidateRequestTest extends TestBase
         $serverVars = array(
             'HTTP_X_EMS_DATE' => '20110909T233600Z',
             'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
-            'REQUEST_TIME'    => strtotime('20110909T233600Z'),
+            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
             'REQUEST_METHOD'  => 'POST',
             'HTTP_HOST'       => 'iam.amazonaws.com',
             'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
@@ -33,7 +33,7 @@ class ValidateRequestTest extends TestBase
         $serverVars = array(
             'HTTP_X_EMS_DATE' => '20110909T233600Z',
             'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
-            'REQUEST_TIME'    => strtotime('20110909T233600Z'),
+            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
             'REQUEST_METHOD'  => 'POST',
             'HTTP_HOST'       => 'iam.amazonaws.com',
             'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
@@ -60,12 +60,12 @@ class ValidateRequestTest extends TestBase
     public function requestTamperingProvider()
     {
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', strtotime('20110909T113600Z'), 'Invalid request date.'),
-            'wrong request time'    => array('REQUEST_TIME',    strtotime('20110909T113600Z'), 'Request date is not within the accepted time interval.'),
-            'wrong host'            => array('HTTP_HOST',       'example.com', 'The host header does not match.'),
-            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse authorization header.'),
+            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid request date'),
+            'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'Request date is not within the accepted time interval'),
+            'wrong host'            => array('HTTP_HOST',       'example.com', 'The host header does not match'),
+            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse authorization header'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match'),
-            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Only SHA256 and SHA512 hash algorithms are allowed.'),
+            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Only SHA256 and SHA512 hash algorithms are allowed'),
             'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Host header not signed'),
             'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Date header not signed'),
         );
@@ -77,7 +77,7 @@ class ValidateRequestTest extends TestBase
     public function itShouldValidateRequestUsingQueryString()
     {
         $serverVars = array(
-            'REQUEST_TIME'    => strtotime('20110511T120000Z'),
+            'REQUEST_TIME'    => $this->strtotime('20110511T120000Z'),
             'REQUEST_METHOD'  => 'GET',
             'HTTP_HOST'       => 'example.com',
             'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
@@ -98,7 +98,7 @@ class ValidateRequestTest extends TestBase
     public function itShouldFailToValidateInvalidQueryStrings()
     {
         $serverVars = array(
-            'REQUEST_TIME'    => strtotime('20110511T120000Z'),
+            'REQUEST_TIME'    => $this->strtotime('20110511T120000Z'),
             'REQUEST_METHOD'  => 'GET',
             'HTTP_HOST'       => 'example.com',
             'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
@@ -116,6 +116,11 @@ class ValidateRequestTest extends TestBase
     {
         return Escher::create($credentialScope, null, Escher::DEFAULT_HASH_ALGORITHM, 'EMS', 'EMS')
             ->createServer($keyDB);
+    }
+
+    private function strtotime($dateString)
+    {
+        return EscherUtils::parseLongDate($dateString)->getTimestamp();
     }
 }
  

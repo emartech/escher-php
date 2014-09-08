@@ -69,7 +69,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
         $actualStringToSign = EscherSigner::createStringToSign(
             $credentialScope,
             $canonicalRequestString,
-            new DateTime("09 Sep 2011 23:36:00 GMT"),
+            new DateTime("09 Sep 2011 23:36:00", new DateTimeZone('GMT')),
             'sha256',
             'AWS4'
         );

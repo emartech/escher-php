@@ -55,7 +55,7 @@ class InternalTest extends TestBase
         );
         $authHeader = EscherAuthElements::parseFromHeaders($headerList, $authHeaderName, $dateHeaderName, 'EMS');
 
-        $this->assertEquals('20110909T233600Z', $authHeader->getLongDate());
+        $this->assertEquals(new DateTime('20110909T233600Z', new DateTimeZone('GMT')), $authHeader->getDateTime());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
         $this->assertEquals('us-east-1/iam/aws4_request', $authHeader->getCredentialScope());

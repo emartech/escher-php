@@ -64,7 +64,7 @@ class Escher
      */
     private static function now()
     {
-        return new DateTime('now', new DateTimeZone('UTC'));
+        return new DateTime('now', new DateTimeZone('GMT'));
     }
 
     public function createClient($secretKey, $accessKeyId)
@@ -468,7 +468,7 @@ class EscherAuthElements
 
     private $isFromHeaders;
 
-    public function __construct(array $elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, $isFromHeaders)
+    public function __construct(array $elementParts, $accessKeyId, $shortDate, $credentialScope, DateTime $dateTime, $host, $isFromHeaders)
     {
         $this->elementParts = $elementParts;
         $this->accessKeyId = $accessKeyId;
@@ -498,7 +498,15 @@ class EscherAuthElements
             throw new EscherException('The '.$dateHeaderKey.' header is missing');
         }
 
-        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $headerList[strtolower($dateHeaderKey)], $host, true);
+        if (strtolower($dateHeaderKey) !== 'date') {
+            $dateTime = EscherUtils::parseLongDate($headerList[strtolower($dateHeaderKey)]);
+        } else {
+            $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
+        }
+        if (!$dateTime) {
+            throw new EscherException('Invalid request date');
+        }
+        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
     }
 
     /**
@@ -539,7 +547,11 @@ class EscherAuthElements
             $elementParts[$paramId] = $queryParams[$paramKey];
         }
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
-        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $elementParts['Date'], self::checkHost($headerList), false);
+        $dateTime = EscherUtils::parseLongDate($elementParts['Date']);
+        if (!$dateTime) {
+            throw new EscherException('Invalid request date');
+        }
+        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, self::checkHost($headerList), false);
     }
 
     private static function basicQueryParamKeys()
@@ -588,15 +600,12 @@ class EscherAuthElements
 
     public function validateDates(EscherRequestHelper $helper)
     {
-        $dateTime = $this->getLongDate();
-        if (!preg_match('/^\d{8}T\d{6}Z$/', $dateTime)) {
-            throw new EscherException('Invalid request date.');
-        }
-        if (substr($dateTime, 0, 8) != $this->getShortDate()) {
+        $shortDate = $this->dateTime->format('Ymd');
+        if ($shortDate != $this->getShortDate()) {
             throw new EscherException('The request date and credential date do not match.');
         }
 
-        if (!$this->isInAcceptableInterval($helper, $dateTime)) {
+        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), $this->dateTime->getTimestamp())) {
             throw new EscherException('Request date is not within the accepted time interval.');
         }
     }
@@ -627,10 +636,8 @@ class EscherAuthElements
         $client = new EscherClient($escher, $secret, $key, $this->getAlgorithm(), $vendorKey, $algoPrefix);
 
         $headers = $helper->getHeaderList();
-        $dateTime = $this->dateTime;
-
         $calculated = $client->getSignature(
-            new DateTime($dateTime, new DateTimeZone("UTC")),
+            $this->dateTime,
             $helper->getRequestMethod(),
             $this->stripAuthParams($helper, $vendorKey),
             $this->isFromHeaders ? $helper->getRequestBody() : Escher::UNSIGNED_PAYLOAD,
@@ -700,11 +707,6 @@ class EscherAuthElements
         return $this->elementParts['Algorithm'];
     }
 
-    public function getLongDate()
-    {
-        return $this->dateTime;
-    }
-
     public function getHost()
     {
         return $this->host;
@@ -734,23 +736,23 @@ class EscherAuthElements
         return $this->isFromHeaders ? Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE : $this->elementParts['Expires'];
     }
 
-    /**
-     * @param EscherRequestHelper $helper
-     * @param $dateTime
-     * @return bool
-     */
-    private function isInAcceptableInterval(EscherRequestHelper $helper, $dateTime)
+    private function isInAcceptableInterval($currentTimeStamp, $requestTimeStamp)
     {
-        if ($helper->getTimeStamp() > strtotime($dateTime)) {
-            return $helper->getTimeStamp() - strtotime($dateTime) <= $this->getExpiry();
+        if ($currentTimeStamp > $requestTimeStamp) {
+            return $currentTimeStamp - $requestTimeStamp <= $this->getExpiry();
         } else {
-            return strtotime($dateTime) - $helper->getTimeStamp() <= Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
+            return $requestTimeStamp - $currentTimeStamp <= Escher::ACCEPTABLE_REQUEST_TIME_DIFFERENCE;
         }
     }
 
     public function getCredentialScope()
     {
         return $this->credentialScope;
+    }
+
+    public function getDateTime()
+    {
+        return $this->dateTime;
     }
 }
 
@@ -879,7 +881,8 @@ class EscherSigner
 {
     public static function createStringToSign($credentialScope, $canonicalRequestString, DateTime $date, $hashAlgo, $algoPrefix)
     {
-        $date->setTimezone(new DateTimeZone("UTC"));
+        $date = clone $date;
+        $date->setTimezone(new DateTimeZone("GMT"));
         $formattedDate = $date->format(Escher::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
@@ -918,6 +921,11 @@ class EscherSigner
 
 class EscherUtils
 {
+    public static function parseLongDate($dateString)
+    {
+        return DateTime::createFromFormat('Ymd\THisT', $dateString, new DateTimeZone('GMT'));
+    }
+
     public static function keysToLower($array)
     {
         $result = array_combine(
