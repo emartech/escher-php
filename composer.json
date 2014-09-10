@@ -1,7 +1,7 @@
 {
     "name": "emartech/escher",
     "description": "Library for HTTP request signing (PHP implementation)",
-    "version": "0.0.3",
+    "version": "0.1.0",
     "homepage": "https://github.com/emartech/escher-php",
     "authors": [
         {
