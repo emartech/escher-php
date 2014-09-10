@@ -14,6 +14,12 @@
             "email": "andras@barthazi.hu",
             "homepage": "https://github.com/boogie/",
             "role": "lead"
+        },
+        {
+            "name": "Csaba Peter Simon",
+            "email": "fqqdk1@gmail.com",
+            "homepage": "https://github.com/fqqdk/",
+            "role": "developer"
         }
     ],
     "support": {
@@ -31,7 +37,6 @@
     },
     "keywords": [
         "escher",
-        "php",
         "hmac",
         "sha",
         "aws",
