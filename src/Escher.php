@@ -42,7 +42,7 @@ class Escher
         return new DateTime('now', new DateTimeZone('GMT'));
     }
 
-    public function validateRequest($keyDB, array $serverVars = null, $requestBody = null)
+    public function authenticate($keyDB, array $serverVars = null, $requestBody = null)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
@@ -58,6 +58,7 @@ class Escher
         $authElements->validateHost($helper);
         $authElements->validateCredentials($this->credentialScope);
         $authElements->validateSignature($helper, $this, $keyDB, $vendorKey, $algoPrefix);
+        return $authElements->getAccessKeyId();
     }
 
     public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES)

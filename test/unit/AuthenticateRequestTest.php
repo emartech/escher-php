@@ -1,11 +1,11 @@
 <?php
 
-class ValidateRequestTest extends TestBase
+class AuthenticateRequestTest extends TestBase
 {
     /**
      * @test
      */
-    public function itShouldValidateRequestUsingAuthHeader()
+    public function itShouldAuthenticateRequestUsingAuthHeader()
     {
         $serverVars = array(
             'HTTP_X_EMS_DATE' => '20110909T233600Z',
@@ -20,8 +20,9 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'iam.amazonaws.com',
         );
         $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        $this->createEscher('us-east-1/iam/aws4_request')
-            ->validateRequest($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+        $accessKeyId = $this->createEscher('us-east-1/iam/aws4_request')
+            ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+        $this->assertEquals('AKIDEXAMPLE', $accessKeyId);
     }
 
     /**
@@ -50,7 +51,7 @@ class ValidateRequestTest extends TestBase
 
         try {
             $this->createEscher('us-east-1/iam/aws4_request')
-                ->validateRequest($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+                ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
             $this->fail('Should fail to validate!');
         } catch (EscherException $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
@@ -87,7 +88,7 @@ class ValidateRequestTest extends TestBase
             'SERVER_NAME'     => 'example.com',
         );
         $keyDB = array('th3K3y' => 'very_secure');
-        $this->createEscher('us-east-1/host/aws4_request')->validateRequest($keyDB, $serverVars, '');
+        $this->createEscher('us-east-1/host/aws4_request')->authenticate($keyDB, $serverVars, '');
     }
 
     /**
@@ -109,7 +110,7 @@ class ValidateRequestTest extends TestBase
         );
 
         $keyDB = array('th3K3y' => 'very_secure');
-        $this->createEscher('us-east-1/host/aws4_request')->validateRequest($keyDB, $serverVars, '');
+        $this->createEscher('us-east-1/host/aws4_request')->authenticate($keyDB, $serverVars, '');
     }
 
     protected function createEscher($credentialScope)
