@@ -133,7 +133,7 @@ class Escher
     private function parseUrl($url)
     {
         $urlParts = parse_url($url);
-        $host = $urlParts['host'];
+        $host = $urlParts['host'] . (isset($urlParts['port']) && !in_array($urlParts['port'], array(80, 443)) ? ':' . $urlParts['port'] : '');
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
