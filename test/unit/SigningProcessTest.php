@@ -41,6 +41,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
     private $emarsysFixtures = array(
         'get-header-key-duplicate',
         'get-header-value-order',
+        'get-port',
         'post-header-key-order',
         'post-header-value-spaces',
         'post-header-value-spaces-within-quotes',
