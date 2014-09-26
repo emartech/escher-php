@@ -901,11 +901,14 @@ class EscherUtils
 
     public static function keysToLower($array)
     {
-        $result = array_combine(
+        if (count($array) == 0)
+        {
+            return array();
+        }
+        return array_combine(
             array_map('strtolower', array_keys($array)),
             array_values($array)
         );
-        return $result;
     }
 
     public static function getTimeStampOfDateTime($dateTime)
