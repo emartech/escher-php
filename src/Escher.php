@@ -496,7 +496,7 @@ class EscherAuthElements
     {
         $parts = explode(' ', $headerContent);
         if (count($parts) != 4) {
-            throw new EscherException('Could not parse authorization header.');
+            throw new EscherException('Could not parse authorization header: ' . $headerContent);
         }
         return array(
             'Algorithm'     => self::match(self::algoPattern($algoPrefix),    $parts[0]),
@@ -590,7 +590,7 @@ class EscherAuthElements
     public function validateHost(EscherRequestHelper $helper)
     {
         if($helper->getServerName() !== $this->getHost()) {
-            throw new EscherException('The host header does not match.');
+            throw new EscherException('The Host header does not match: ' . $this->getHost() . ' != ' . $helper->getServerName());
         }
     }
 
