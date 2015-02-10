@@ -146,12 +146,18 @@ class Escher
 
     private function addGetParameter($url, $key, $value)
     {
-        if (strpos($url, '?') === false) {
-            $url .= '?';
-        } else {
-            $url .= '&';
+        $glue = '?';
+        if (strpos($url, '?') !== false) {
+            $glue = '&';
         }
-        return $url . $key . '=' . urlencode($value);
+
+        $fragmentPosition = strpos($url, '#');
+        if ($fragmentPosition === false) {
+            return $url . $glue . $key . '=' . urlencode($value);
+        }
+        else {
+            return substr_replace($url, ($glue . $key . '=' . urlencode($value)), $fragmentPosition, 0);
+        }
     }
 
     /**
