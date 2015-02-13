@@ -1,0 +1,8 @@
+POST
+/
+Content-Type:application/x-www-form-urlencoded; charset=utf8
+Date:Mon, 09 Sep 2011 23:36:00 GMT
+Host:host.foo.com
+Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=content-type;date;host, Signature=e651383ca0bb3d46ec251edc68748f996386d3168c7804b1fdeb1f0761683999
+
+foo=árvíztűrő-tükörfúrógépß❤

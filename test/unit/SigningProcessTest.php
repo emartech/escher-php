@@ -45,6 +45,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
         'post-header-key-order',
         'post-header-value-spaces',
         'post-header-value-spaces-within-quotes',
+        'post-payload-utf8',
     );
 
     private function processFixtures($input, $output)
