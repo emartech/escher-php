@@ -361,17 +361,17 @@ class EscherRequestHelper
     {
         $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
+
+        list($host, $port) = explode(':', $headerList['host'], 2);
+        $headerList['host'] = $this->normalizeHost($host, $port);
+
         return $headerList;
     }
 
     public function getCurrentUrl()
     {
         $scheme = $this->serverVars["HTTPS"] == "on" ? 'https' : 'http';
-        if ($this->isDefaultPort()) {
-            $host = $this->serverVars["SERVER_NAME"];
-        } else {
-            $host = $this->serverVars["SERVER_NAME"].":".$this->serverVars["SERVER_PORT"];
-        }
+        $host = $this->getServerHost();
         $res = "$scheme://$host" . $this->serverVars["REQUEST_URI"];
         return $res;
     }
@@ -392,9 +392,9 @@ class EscherRequestHelper
         return isset($this->serverVars['CONTENT_TYPE']) ? $this->serverVars['CONTENT_TYPE'] : '';
     }
 
-    public function getServerName()
+    public function getServerHost()
     {
-        return $this->serverVars['SERVER_NAME'];
+        return $this->normalizeHost($this->serverVars['SERVER_NAME'], $this->serverVars["SERVER_PORT"]);
     }
 
     /**
@@ -414,15 +414,21 @@ class EscherRequestHelper
         return $result;
     }
 
-    /**
-     * @return bool
-     */
-    private function isDefaultPort()
+    private function normalizeHost($host, $port)
     {
-        return $this->serverVars["SERVER_PORT"] == "80" || $this->serverVars["SERVER_PORT"] == "443";
+        if (is_null($port) || $this->isDefaultPort($port)) {
+            return $host;
+        } else {
+            return $host . ":" . $port;
+        }
+    }
+
+    private function isDefaultPort($port)
+    {
+        $defaultPort = $this->serverVars["HTTPS"] == "on" ? '443' : '80';
+        return $port == $defaultPort;
     }
 }
-
 
 
 class EscherAuthElements
@@ -589,8 +595,8 @@ class EscherAuthElements
 
     public function validateHost(EscherRequestHelper $helper)
     {
-        if($helper->getServerName() !== $this->getHost()) {
-            throw new EscherException('The Host header does not match: ' . $this->getHost() . ' != ' . $helper->getServerName());
+        if($helper->getServerHost() !== $this->getHost()) {
+            throw new EscherException('The Host header does not match: ' . $this->getHost() . ' != ' . $helper->getServerHost());
         }
     }
 

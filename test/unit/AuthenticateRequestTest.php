@@ -27,6 +27,44 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     * @dataProvider validPortProvider
+     */
+    public function itShouldAuthenticateRequestRegardlessDefaultPortProvidedOrNot($httpHost, $serverName, $serverPort, $https, $signature)
+    {
+        $serverVars = array(
+            'HTTP_X_EMS_DATE' => '20110909T233600Z',
+            'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=' . $signature,
+            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
+            'REQUEST_METHOD'  => 'POST',
+            'HTTP_HOST'       => $httpHost,
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/',
+            'HTTPS'           => $https,
+            'SERVER_PORT'     => $serverPort,
+            'SERVER_NAME'     => $serverName,
+        );
+        $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
+        $accessKeyId = $this->createEscher('us-east-1/iam/aws4_request')
+            ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+        $this->assertEquals('AKIDEXAMPLE', $accessKeyId);
+    }
+
+    public function validPortProvider()
+    {
+        return array (
+            'default http port not provided' => array('iam.amazonaws.com', 'iam.amazonaws.com', '80', '', 'f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd'),
+            'default http port provided' => array('iam.amazonaws.com:80', 'iam.amazonaws.com', '80', '', 'f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd'),
+            'default https port not provided' => array('iam.amazonaws.com', 'iam.amazonaws.com', '443', 'on', 'f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd'),
+            'default https port provided' => array('iam.amazonaws.com:443', 'iam.amazonaws.com', '443', 'on', 'f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd'),
+            'custom http port' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '123', '', '9584a4a527986bbbead79b56523d50e1c8161155933a644674d0b2f2a0bce19a'),
+            'custom https port' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '123', 'on', '9584a4a527986bbbead79b56523d50e1c8161155933a644674d0b2f2a0bce19a'),
+            'default http port as custom https port' => array('iam.amazonaws.com:80', 'iam.amazonaws.com', '80', 'on', 'b5daefdecb7124f47fafad18549e18a1a9c5accc4216a146c919d0635eccc370'),
+            'default https port as custom http port' => array('iam.amazonaws.com:443', 'iam.amazonaws.com', '443', '', 'b36c465c5a6bb79e6c6ac666e9c3847d5c997e035321429b7c25777ea86af35c')
+        );
+    }
+
+    /**
+     * @test
      * @dataProvider requestTamperingProvider
      */
     public function itShouldFailToValidateInvalidRequests($tamperedKey, $tamperedValue, $expectedErrorMessage)
@@ -111,6 +149,47 @@ class AuthenticateRequestTest extends TestBase
 
         $keyDB = array('th3K3y' => 'very_secure');
         $this->createEscher('us-east-1/host/aws4_request')->authenticate($keyDB, $serverVars, '');
+    }
+
+    /**
+     * @test
+     * @dataProvider invalidPortProvider
+     */
+    public function itShouldFailToAuthenticateWrongPort($httpHost, $serverName, $serverPort, $https)
+    {
+        $serverVars = array(
+            'HTTP_X_EMS_DATE' => '20110909T233600Z',
+            'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
+            'REQUEST_METHOD'  => 'POST',
+            'HTTP_HOST'       => $httpHost,
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/',
+            'HTTPS'           => $https,
+            'SERVER_PORT'     => $serverPort,
+            'SERVER_NAME'     => $serverName,
+        );
+        $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
+        try
+        {
+            $this->createEscher('us-east-1/iam/aws4_request')
+                 ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+            $this->fail('Should fail to validate!');
+        }
+        catch (EscherException $e)
+        {
+            $this->assertStringStartsWith('The Host header does not match', $e->getMessage());
+        }
+    }
+
+    public function invalidPortProvider()
+    {
+        return array (
+            'server on default http port, request to something else' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '80', ''),
+            'server on default https port, request to something else' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '443', 'on'),
+            'server on default http port, request to default https port' => array('iam.amazonaws.com:443', 'iam.amazonaws.com', '80', ''),
+            'server on default https port, request to default http port' => array('iam.amazonaws.com:80', 'iam.amazonaws.com', '443', 'on')
+        );
     }
 
     protected function createEscher($credentialScope)
