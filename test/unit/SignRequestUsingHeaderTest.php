@@ -54,25 +54,34 @@ class SignRequestUsingHeaderTest extends TestBase
     /**
      * @test
      * @group sign_request
+     * @dataProvider urlAndHostProvider
      */
-    public function itShouldAutomagicallyAddHostHeaderWithPort()
+    public function itShouldAutomagicallyAddHostHeaderWithPort($url, $expectedHost)
     {
         $inputHeaders = array(
             'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
-        );
-        $expectedHeaders = array(
-            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
-            'host'         => 'iam.amazonaws.com:5000',
-            'x-ems-date' => '20110909T233600Z',
-            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=559b2e7df48ce2f6ab25af9a281ae40c26b87bb8d4387037bc4cdecd97f2f5a5',
         );
         $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher($date)->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com:5000/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', $url, 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
-        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
+        $this->assertEquals($expectedHost, $actualHeaders['host']);
+    }
+
+    public function urlAndHostProvider()
+    {
+        return array(
+            'http - custom port' => array('http://iam.amazonaws.com:5000/', 'iam.amazonaws.com:5000'),
+            'https - custom port' => array('https://iam.amazonaws.com:5000/', 'iam.amazonaws.com:5000'),
+
+            'http - default port' => array('http://iam.amazonaws.com:80/', 'iam.amazonaws.com'),
+            'https - default port' => array('https://iam.amazonaws.com:443/', 'iam.amazonaws.com'),
+
+            'http - https port' => array('http://iam.amazonaws.com:443/', 'iam.amazonaws.com:443'),
+            'https - http port' => array('https://iam.amazonaws.com:80/', 'iam.amazonaws.com:80')
+        );
     }
 
     /**
