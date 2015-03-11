@@ -363,7 +363,15 @@ class EscherRequestHelper
         $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
 
-        list($host, $port) = explode(':', $headerList['host'], 2);
+        if (strpos($headerList['host'], ':') === false)
+        {
+            $host = $headerList['host'];
+            $port = null;
+        }
+        else
+        {
+            list($host, $port) = explode(':', $headerList['host'], 2);
+        }
         $headerList['host'] = $this->normalizeHost($host, $port);
 
         return $headerList;
