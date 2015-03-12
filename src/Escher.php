@@ -716,10 +716,10 @@ class EscherAuthElements
         $query = array();
         foreach ($params as $key => $value) {
             if ($key != 'X-' . $vendorKey . '-Signature') {
-                $query[] = $key . '=' . $value;
+                $query[$key] = $value;
             }
         }
-        return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . implode('&', $query));
+        return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . http_build_query($query));
     }
 
     private function getExpires()
