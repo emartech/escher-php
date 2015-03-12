@@ -131,6 +131,25 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     */
+    public function itShouldValidatePresignedUrlRequestWithSpecialCharacters()
+    {
+        $serverVars = array(
+            'REQUEST_TIME'    => $this->strtotime('20150310T173248Z'),
+            'REQUEST_METHOD'  => 'GET',
+            'HTTP_HOST'       => 'service.example.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/login?id=12345678&domain=login.example.com&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name%3F&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=service_api_key%2F20150310%2Feu%2Fservice%2Fems_request&X-EMS-Date=20150310T173248Z&X-EMS-Expires=86400&X-EMS-SignedHeaders=host&X-EMS-Signature=661f2147c77b6784be5a60a8b842a96de6327653f1ed5d4305da43103c69a6f5',
+            'HTTPS'           => 'on',
+            'SERVER_PORT'     => '443',
+            'SERVER_NAME'     => 'service.example.com',
+        );
+        $keyDB = array('service_api_key' => 'service_secret');
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z'))->authenticate($keyDB, $serverVars);
+    }
+
+    /**
+     * @test
      * @expectedException EscherException
      * @expectedExceptionMessage The signatures do not match
      */
@@ -190,12 +209,6 @@ class AuthenticateRequestTest extends TestBase
             'server on default http port, request to default https port' => array('iam.amazonaws.com:443', 'iam.amazonaws.com', '80', ''),
             'server on default https port, request to default http port' => array('iam.amazonaws.com:80', 'iam.amazonaws.com', '443', 'on')
         );
-    }
-
-    protected function createEscher($credentialScope)
-    {
-        return Escher::create($credentialScope, null)
-            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
     }
 
     private function strtotime($dateString)

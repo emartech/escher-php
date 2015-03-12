@@ -19,8 +19,7 @@ class SignRequestUsingHeaderTest extends TestBase
             'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
-        $actualHeaders = $this->createEscher($date)->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -42,9 +41,8 @@ class SignRequestUsingHeaderTest extends TestBase
             'x-ems-date' => '20110909T233600Z',
             'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date)->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -61,9 +59,8 @@ class SignRequestUsingHeaderTest extends TestBase
         $inputHeaders = array(
             'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
         );
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date)->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', $url, 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -99,9 +96,8 @@ class SignRequestUsingHeaderTest extends TestBase
             'x-ems-date' => '20110909T233600Z',
             'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type');
-        $actualHeaders = $this->createEscher($date)->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -126,9 +122,8 @@ class SignRequestUsingHeaderTest extends TestBase
             'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
 
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date)->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -151,9 +146,8 @@ class SignRequestUsingHeaderTest extends TestBase
             'custom-auth-header' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
 
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
         $headersToSign = array('content-type', 'host', 'x-ems-date');
-        $actualHeaders = $this->createEscher($date, 'Custom-Auth-Header')->signRequest(
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->setAuthHeaderKey('Custom-Auth-Header')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
             'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
         );
@@ -176,9 +170,7 @@ class SignRequestUsingHeaderTest extends TestBase
             'x-ems-auth'   => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
 
-        $date = new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
-        $escher = Escher::create('us-east-1/iam/aws4_request', $date)
-            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
+        $escher = $this->createEscher('us-east-1/iam/aws4_request');
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $escher->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
@@ -198,8 +190,7 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $escher = Escher::create('us-east-1/host/aws4_request', $date)
-            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
+        $escher = $this->createEscher('us-east-1/host/aws4_request', $date);
 
         $actualHeaders = $escher->signRequest(
             'th3K3y', 'very_secure',
@@ -216,9 +207,11 @@ class SignRequestUsingHeaderTest extends TestBase
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
 
-    protected function createEscher($date, $authHeaderName = 'X-Ems-Auth')
+    /**
+     * @return DateTime
+     */
+    protected function getDate()
     {
-        return Escher::create('us-east-1/iam/aws4_request', $date)
-            ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey($authHeaderName)->setDateHeaderKey('X-Ems-Date');
+        return new DateTime('20110909T233600Z', new DateTimeZone("UTC"));
     }
 }
