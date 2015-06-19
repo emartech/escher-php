@@ -133,7 +133,7 @@ class Escher
     private function parseUrl($url)
     {
         $urlParts = parse_url($url);
-        $defaultPort = $urlParts['scheme'] == 'http' ? 80 : 443;
+        $defaultPort = $urlParts['scheme'] === 'http' ? 80 : 443;
         $host = $urlParts['host'] . (isset($urlParts['port']) && $urlParts['port'] != $defaultPort ? ':' . $urlParts['port'] : '');
         $path = $urlParts['path'];
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
@@ -347,7 +347,7 @@ class EscherRequestHelper
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
             return EscherAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
-        } else if($this->getRequestMethod() == 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
+        } else if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
             return EscherAuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
         throw new EscherException('Request has not been signed.');
@@ -379,7 +379,7 @@ class EscherRequestHelper
 
     public function getCurrentUrl()
     {
-        $scheme = $this->serverVars["HTTPS"] == "on" ? 'https' : 'http';
+        $scheme = $this->serverVars["HTTPS"] === "on" ? 'https' : 'http';
         $host = $this->getServerHost();
         $res = "$scheme://$host" . $this->serverVars["REQUEST_URI"];
         return $res;
@@ -389,7 +389,7 @@ class EscherRequestHelper
     {
         $headerList = array();
         foreach ($serverVars as $key => $value) {
-            if (substr($key, 0, 5) == 'HTTP_') {
+            if (substr($key, 0, 5) === 'HTTP_') {
                 $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
             }
         }
@@ -434,7 +434,7 @@ class EscherRequestHelper
 
     private function isDefaultPort($port)
     {
-        $defaultPort = $this->serverVars["HTTPS"] == "on" ? '443' : '80';
+        $defaultPort = $this->serverVars["HTTPS"] === "on" ? '443' : '80';
         return $port == $defaultPort;
     }
 }
@@ -510,7 +510,7 @@ class EscherAuthElements
     public static function parseAuthHeader($headerContent, $algoPrefix)
     {
         $parts = explode(' ', $headerContent);
-        if (count($parts) != 4) {
+        if (count($parts) !== 4) {
             throw new EscherException('Could not parse authorization header: ' . $headerContent);
         }
         return array(
@@ -593,7 +593,7 @@ class EscherAuthElements
     public function validateDates(EscherRequestHelper $helper, $clockSkew)
     {
         $shortDate = $this->dateTime->format('Ymd');
-        if ($shortDate != $this->getShortDate()) {
+        if ($shortDate !== $this->getShortDate()) {
             throw new EscherException('The request date and credential date do not match.');
         }
 
@@ -618,7 +618,7 @@ class EscherAuthElements
 
     private function checkCredentials($credentialScope)
     {
-        return $this->credentialScope == $credentialScope;
+        return $this->credentialScope === $credentialScope;
     }
 
     public function validateSignature(EscherRequestHelper $helper, Escher $escher, $keyDB, $vendorKey)
@@ -637,8 +637,8 @@ class EscherAuthElements
         );
 
         $provided = $this->getSignature();
-        if ($calculated != $provided) {
-            throw new EscherException("The signatures do not match (provided: $provided, calculated: $calculated)");
+        if ($calculated !== $provided) {
+            throw new EscherException("The signatures do not match (provided: $provided)");
         }
     }
 
@@ -715,7 +715,7 @@ class EscherAuthElements
 
         $query = array();
         foreach ($params as $key => $value) {
-            if ($key != 'X-' . $vendorKey . '-Signature') {
+            if ($key !== 'X-' . $vendorKey . '-Signature') {
                 $query[$key] = $value;
             }
         }
@@ -843,7 +843,7 @@ class EscherRequestCanonicalizer
     private static function rawUrlEncode($urlComponent)
     {
         $result = rawurlencode($urlComponent);
-        if (version_compare(PHP_VERSION, '5.3.4') == -1) {
+        if (version_compare(PHP_VERSION, '5.3.4') === -1) {
             $result = str_replace('%7E', '~', $result);
         }
         return $result;
@@ -857,7 +857,7 @@ class EscherRequestCanonicalizer
     {
         $result = array();
         foreach (explode('"', trim($value)) as $index => $piece) {
-            $result[] = $index % 2 == 1 ? $piece : preg_replace('/\s+/', ' ', $piece);
+            $result[] = $index % 2 === 1 ? $piece : preg_replace('/\s+/', ' ', $piece);
         }
         return implode('"', $result);
     }
@@ -922,7 +922,7 @@ class EscherUtils
 
     public static function keysToLower($array)
     {
-        if (count($array) == 0)
+        if (count($array) === 0)
         {
             return array();
         }
