@@ -135,7 +135,7 @@ class Escher
         $urlParts = parse_url($url);
         $defaultPort = $urlParts['scheme'] === 'http' ? 80 : 443;
         $host = $urlParts['host'] . (isset($urlParts['port']) && $urlParts['port'] != $defaultPort ? ':' . $urlParts['port'] : '');
-        $path = $urlParts['path'];
+        $path = isset($urlParts['path']) ? $urlParts['path'] : null;
         $query = isset($urlParts['query']) ? $urlParts['query'] : '';
         return array($host, $path, $query);
     }
