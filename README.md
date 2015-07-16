@@ -21,7 +21,7 @@ Let's say you want to send a signed POST request to http://example.com/ using th
     $yourHeaders = array('Content-Type' => 'application/json');
 
     $headersWithAuthInfo = Escher::create('example/credential/scope')
-        ->signRequest('YOUR ACCESS KEY ID', 'YOUR SECRET', $method, $url, $requestBody, $yourHeaders);
+        ->signRequest('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', $method, $url, $requestBody, $yourHeaders);
 
     $client = new GuzzleHttp\Client();
     $response = $client->post($url, array(
@@ -36,7 +36,7 @@ In some cases you may want to send authenticated requests from a context where y
 You can however generate a presigned URL, where the authentication information is added to the query string.
 
     $presignedUrl = Escher::create('example/credential/scope')
-        ->presignUrl('YOUR ACCESS KEY ID', 'YOUR SECRET', 'http://example.com');
+        ->presignUrl('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', 'http://example.com');
 
 
 Validating a request
@@ -47,8 +47,8 @@ Escher accepts any kind of object as a key database that implements the ArrayAcc
 
     try {
         $keyDB = new ArrayObject(array(
-            'ACCESS KEY OF CLIENT 1'  => 'SECRET OF CLIENT 1',
-            'ACCESS KEY OF CLIENT 42' => 'SECRET OF CLIENT 42',
+            'ACCESS_KEY_OF_CLIENT_1'  => 'SECRET OF CLIENT 1',
+            'ACCESS_KEY_OF_CLIENT_42' => 'SECRET OF CLIENT 42',
         ));
         Escher::create('example/credential/scope')->validateRequest($keyDB);
     } catch (EscherException $ex) {
