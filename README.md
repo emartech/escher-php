@@ -50,7 +50,7 @@ Escher accepts any kind of object as a key database that implements the ArrayAcc
             'ACCESS KEY OF CLIENT 1'  => 'SECRET OF CLIENT 1',
             'ACCESS KEY OF CLIENT 42' => 'SECRET OF CLIENT 42',
         ));
-        Escher::create('example/credential/scope')->validateRequest($keyDB);
+        Escher::create('example/credential/scope')->authenticate($keyDB);
     } catch (EscherException $ex) {
         echo 'The validation failed! ' . $ex->getMessage();
     }
