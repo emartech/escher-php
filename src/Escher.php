@@ -57,7 +57,7 @@ class Escher
         $authElements->validateDates($helper, $this->clockSkew);
         $authElements->validateHost($helper);
         $authElements->validateCredentials($this->credentialScope);
-        $authElements->validateSignature($helper, $this, $keyDB, $vendorKey, $algoPrefix);
+        $authElements->validateSignature($helper, $this, $keyDB, $vendorKey);
         return $authElements->getAccessKeyId();
     }
 
