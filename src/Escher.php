@@ -719,7 +719,7 @@ class EscherAuthElements
                 $query[$key] = $value;
             }
         }
-        return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . http_build_query($query));
+        return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . http_build_query($query, '', '&'));
     }
 
     private function getExpires()
