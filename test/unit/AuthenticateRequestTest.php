@@ -100,13 +100,15 @@ class AuthenticateRequestTest extends TestBase
     {
         return array(
             'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid date format'),
-            'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'Request date is not within the accepted time interval'),
+            'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'The request date is not within the accepted time range'),
             'wrong host'            => array('HTTP_HOST',       'example.com', 'The Host header does not match: example.com != iam.amazonaws.com'),
-            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse authorization header'),
+            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse auth header'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match'),
             'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Only SHA256 and SHA512 hash algorithms are allowed'),
-            'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Host header not signed'),
-            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Date header not signed'),
+            'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The host header is not signed'),
+            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The date header is not signed'),
+            'invalid credential'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The credential scope is invalid'),
+            'invalid Escher key'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=FOOBAR/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid Escher key'),
         );
     }
 

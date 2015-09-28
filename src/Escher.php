@@ -511,7 +511,7 @@ class EscherAuthElements
     {
         $parts = explode(' ', $headerContent);
         if (count($parts) !== 4) {
-            throw new EscherException('Could not parse authorization header: ' . $headerContent);
+            throw new EscherException('Could not parse auth header');
         }
         return array(
             'Algorithm'     => self::match(self::algoPattern($algoPrefix),    $parts[0]),
@@ -524,7 +524,7 @@ class EscherAuthElements
     private static function match($pattern, $part)
     {
         if (!preg_match("/^$pattern$/", $part, $matches)) {
-            throw new EscherException('Could not parse authorization header.');
+            throw new EscherException('Could not parse auth header');
         }
         return $matches[1];
     }
@@ -585,7 +585,7 @@ class EscherAuthElements
     private static function checkHost($headerList)
     {
         if (!isset($headerList['host'])) {
-            throw new EscherException('The Host header is missing');
+            throw new EscherException('The host header is missing');
         }
         return $headerList['host'];
     }
@@ -594,11 +594,11 @@ class EscherAuthElements
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate !== $this->getShortDate()) {
-            throw new EscherException('The request date and credential date do not match.');
+            throw new EscherException('The authorization header\'s shortDate does not match with the request date');
         }
 
         if (!$this->isInAcceptableInterval($helper->getTimeStamp(), EscherUtils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
-            throw new EscherException('Request date is not within the accepted time interval.');
+            throw new EscherException('The request date is not within the accepted time range');
         }
     }
 
@@ -612,7 +612,7 @@ class EscherAuthElements
     public function validateCredentials($credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new EscherException('Invalid credentials');
+            throw new EscherException('The credential scope is invalid');
         }
     }
 
@@ -638,14 +638,14 @@ class EscherAuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new EscherException("The signatures do not match (provided: $provided)");
+            throw new EscherException("The signatures do not match");
         }
     }
 
     private function lookupSecretKey($accessKeyId, $keyDB)
     {
         if (!isset($keyDB[$accessKeyId])) {
-            throw new EscherException('Invalid access key id');
+            throw new EscherException('Invalid Escher key');
         }
         return $keyDB[$accessKeyId];
     }
@@ -666,10 +666,10 @@ class EscherAuthElements
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
-            throw new EscherException('Host header not signed');
+            throw new EscherException('The host header is not signed');
         }
         if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
-            throw new EscherException('Date header not signed');
+            throw new EscherException('The date header is not signed');
         }
     }
 
