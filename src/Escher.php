@@ -434,7 +434,7 @@ class EscherRequestHelper
 
     private function isDefaultPort($port)
     {
-        $defaultPort = $this->serverVars["HTTPS"] === "on" ? '443' : '80';
+        $defaultPort = isset($this->serverVars["HTTPS"]) && $this->serverVars["HTTPS"] === "on" ? '443' : '80';
         return $port == $defaultPort;
     }
 }
