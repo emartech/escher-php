@@ -99,15 +99,14 @@ class AuthenticateRequestTest extends TestBase
     public function requestTamperingProvider()
     {
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid date format'),
+            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Invalid date header, expected format is: 20151104T092022Z'),
             'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'The request date is not within the accepted time range'),
-            'wrong host'            => array('HTTP_HOST',       'example.com', 'The Host header does not match: example.com != iam.amazonaws.com'),
             'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Could not parse auth header'),
             'tampered signature'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match'),
-            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Only SHA256 and SHA512 hash algorithms are allowed'),
+            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid hash algorithm, only SHA256 and SHA512 are allowed'),
             'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The host header is not signed'),
-            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The date header is not signed'),
-            'invalid credential'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The credential scope is invalid'),
+            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The x-ems-date header is not signed'),
+            'invalid credential'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid Credential Scope'),
             'invalid Escher key'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=FOOBAR/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid Escher key'),
         );
     }
@@ -170,47 +169,6 @@ class AuthenticateRequestTest extends TestBase
 
         $keyDB = array('th3K3y' => 'very_secure');
         $this->createEscher('us-east-1/host/aws4_request')->authenticate($keyDB, $serverVars, '');
-    }
-
-    /**
-     * @test
-     * @dataProvider invalidPortProvider
-     */
-    public function itShouldFailToAuthenticateWrongPort($httpHost, $serverName, $serverPort, $https)
-    {
-        $serverVars = array(
-            'HTTP_X_EMS_DATE' => '20110909T233600Z',
-            'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
-            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
-            'REQUEST_METHOD'  => 'POST',
-            'HTTP_HOST'       => $httpHost,
-            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
-            'REQUEST_URI'     => '/',
-            'HTTPS'           => $https,
-            'SERVER_PORT'     => $serverPort,
-            'SERVER_NAME'     => $serverName,
-        );
-        $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
-        try
-        {
-            $this->createEscher('us-east-1/iam/aws4_request')
-                 ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
-            $this->fail('Should fail to validate!');
-        }
-        catch (EscherException $e)
-        {
-            $this->assertStringStartsWith('The Host header does not match', $e->getMessage());
-        }
-    }
-
-    public function invalidPortProvider()
-    {
-        return array (
-            'server on default http port, request to something else' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '80', ''),
-            'server on default https port, request to something else' => array('iam.amazonaws.com:123', 'iam.amazonaws.com', '443', 'on'),
-            'server on default http port, request to default https port' => array('iam.amazonaws.com:443', 'iam.amazonaws.com', '80', ''),
-            'server on default https port, request to default http port' => array('iam.amazonaws.com:80', 'iam.amazonaws.com', '443', 'on')
-        );
     }
 
     private function strtotime($dateString)
