@@ -491,7 +491,7 @@ class EscherAuthElements
             try {
                 $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
             } catch (Exception $ex) {
-                throw new EscherException('Invalid date header, expected format is: Wed, 04 Nov 2015 09:20:22 GMT');
+                throw new EscherException('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT');
             }
         }
         return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
@@ -511,7 +511,7 @@ class EscherAuthElements
                                      'Signature=([0-9a-f]+)$/';
 
         if (!preg_match($pattern, $headerContent, $matches)) {
-            throw new EscherException('Could not parse auth header');
+            throw new EscherException('Auth header format is invalid');
         }
         return array(
             'Algorithm'     => $matches[1],
@@ -564,7 +564,7 @@ class EscherAuthElements
     {
         $paramKey = 'X-' . $vendorKey . '-' . $paramId;
         if (!isset($queryParams[$paramKey])) {
-            throw new EscherException('Query key is missing: ' . $paramKey);
+            throw new EscherException('Query key: ' . $paramKey . ' is missing');
         }
         return $paramKey;
     }
@@ -581,7 +581,7 @@ class EscherAuthElements
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate !== $this->getShortDate()) {
-            throw new EscherException('Invalid date in authorization header, it should equal with header');
+            throw new EscherException('Date in the authorization header is invalid. It must be the same as the date header');
         }
 
         if (!$this->isInAcceptableInterval($helper->getTimeStamp(), EscherUtils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
@@ -592,7 +592,7 @@ class EscherAuthElements
     public function validateCredentials($credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new EscherException('Invalid Credential Scope');
+            throw new EscherException('Credential scope is invalid');
         }
     }
 
@@ -634,7 +634,7 @@ class EscherAuthElements
     {
         if(!in_array(strtoupper($this->getAlgorithm()), array('SHA256','SHA512')))
         {
-            throw new EscherException('Invalid hash algorithm, only SHA256 and SHA512 are allowed');
+            throw new EscherException('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed');
         }
     }
 
@@ -892,7 +892,7 @@ class EscherUtils
     public static function parseLongDate($dateString)
     {
         if (!preg_match('/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/', $dateString)) {
-            throw new EscherException('Invalid date header, expected format is: 20151104T092022Z');
+            throw new EscherException('Date header is invalid, the expected format is 20151104T092022Z');
         }
         if (!self::advancedDateTimeFunctionsAvailable()) {
             return new DateTime($dateString, new DateTimeZone('GMT'));
