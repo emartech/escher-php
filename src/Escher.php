@@ -7,7 +7,7 @@ class Escher
     const DEFAULT_VENDOR_KEY = 'Escher';
     const DEFAULT_AUTH_HEADER_KEY = 'X-Escher-Auth';
     const DEFAULT_DATE_HEADER_KEY = 'X-Escher-Date';
-    const DEFAULT_CLOCK_SKEW = 900;
+    const DEFAULT_CLOCK_SKEW = 300;
     const DEFAULT_EXPIRES = 86400;
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
