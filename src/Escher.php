@@ -378,7 +378,7 @@ class EscherRequestHelper
 
     public function getCurrentUrl()
     {
-        $scheme = $this->serverVars["HTTPS"] === "on" ? 'https' : 'http';
+        $scheme = (array_key_exists('HTTPS', $this->serverVars) && $this->serverVars["HTTPS"] == "on") ? 'https' : 'http';
         $host = $this->getServerHost();
         $res = "$scheme://$host" . $this->serverVars["REQUEST_URI"];
         return $res;
