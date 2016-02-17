@@ -30,6 +30,32 @@ class SignRequestUsingHeaderTest extends TestBase
      * @test
      * @group sign_request
      */
+    public function itShouldSignRequestWithUppercaseHeader()
+    {
+        $inputHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'TEST'         => 'TEST message'
+        );
+        $expectedHeaders = array(
+            'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
+            'host'         => 'iam.amazonaws.com',
+            'x-ems-date' => '20110909T233600Z',
+            'x-ems-auth' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;test;x-ems-date, Signature=f6ae6c5a72056a6f9ad42a9bbfebb868243b4fe451c38b2817739f75c197d26f',
+            'test'       => 'TEST message',
+        );
+        $headersToSign =  array('content-type', 'host', 'x-ems-date', 'TEST');
+        $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
+            'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+        );
+        $this->assertEqualMaps($expectedHeaders, $actualHeaders);
+    }
+
+    /**
+     * @test
+     * @group sign_request
+     */
     public function itShouldAutomagicallyAddHostHeader()
     {
         $inputHeaders = array(

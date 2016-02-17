@@ -45,7 +45,7 @@ class SignRequestUsingQueryStringTest extends TestBase
      */
     public function itShouldRespectWhenUrlHasSpecialChars()
     {
-        $signedUrl = $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z'))->presignUrl(
+        $signedUrl = $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->presignUrl(
             'service_api_key',
             'service_secret',
             'https://service.example.com/login?id=12345678&domain=login.example.com&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name%3F'

@@ -146,7 +146,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z'))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     /**
