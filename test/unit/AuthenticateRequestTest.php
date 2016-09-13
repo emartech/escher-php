@@ -171,6 +171,82 @@ class AuthenticateRequestTest extends TestBase
         $this->createEscher('us-east-1/host/aws4_request')->authenticate($keyDB, $serverVars, '');
     }
 
+    /**
+     * @test
+     */
+    public function itShouldValidatePresignedUrlRequestWithUnindexedArray()
+    {
+        $serverVars = array(
+            'REQUEST_TIME'    => $this->strtotime('20150310T173248Z'),
+            'REQUEST_METHOD'  => 'GET',
+            'HTTP_HOST'       => 'service.example.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/login?id=12345678&domain=login.example.com&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name&param1%5B%5D=1&param1%5B%5D=2%3F&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=service_api_key%2F20150310%2Feu%2Fservice%2Fems_request&X-EMS-Date=20150310T173248Z&X-EMS-Expires=86400&X-EMS-SignedHeaders=host&X-EMS-Signature=ddb1e6479f28752c23a2a7f12fa54d3f21c4b36b8247e88e5992975a10ba616c',
+            'HTTPS'           => 'on',
+            'SERVER_PORT'     => '443',
+            'SERVER_NAME'     => 'service.example.com',
+        );
+        $keyDB = array('service_api_key' => 'service_secret');
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldValidatePresignedUrlRequestWithIndexedArray()
+    {
+        $serverVars = array(
+            'REQUEST_TIME'    => $this->strtotime('20150310T173248Z'),
+            'REQUEST_METHOD'  => 'GET',
+            'HTTP_HOST'       => 'service.example.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/login?id=12345678&domain=login.example.com&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name&param1%5B0%5D=1&param1%5B1%5D=2%3F&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=service_api_key%2F20150310%2Feu%2Fservice%2Fems_request&X-EMS-Date=20150310T173248Z&X-EMS-Expires=86400&X-EMS-SignedHeaders=host&X-EMS-Signature=196bc22e36ea13d2bfe59c3fb42fbf67a09ec501a79924284d9281d7d8c773ce',
+            'HTTPS'           => 'on',
+            'SERVER_PORT'     => '443',
+            'SERVER_NAME'     => 'service.example.com',
+        );
+        $keyDB = array('service_api_key' => 'service_secret');
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldValidatePresignedUrlIfSignatureIsTheFirstParam()
+    {
+        $serverVars = array(
+            'REQUEST_TIME'    => $this->strtotime('20150310T173248Z'),
+            'REQUEST_METHOD'  => 'GET',
+            'HTTP_HOST'       => 'service.example.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/login?X-EMS-Signature=196bc22e36ea13d2bfe59c3fb42fbf67a09ec501a79924284d9281d7d8c773ce&id=12345678&domain=login.example.com&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name&param1%5B0%5D=1&param1%5B1%5D=2%3F&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=service_api_key%2F20150310%2Feu%2Fservice%2Fems_request&X-EMS-Date=20150310T173248Z&X-EMS-Expires=86400&X-EMS-SignedHeaders=host',
+            'HTTPS'           => 'on',
+            'SERVER_PORT'     => '443',
+            'SERVER_NAME'     => 'service.example.com',
+        );
+        $keyDB = array('service_api_key' => 'service_secret');
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldValidatePresignedUrlIfSignatureIsInTheMiddleOfTheQueryString()
+    {
+        $serverVars = array(
+            'REQUEST_TIME'    => $this->strtotime('20150310T173248Z'),
+            'REQUEST_METHOD'  => 'GET',
+            'HTTP_HOST'       => 'service.example.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/login?id=12345678&domain=login.example.com&X-EMS-Signature=196bc22e36ea13d2bfe59c3fb42fbf67a09ec501a79924284d9281d7d8c773ce&redirect_to=https%3A%2F%2Fhome.dev%2Fbootstrap.php%3Fr%3Dservice%2Findex%26service%3Dservice_name&param1%5B0%5D=1&param1%5B1%5D=2%3F&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=service_api_key%2F20150310%2Feu%2Fservice%2Fems_request&X-EMS-Date=20150310T173248Z&X-EMS-Expires=86400&X-EMS-SignedHeaders=host',
+            'HTTPS'           => 'on',
+            'SERVER_PORT'     => '443',
+            'SERVER_NAME'     => 'service.example.com',
+        );
+        $keyDB = array('service_api_key' => 'service_secret');
+        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+    }
+
     private function strtotime($dateString)
     {
         return EscherUtils::parseLongDate($dateString)->format('U');

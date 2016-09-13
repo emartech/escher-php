@@ -690,16 +690,10 @@ class EscherAuthElements
      */
     private function stripAuthParams(EscherRequestHelper $helper, $vendorKey)
     {
-        $parts = parse_url($helper->getCurrentUrl());
-        parse_str(isset($parts['query']) ? $parts['query'] : '', $params);
+        $url = $helper->getCurrentUrl();
+        $signaturePattern = "/(?P<prefix>[?&])X-${vendorKey}-Signature=[a-fA-F0-9]{64}(?P<suffix>&?)/";
 
-        $query = array();
-        foreach ($params as $key => $value) {
-            if ($key !== 'X-' . $vendorKey . '-Signature') {
-                $query[$key] = $value;
-            }
-        }
-        return "{$parts['scheme']}://{$parts['host']}{$parts['path']}" . (empty($query) ? '' : '?' . http_build_query($query, '', '&'));
+        return preg_replace_callback($signaturePattern, array($this, 'handleStripAuthParamMatches'), $url);
     }
 
     private function getExpires()
@@ -721,6 +715,12 @@ class EscherAuthElements
     public function getDateTime()
     {
         return $this->dateTime;
+    }
+
+    private function handleStripAuthParamMatches($matches) {
+        return (!empty($matches['suffix']) || $matches['prefix'] === '?')
+            ? $matches['prefix']
+            : $matches['suffix'];
     }
 }
 
