@@ -48,5 +48,8 @@
         "rest",
         "authentication",
         "api"
-    ]
+    ],
+    "scripts": {
+        "test": "vendor/bin/phpunit -c test/phpunit.xml test"
+    }
 }
