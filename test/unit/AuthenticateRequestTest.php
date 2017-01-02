@@ -161,7 +161,7 @@ class AuthenticateRequestTest extends TestBase
             'REQUEST_METHOD'  => 'GET',
             'HTTP_HOST'       => 'example.com',
             'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
-            'REQUEST_URI'     => '/something?foo=bar&baz=barbaz&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=th3K3y%2F20110511%2Fus-east-1%2Fhost%2Faws4_request&X-EMS-Date=20110511T120000Z&X-EMS-Expires=INFINITY&X-EMS-SignedHeaders=host&X-EMS-Signature=fbc9dbb91670e84d04ad2ae7505f4f52ab3ff9e192b8233feeae57e9022c2b67',
+            'REQUEST_URI'     => '/something?foo=bar&baz=barbaz&X-EMS-Algorithm=EMS-HMAC-SHA256&X-EMS-Credentials=th3K3y%2F20110511%2Fus-east-1%2Fhost%2Faws4_request&X-EMS-Date=20110511T120000Z&X-EMS-Expires='.PHP_INT_MAX.'&X-EMS-SignedHeaders=host&X-EMS-Signature=fbc9dbb91670e84d04ad2ae7505f4f52ab3ff9e192b8233feeae57e9022c2b67',
             'HTTPS'           => '',
             'SERVER_PORT'     => '80',
             'SERVER_NAME'     => 'example.com',
