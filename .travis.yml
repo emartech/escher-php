@@ -8,4 +8,4 @@ php:
   - hhvm
 
 before_script: composer install
-script: phpunit -c test/phpunit.xml test/
+script: composer test
