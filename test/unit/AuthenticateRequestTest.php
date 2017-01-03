@@ -1,5 +1,9 @@
 <?php
 
+use Escher\EscherException;
+use Escher\EscherUtils;
+
+
 class AuthenticateRequestTest extends TestBase
 {
     /**
@@ -146,12 +150,12 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     /**
      * @test
-     * @expectedException EscherException
+     * @expectedException Escher\EscherException
      * @expectedExceptionMessage The signatures do not match
      */
     public function itShouldFailToValidateInvalidQueryStrings()
@@ -187,7 +191,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     /**
@@ -206,7 +210,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     /**
@@ -225,7 +229,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     /**
@@ -244,7 +248,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new DateTime('20150310T173248Z', new DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
     }
 
     private function strtotime($dateString)

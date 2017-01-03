@@ -1,5 +1,10 @@
 <?php
 
+use Escher\EscherSigner;
+use Escher\EscherAuthElements;
+use Escher\EscherRequestCanonicalizer;
+
+
 class SigningProcessTest extends PHPUnit_Framework_TestCase
 {
     private $amazonFixtures = array(

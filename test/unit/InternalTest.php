@@ -1,5 +1,10 @@
 <?php
 
+use Escher\EscherAuthElements;
+use Escher\EscherRequestHelper;
+use Escher\EscherSigner;
+
+
 class InternalTest extends TestBase
 {
     /**
