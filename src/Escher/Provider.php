@@ -18,7 +18,10 @@ class Provider
         $this->keyDB = $keyDB;
     }
 
-    public function createEscher() : Escher
+    /**
+     * @return Escher
+     */
+    public function createEscher()
     {
         return Escher::create($this->credentialScope)
             ->setAlgoPrefix('EMS')
@@ -27,12 +30,20 @@ class Provider
             ->setDateHeaderKey('X-Ems-Date');
     }
 
-    public function getEscherKey() : string
+
+    /**
+     * @return string
+     */
+    public function getEscherKey()
     {
         return $this->escherKey;
     }
 
-    public function getEscherSecret() : string
+
+    /**
+     * @return string
+     */
+    public function getEscherSecret()
     {
         return $this->escherSecret;
     }
