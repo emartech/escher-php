@@ -3,7 +3,7 @@
 namespace Escher;
 
 
-class EscherAuthElements
+class AuthElements
 {
     private $elementParts;
     private $accessKeyId;
@@ -29,37 +29,37 @@ class EscherAuthElements
      * @param $authHeaderKey
      * @param $dateHeaderKey
      * @param $algoPrefix
-     * @return EscherAuthElements
-     * @throws EscherException
+     * @return AuthElements
+     * @throws Exception
      */
     public static function parseFromHeaders(array $headerList, $authHeaderKey, $dateHeaderKey, $algoPrefix)
     {
-        $headerList = EscherUtils::keysToLower($headerList);
+        $headerList = Utils::keysToLower($headerList);
         $elementParts = self::parseAuthHeader($headerList[strtolower($authHeaderKey)], $algoPrefix);
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
         $host = self::checkHost($headerList);
 
         if (!isset($headerList[strtolower($dateHeaderKey)])) {
-            throw new EscherException('The '.strtolower($dateHeaderKey).' header is missing');
+            throw new Exception('The '.strtolower($dateHeaderKey).' header is missing');
         }
 
         if (strtolower($dateHeaderKey) !== 'date') {
-            $dateTime = EscherUtils::parseLongDate($headerList[strtolower($dateHeaderKey)]);
+            $dateTime = Utils::parseLongDate($headerList[strtolower($dateHeaderKey)]);
         } else {
             try {
                 $dateTime = new \DateTime($headerList[strtolower($dateHeaderKey)], new \DateTimeZone('GMT'));
             } catch (Exception $ex) {
-                throw new EscherException('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT');
+                throw new Exception('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT');
             }
         }
-        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
+        return new AuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
     }
 
     /**
      * @param $headerContent
      * @param $algoPrefix
      * @return array
-     * @throws EscherException
+     * @throws Exception
      */
     public static function parseAuthHeader($headerContent, $algoPrefix)
     {
@@ -69,7 +69,7 @@ class EscherAuthElements
                                      'Signature=([0-9a-f]+)$/';
 
         if (!preg_match($pattern, $headerContent, $matches)) {
-            throw new EscherException('Auth header format is invalid');
+            throw new Exception('Auth header format is invalid');
         }
         return array(
             'Algorithm'     => $matches[1],
@@ -87,7 +87,7 @@ class EscherAuthElements
         $pattern = '/^' . $algoPrefix . '-HMAC-([A-Z0-9\,]+)$/';
         if (!preg_match($pattern, $queryParams[$paramKey], $matches))
         {
-            throw new EscherException('invalid ' . $paramKey . ' query key format');
+            throw new Exception('invalid ' . $paramKey . ' query key format');
         }
         $elementParts['Algorithm'] = $matches[1];
 
@@ -96,8 +96,8 @@ class EscherAuthElements
             $elementParts[$paramId] = $queryParams[$paramKey];
         }
         list($accessKeyId, $shortDate, $credentialScope) = explode('/', $elementParts['Credentials'], 3);
-        $dateTime = EscherUtils::parseLongDate($elementParts['Date']);
-        return new EscherAuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, self::checkHost($headerList), false);
+        $dateTime = Utils::parseLongDate($elementParts['Date']);
+        return new AuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, self::checkHost($headerList), false);
     }
 
     private static function basicQueryParamKeys()
@@ -116,13 +116,13 @@ class EscherAuthElements
      * @param $vendorKey
      * @param $paramId
      * @return string
-     * @throws EscherException
+     * @throws Exception
      */
     private static function checkParam($queryParams, $vendorKey, $paramId)
     {
         $paramKey = 'X-' . $vendorKey . '-' . $paramId;
         if (!isset($queryParams[$paramKey])) {
-            throw new EscherException('Query key: ' . $paramKey . ' is missing');
+            throw new Exception('Query key: ' . $paramKey . ' is missing');
         }
         return $paramKey;
     }
@@ -130,27 +130,27 @@ class EscherAuthElements
     private static function checkHost($headerList)
     {
         if (!isset($headerList['host'])) {
-            throw new EscherException('The host header is missing');
+            throw new Exception('The host header is missing');
         }
         return $headerList['host'];
     }
 
-    public function validateDates(EscherRequestHelper $helper, $clockSkew)
+    public function validateDates(RequestHelper $helper, $clockSkew)
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate !== $this->getShortDate()) {
-            throw new EscherException('Date in the authorization header is invalid. It must be the same as the date header');
+            throw new Exception('Date in the authorization header is invalid. It must be the same as the date header');
         }
 
-        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), EscherUtils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
-            throw new EscherException('The request date is not within the accepted time range');
+        if (!$this->isInAcceptableInterval($helper->getTimeStamp(), Utils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
+            throw new Exception('The request date is not within the accepted time range');
         }
     }
 
     public function validateCredentials($credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new EscherException('Credential scope is invalid');
+            throw new Exception('Credential scope is invalid');
         }
     }
 
@@ -159,7 +159,7 @@ class EscherAuthElements
         return $this->credentialScope === $credentialScope;
     }
 
-    public function validateSignature(EscherRequestHelper $helper, Escher $escher, $keyDB, $vendorKey)
+    public function validateSignature(RequestHelper $helper, Escher $escher, $keyDB, $vendorKey)
     {
         $secret = $this->lookupSecretKey($this->accessKeyId, $keyDB);
 
@@ -176,14 +176,14 @@ class EscherAuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new EscherException("The signatures do not match");
+            throw new Exception("The signatures do not match");
         }
     }
 
     private function lookupSecretKey($accessKeyId, $keyDB)
     {
         if (!isset($keyDB[$accessKeyId])) {
-            throw new EscherException('Invalid Escher key');
+            throw new Exception('Invalid Escher key');
         }
         return $keyDB[$accessKeyId];
     }
@@ -192,22 +192,22 @@ class EscherAuthElements
     {
         if(!in_array(strtoupper($this->getAlgorithm()), array('SHA256','SHA512')))
         {
-            throw new EscherException('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed');
+            throw new Exception('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed');
         }
     }
 
     /**
      * @param string $dateHeaderKey
-     * @throws EscherException
+     * @throws Exception
      */
     public function validateMandatorySignedHeaders($dateHeaderKey)
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
-            throw new EscherException('The host header is not signed');
+            throw new Exception('The host header is not signed');
         }
         if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
-            throw new EscherException('The ' . strtolower($dateHeaderKey) . ' header is not signed');
+            throw new Exception('The ' . strtolower($dateHeaderKey) . ' header is not signed');
         }
     }
 
@@ -242,11 +242,11 @@ class EscherAuthElements
     }
 
     /**
-     * @param EscherRequestHelper $helper
+     * @param RequestHelper $helper
      * @param $vendorKey
      * @return string
      */
-    private function stripAuthParams(EscherRequestHelper $helper, $vendorKey)
+    private function stripAuthParams(RequestHelper $helper, $vendorKey)
     {
         $url = $helper->getCurrentUrl();
         $signaturePattern = "/(?P<prefix>[?&])X-${vendorKey}-Signature=[a-fA-F0-9]{64}(?P<suffix>&?)/";

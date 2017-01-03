@@ -1,7 +1,7 @@
 <?php
 
-use Escher\EscherException;
-use Escher\EscherUtils;
+use Escher\Exception;
+use Escher\Utils;
 
 
 class AuthenticateRequestTest extends TestBase
@@ -95,7 +95,7 @@ class AuthenticateRequestTest extends TestBase
             $this->createEscher('us-east-1/iam/aws4_request')
                 ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
             $this->fail('Should fail to validate!');
-        } catch (EscherException $ex) {
+        } catch (Exception $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
         }
     }
@@ -155,7 +155,7 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
-     * @expectedException Escher\EscherException
+     * @expectedException Escher\Exception
      * @expectedExceptionMessage The signatures do not match
      */
     public function itShouldFailToValidateInvalidQueryStrings()
@@ -253,7 +253,7 @@ class AuthenticateRequestTest extends TestBase
 
     private function strtotime($dateString)
     {
-        return EscherUtils::parseLongDate($dateString)->format('U');
+        return Utils::parseLongDate($dateString)->format('U');
     }
 }
  

@@ -1,8 +1,8 @@
 <?php
 
-use Escher\EscherSigner;
-use Escher\EscherAuthElements;
-use Escher\EscherRequestCanonicalizer;
+use Escher\Signer;
+use Escher\AuthElements;
+use Escher\RequestCanonicalizer;
 
 
 class SigningProcessTest extends PHPUnit_Framework_TestCase
@@ -73,7 +73,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
     public function itShouldCreateStringToSign($canonicalRequestString, $expectedStringToSign)
     {
         $credentialScope = 'us-east-1/host/aws4_request';
-        $actualStringToSign = EscherSigner::createStringToSign(
+        $actualStringToSign = Signer::createStringToSign(
             $credentialScope,
             $canonicalRequestString,
             new DateTime("09 Sep 2011 23:36:00", new DateTimeZone('GMT')),
@@ -94,13 +94,13 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
      */
     public function itShouldBuildAuthHeader($stringToSign, $expectedAuthHeaders)
     {
-        $matches = EscherAuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
+        $matches = AuthElements::parseAuthHeader($expectedAuthHeaders, 'AWS4');
 
         list($accessKey, $credentialScope) = explode("/", $matches['Credentials'], 2);
 
         $signingKey = $this->hex2bin("e220a8ee99f059729066fd06efe5c0f949d6aa8973360d189dd0e0eddd7a9596");
-        $actualAuthHeader = EscherSigner::createAuthHeader(
-            EscherSigner::createSignature($stringToSign, $signingKey, $matches['Algorithm']),
+        $actualAuthHeader = Signer::createAuthHeader(
+            Signer::createSignature($stringToSign, $signingKey, $matches['Algorithm']),
             $credentialScope,
             $matches['SignedHeaders'],
             $matches['Algorithm'],
@@ -129,7 +129,7 @@ class SigningProcessTest extends PHPUnit_Framework_TestCase
                 $headersToSign[]= $headerKey;
             }
         }
-        $canonicalizedRequest = EscherRequestCanonicalizer::canonicalize(
+        $canonicalizedRequest = RequestCanonicalizer::canonicalize(
             $method,
             $requestUri,
             $body,
