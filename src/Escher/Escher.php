@@ -42,7 +42,7 @@ class Escher
      */
     private static function now()
     {
-        return new \DateTime('now', new DateTimeZone('GMT'));
+        return new \DateTime('now', new \DateTimeZone('GMT'));
     }
 
     public function authenticate($keyDB, array $serverVars = null, $requestBody = null)
