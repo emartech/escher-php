@@ -52,7 +52,7 @@ class Escher
 
         $algoPrefix = $this->algoPrefix;
         $vendorKey = $this->vendorKey;
-        $helper = new EscherRequestHelper($serverVars, $requestBody, $this->authHeaderKey, $this->dateHeaderKey);
+        $helper = new RequestHelper($serverVars, $requestBody, $this->authHeaderKey, $this->dateHeaderKey);
         $authElements = $helper->getAuthElements($this->vendorKey, $algoPrefix);
 
         $authElements->validateMandatorySignedHeaders($this->dateHeaderKey);
@@ -174,7 +174,7 @@ class Escher
 
     private function generateAuthHeader($secretKey, $accessKeyId, $authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
-        $authHeaderValue = EscherSigner::createAuthHeader(
+        $authHeaderValue = Signer::createAuthHeader(
             $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
@@ -195,7 +195,7 @@ class Escher
         foreach ($headerList as $headerKey => $headerValue) {
             $rawHeaderLines []= $headerKey . ':' . $headerValue;
         }
-        $canonicalizedRequest = EscherRequestCanonicalizer::canonicalize(
+        $canonicalizedRequest = RequestCanonicalizer::canonicalize(
             $method,
             $requestUri,
             $requestBody,
@@ -204,7 +204,7 @@ class Escher
             $hashAlgo
         );
 
-        $stringToSign = EscherSigner::createStringToSign(
+        $stringToSign = Signer::createStringToSign(
             $this->credentialScope,
             $canonicalizedRequest,
             $date,
@@ -212,14 +212,14 @@ class Escher
             $algoPrefix
         );
 
-        $signerKey = EscherSigner::calculateSigningKey(
+        $signerKey = Signer::calculateSigningKey(
             $secretKey,
             $this->fullCredentialScope($date),
             $hashAlgo,
             $algoPrefix
         );
 
-        $signature = EscherSigner::createSignature(
+        $signature = Signer::createSignature(
             $stringToSign,
             $signerKey,
             $hashAlgo
@@ -238,7 +238,7 @@ class Escher
     private function addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host)
     {
         $mandatoryHeaders = array(strtolower($dateHeaderKey) => $this->toLongDate($date), 'host' => $host);
-        $headerList = EscherUtils::keysToLower($headerList) + $mandatoryHeaders;
+        $headerList = Utils::keysToLower($headerList) + $mandatoryHeaders;
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array_keys($mandatoryHeaders)));
         sort($headersToSign);
         return array($headerList, $headersToSign);

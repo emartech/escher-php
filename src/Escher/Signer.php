@@ -3,7 +3,7 @@
 namespace Escher;
 
 
-class EscherSigner
+class Signer
 {
     public static function createStringToSign($credentialScope, $canonicalRequestString, \DateTime $date, $hashAlgo, $algoPrefix)
     {

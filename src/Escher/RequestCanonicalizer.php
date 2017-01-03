@@ -3,7 +3,7 @@
 namespace Escher;
 
 
-class EscherRequestCanonicalizer
+class RequestCanonicalizer
 {
     public static function canonicalize($method, $requestUri, $payload, $rawHeaders, array $headersToSign, $hashAlgo)
     {

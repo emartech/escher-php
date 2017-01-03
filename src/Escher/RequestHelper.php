@@ -3,7 +3,7 @@
 namespace Escher;
 
 
-class EscherRequestHelper
+class RequestHelper
 {
     private $serverVars;
     private $requestBody;
@@ -30,14 +30,14 @@ class EscherRequestHelper
 
     public function getAuthElements($vendorKey, $algoPrefix)
     {
-        $headerList = EscherUtils::keysToLower($this->getHeaderList());
+        $headerList = Utils::keysToLower($this->getHeaderList());
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
-            return EscherAuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
+            return AuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
         } else if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
-            return EscherAuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
+            return AuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
-        throw new EscherException('Escher authentication is missing');
+        throw new Exception('Escher authentication is missing');
     }
 
     public function getTimeStamp()

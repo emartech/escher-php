@@ -1,8 +1,8 @@
 <?php
 
-use Escher\EscherAuthElements;
-use Escher\EscherRequestHelper;
-use Escher\EscherSigner;
+use Escher\AuthElements;
+use Escher\RequestHelper;
+use Escher\Signer;
 
 
 class InternalTest extends TestBase
@@ -12,7 +12,7 @@ class InternalTest extends TestBase
      */
     public function itShouldCalculateSigningKey()
     {
-        $actualSigningKey = EscherSigner::calculateSigningKey(
+        $actualSigningKey = Signer::calculateSigningKey(
             "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
             "20110909/us-east-1/iam/aws4_request",
             'sha256',
@@ -38,7 +38,7 @@ class InternalTest extends TestBase
             'REQUEST_URI' => '/path?query=string'
         );
         $requestBody = 'BODY';
-        $helper = new EscherRequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
+        $helper = new RequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
         $this->assertEquals($requestBody, $helper->getRequestBody());
         $expectedHeaders = array(
             'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
@@ -58,7 +58,7 @@ class InternalTest extends TestBase
             $dateHeaderName => '20110909T233600Z',
             $authHeaderName => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
         );
-        $authHeader = EscherAuthElements::parseFromHeaders($headerList, $authHeaderName, $dateHeaderName, 'EMS');
+        $authHeader = AuthElements::parseFromHeaders($headerList, $authHeaderName, $dateHeaderName, 'EMS');
 
         $this->assertEquals(new DateTime('20110909T233600Z', new DateTimeZone('GMT')), $authHeader->getDateTime());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());

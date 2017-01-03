@@ -3,7 +3,7 @@
 namespace Escher;
 
 
-class EscherProvider
+class Provider
 {
     private $credentialScope;
     private $escherKey;
