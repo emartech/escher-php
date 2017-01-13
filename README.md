@@ -58,14 +58,14 @@ Escher accepts any kind of object as a key database that implements the ArrayAcc
 Exceptions
 -------------
 
-| Code pattern | Exception type                   |
-|--------------|----------------------------------|
-| 1xxx         | Missing exceptions               |
-| 2xxx         | Invalid format exceptions        |
-| 3xxx         | Argument invalid exceptions      |
-| 4xxx         | The {PARAM} header is not signed |
-| 5xxx         | Not signed exceptions            |
-| 6xxx         | Signature exceptions             |
+| Code pattern | Exception type              |
+|--------------|-----------------------------|
+| 1xxx         | Missing exceptions          |
+| 2xxx         | Invalid format exceptions   |
+| 3xxx         | Argument invalid exceptions |
+| 4xxx         | Not signed exceptions       |
+| 5xxx         | Expired exception           |
+| 6xxx         | Signature exceptions        |
 
 | Code | Message                                                                             |
 |------|-------------------------------------------------------------------------------------|
