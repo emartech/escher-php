@@ -40,7 +40,7 @@ class AuthElements
         $host = self::checkHost($headerList);
 
         if (!isset($headerList[strtolower($dateHeaderKey)])) {
-            throw new Exception('The '.strtolower($dateHeaderKey).' header is missing');
+            throw new Exception('The '.strtolower($dateHeaderKey).' header is missing', Exception::CODE_MISSING_HEADER_PARAM);
         }
 
         if (strtolower($dateHeaderKey) !== 'date') {
@@ -49,7 +49,7 @@ class AuthElements
             try {
                 $dateTime = new \DateTime($headerList[strtolower($dateHeaderKey)], new \DateTimeZone('GMT'));
             } catch (Exception $ex) {
-                throw new Exception('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT');
+                throw new Exception('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT', Exception::CODE_FORMAT_INVALID_DATE_HEADER_GMT);
             }
         }
         return new AuthElements($elementParts, $accessKeyId, $shortDate, $credentialScope, $dateTime, $host, true);
@@ -69,7 +69,7 @@ class AuthElements
                                      'Signature=([0-9a-f]+)$/';
 
         if (!preg_match($pattern, $headerContent, $matches)) {
-            throw new Exception('Auth header format is invalid');
+            throw new Exception('Auth header format is invalid', Exception::CODE_FORMAT_INVALID_AUTH_HEADER);
         }
         return array(
             'Algorithm'     => $matches[1],
@@ -87,7 +87,7 @@ class AuthElements
         $pattern = '/^' . $algoPrefix . '-HMAC-([A-Z0-9\,]+)$/';
         if (!preg_match($pattern, $queryParams[$paramKey], $matches))
         {
-            throw new Exception('invalid ' . $paramKey . ' query key format');
+            throw new Exception('Invalid ' . $paramKey . ' query key format', Exception::CODE_FORMAT_INVALID_QUERY_KEY);
         }
         $elementParts['Algorithm'] = $matches[1];
 
@@ -122,7 +122,7 @@ class AuthElements
     {
         $paramKey = 'X-' . $vendorKey . '-' . $paramId;
         if (!isset($queryParams[$paramKey])) {
-            throw new Exception('Query key: ' . $paramKey . ' is missing');
+            throw new Exception('Query key: ' . $paramKey . ' is missing', Exception::CODE_MISSING_QUERY_KEY_PARAM);
         }
         return $paramKey;
     }
@@ -130,7 +130,7 @@ class AuthElements
     private static function checkHost($headerList)
     {
         if (!isset($headerList['host'])) {
-            throw new Exception('The host header is missing');
+            throw new Exception('The host header is missing', Exception::CODE_MISSING_HOST_HEADER);
         }
         return $headerList['host'];
     }
@@ -139,18 +139,18 @@ class AuthElements
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate !== $this->getShortDate()) {
-            throw new Exception('Date in the authorization header is invalid. It must be the same as the date header');
+            throw new Exception('Date in the authorization header is invalid. It must be the same as the date header', Exception::CODE_ARGUMENT_INVALID_DATE);
         }
 
         if (!$this->isInAcceptableInterval($helper->getTimeStamp(), Utils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
-            throw new Exception('The request date is not within the accepted time range');
+            throw new Exception('The request date is not within the accepted time range', Exception::CODE_EXPIRED_TIME_RANGE);
         }
     }
 
     public function validateCredentials($credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new Exception('Credential scope is invalid');
+            throw new Exception('Credential scope is invalid', Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
         }
     }
 
@@ -176,14 +176,14 @@ class AuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new Exception("The signatures do not match");
+            throw new Exception("The signatures do not match", Exception::CODE_SIGNATURE_NOT_MATCH);
         }
     }
 
     private function lookupSecretKey($accessKeyId, $keyDB)
     {
         if (!isset($keyDB[$accessKeyId])) {
-            throw new Exception('Invalid Escher key');
+            throw new Exception('Invalid Escher key', Exception::CODE_ARGUMENT_INVALID_ESCHER_KEY);
         }
         return $keyDB[$accessKeyId];
     }
@@ -192,7 +192,7 @@ class AuthElements
     {
         if(!in_array(strtoupper($this->getAlgorithm()), array('SHA256','SHA512')))
         {
-            throw new Exception('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed');
+            throw new Exception('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed', Exception::CODE_ARGUMENT_INVALID_HASH);
         }
     }
 
@@ -204,10 +204,10 @@ class AuthElements
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
-            throw new Exception('The host header is not signed');
+            throw new Exception('The host header is not signed', Exception::CODE_NOT_SIGNED_HOST_HEADER);
         }
         if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
-            throw new Exception('The ' . strtolower($dateHeaderKey) . ' header is not signed');
+            throw new Exception('The ' . strtolower($dateHeaderKey) . ' header is not signed', Exception::CODE_NOT_SIGNED_HEADER_PARAM);
         }
     }
 

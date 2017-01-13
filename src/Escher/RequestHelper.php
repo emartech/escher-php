@@ -37,7 +37,7 @@ class RequestHelper
         } else if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
             return AuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
-        throw new Exception('Escher authentication is missing');
+        throw new Exception('Escher authentication is missing', Exception::CODE_MISSING_AUTH);
     }
 
     public function getTimeStamp()

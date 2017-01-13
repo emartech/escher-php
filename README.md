@@ -55,6 +55,27 @@ Escher accepts any kind of object as a key database that implements the ArrayAcc
         echo 'The validation failed! ' . $ex->getMessage();
     }
 
+Exceptions
+-------------
+| Type                              | Code | Message                                                                             |
+|-----------------------------------|------|-------------------------------------------------------------------------------------|
+| 1xxx: Missing exceptions          | 1001 | Escher authentication is missing                                                    |
+| 1xxx: Missing exceptions          | 1100 | The {PARAM} header is missing                                                       |
+| 1xxx: Missing exceptions          | 1101 | Query key: {PARAM} is missing                                                       |
+| 1xxx: Missing exceptions          | 1102 | The host header is missing                                                          |
+| 2xxx: Invalid format exceptions   | 2001 | Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT        |
+| 2xxx: Invalid format exceptions   | 2002 | Auth header format is invalid                                                       |
+| 2xxx: Invalid format exceptions   | 2003 | Invalid {PARAM} query key format                                                    |
+| 2xxx: Invalid format exceptions   | 2004 | Date header is invalid, the expected format is 20151104T092022Z                     |
+| 3xxx: Argument invalid exceptions | 3001 | Invalid Escher key                                                                  |
+| 3xxx: Argument invalid exceptions | 3002 | Hash algorithm is invalid. Only SHA256 and SHA512 are allowed                       |
+| 3xxx: Argument invalid exceptions | 3003 | Credential scope is invalid                                                         |
+| 3xxx: Argument invalid exceptions | 3004 | Date in the authorization header is invalid. It must be the same as the date header |
+| 4xxx: Not signed exceptions       | 4001 | The host header is not signed                                                       |
+| 4xxx: Not signed exceptions       | 4002 | The {PARAM} header is not signed                                                    |
+| 5xxx: Expired exception           | 5001 | The request date is not within the accepted time range                              |
+| 6xxx: Signature exceptions        | 5002 | The signatures do not match                                                         |
+
 Configuration
 -------------
 

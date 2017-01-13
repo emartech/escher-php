@@ -71,7 +71,7 @@ class AuthenticateRequestTest extends TestBase
      * @test
      * @dataProvider requestTamperingProvider
      */
-    public function itShouldFailToValidateInvalidRequests($tamperedKey, $tamperedValue, $expectedErrorMessage)
+    public function itShouldFailToValidateInvalidRequests($tamperedKey, $tamperedValue, $expectedErrorMessage, $expectedErrorCode)
     {
         $serverVars = array(
             'HTTP_X_EMS_DATE' => '20110909T233600Z',
@@ -97,21 +97,22 @@ class AuthenticateRequestTest extends TestBase
             $this->fail('Should fail to validate!');
         } catch (Exception $ex) {
             $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
+            $this->assertEquals($expectedErrorCode, $ex->getCode());
         }
     }
 
     public function requestTamperingProvider()
     {
         return array(
-            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Date header is invalid, the expected format is 20151104T092022Z'),
-            'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'The request date is not within the accepted time range'),
-            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Auth header format is invalid'),
-            'tampered signature'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match'),
-            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Hash algorithm is invalid. Only SHA256 and SHA512 are allowed'),
-            'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The host header is not signed'),
-            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The x-ems-date header is not signed'),
-            'invalid credential'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Credential scope is invalid'),
-            'invalid Escher key'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=FOOBAR/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid Escher key'),
+            'wrong auth header'     => array('HTTP_X_EMS_AUTH', 'Malformed auth header', 'Auth header format is invalid', 2002),
+            'wrong date'            => array('HTTP_X_EMS_DATE', 'INVALIDDATE', 'Date header is invalid, the expected format is 20151104T092022Z', 2004),
+            'invalid Escher key'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=FOOBAR/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Invalid Escher key', 3001),
+            'wrong hash algo'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Hash algorithm is invalid. Only SHA256 and SHA512 are allowed', 3002),
+            'invalid credential'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'Credential scope is invalid', 3003),
+            'host not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The host header is not signed', 4001),
+            'date not signed'       => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA123 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', 'The x-ems-date header is not signed', 4002),
+            'wrong request time'    => array('REQUEST_TIME',    '20110909T113600Z', 'The request date is not within the accepted time range', 5001),
+            'tampered signature'    => array('HTTP_X_EMS_AUTH', 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match', 6001),
         );
     }
 
@@ -157,6 +158,7 @@ class AuthenticateRequestTest extends TestBase
      * @test
      * @expectedException Escher\Exception
      * @expectedExceptionMessage The signatures do not match
+     * @expectedExceptionCode 6001
      */
     public function itShouldFailToValidateInvalidQueryStrings()
     {
