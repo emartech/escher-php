@@ -74,7 +74,7 @@ Exceptions
 | 4xxx: Not signed exceptions       | 4001 | The host header is not signed                                                       |
 | 4xxx: Not signed exceptions       | 4002 | The {PARAM} header is not signed                                                    |
 | 5xxx: Expired exception           | 5001 | The request date is not within the accepted time range                              |
-| 6xxx: Signature exceptions        | 5002 | The signatures do not match                                                         |
+| 6xxx: Signature exceptions        | 6001 | The signatures do not match                                                         |
 
 Configuration
 -------------
