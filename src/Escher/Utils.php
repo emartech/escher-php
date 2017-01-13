@@ -8,7 +8,7 @@ class Utils
     public static function parseLongDate($dateString)
     {
         if (!preg_match('/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/', $dateString)) {
-            throw new Exception('Date header is invalid, the expected format is 20151104T092022Z');
+            throw new Exception('Date header is invalid, the expected format is 20151104T092022Z', Exception::CODE_FORMAT_INVALID_DATE_HEADER);
         }
         if (!self::advancedDateTimeFunctionsAvailable()) {
             return new \DateTime($dateString, new \DateTimeZone('GMT'));
