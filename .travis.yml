@@ -5,19 +5,12 @@ php:
   - 5.5
   - 5.6
   - 7.0
-  - hhvm
 
 env:
 matrix:
-  include:
+  exclude:
   - php: 5.3
-    dist: precise
-  - php: 5.4
-  - php: 5.5
-  - php: 5.6
-  - php: 7.0
-  - php: hhvm
-    dist: precise
+    dist: trusty
 
 before_script: composer install
 script: composer test
