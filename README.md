@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/emartech/escher-php.svg?branch=master)](https://travis-ci.org/emartech/escher-php)
-
 EscherPHP - HTTP request signing lib [![Build Status](https://travis-ci.org/emartech/escher-php.svg?branch=master)](https://travis-ci.org/emartech/escher-php)
 ===================================
 
