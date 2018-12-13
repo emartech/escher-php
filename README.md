@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/emartech/escher-php.svg?branch=master)](https://travis-ci.org/emartech/escher-php)
+
 EscherPHP - HTTP request signing lib [![Build Status](https://travis-ci.org/emartech/escher-php.svg?branch=master)](https://travis-ci.org/emartech/escher-php)
 ===================================
 
@@ -15,19 +17,26 @@ Escher works by calculating a cryptographic signature of your request, and addin
 Usually you will want to add the authentication information to the request by appending extra headers to it.
 Let's say you want to send a signed POST request to http://example.com/ using the Guzzle\Http library:
 
-    $method = 'POST';
-    $url = 'http://example.com';
-    $requestBody = '{ "this_is": "a_request_body" }';
-    $yourHeaders = array('Content-Type' => 'application/json');
+```php
+<?php
 
-    $headersWithAuthInfo = Escher::create('example/credential/scope')
-        ->signRequest('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', $method, $url, $requestBody, $yourHeaders);
+use Escher\Escher;
 
-    $client = new GuzzleHttp\Client();
-    $response = $client->post($url, array(
-        'body' => $requestBody,
-        'headers' => $headersWithAuthInfo
-    ));
+$method = 'POST';
+$url = 'http://example.com';
+$requestBody = '{ "this_is": "a_request_body" }';
+$yourHeaders = array('Content-Type' => 'application/json');
+
+$headersWithAuthInfo = Escher::create('example/credential/scope')
+    ->signRequest('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', $method, $url, $requestBody, $yourHeaders);
+
+$client = new \GuzzleHttp\Client();
+$response = $client->post($url, array(
+    'body' => $requestBody,
+    'headers' => $headersWithAuthInfo
+));
+
+```
 
 Presigning an URL
 -----------------
@@ -35,9 +44,15 @@ Presigning an URL
 In some cases you may want to send authenticated requests from a context where you cannot modify the request headers, e.g. when embedding an API generated iframe.
 You can however generate a presigned URL, where the authentication information is added to the query string.
 
-    $presignedUrl = Escher::create('example/credential/scope')
-        ->presignUrl('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', 'http://example.com');
+```php
+<?php
 
+use Escher\Escher;
+
+$presignedUrl = Escher::create('example/credential/scope')
+    ->presignUrl('YOUR_ACCESS_KEY_ID', 'YOUR SECRET', 'http://example.com');
+
+```
 
 Validating a request
 --------------------
@@ -45,15 +60,23 @@ Validating a request
 You can validate a request signed by the methods described above. For that you will need a database of the access keys and secrets of your clients.
 Escher accepts any kind of object as a key database that implements the ArrayAccess interface. (It also accepts plain arrays, however it is not recommended to use a php array for a database of API secrets - it's just there to ease testing)
 
-    try {
-        $keyDB = new ArrayObject(array(
-            'ACCESS_KEY_OF_CLIENT_1'  => 'SECRET OF CLIENT 1',
-            'ACCESS_KEY_OF_CLIENT_42' => 'SECRET OF CLIENT 42',
-        ));
-        Escher::create('example/credential/scope')->authenticate($keyDB);
-    } catch (EscherException $ex) {
-        echo 'The validation failed! ' . $ex->getMessage();
-    }
+```php
+<?php
+
+use Escher\Escher;
+use Escher\Exception;
+
+try {
+    $keyDB = new \ArrayObject(array(
+        'ACCESS_KEY_OF_CLIENT_1'  => 'SECRET OF CLIENT 1',
+        'ACCESS_KEY_OF_CLIENT_42' => 'SECRET OF CLIENT 42',
+    ));
+    Escher::create('example/credential/scope')->authenticate($keyDB);
+} catch (Exception $ex) {
+    echo 'The validation failed! ' . $ex->getMessage();
+}
+
+```
 
 Exceptions
 -------------
