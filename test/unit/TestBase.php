@@ -13,16 +13,11 @@ abstract class TestBase extends PHPUnit_Framework_TestCase
 
     /**
      * @param string $credentialScope
-     * @param DateTime $date
      * @return Escher
      */
-    protected function createEscher($credentialScope = 'us-east-1/host/aws4_request', $date = null)
+    protected function createEscher($credentialScope = 'us-east-1/host/aws4_request')
     {
-        if (is_null($date))
-        {
-            $date = $this->getDate();
-        }
-        return Escher::create($credentialScope, $date)
+        return Escher::create($credentialScope)
             ->setAlgoPrefix('EMS')->setVendorKey('EMS')->setAuthHeaderKey('X-Ems-Auth')->setDateHeaderKey('X-Ems-Date');
     }
 

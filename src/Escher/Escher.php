@@ -18,7 +18,6 @@ class Escher
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;
-    private $date;
     private $clockSkew = self::DEFAULT_CLOCK_SKEW;
     private $hashAlgo = self::DEFAULT_HASH_ALGORITHM;
     private $algoPrefix = self::DEFAULT_ALGO_PREFIX;
@@ -26,15 +25,14 @@ class Escher
     private $authHeaderKey = self::DEFAULT_AUTH_HEADER_KEY;
     private $dateHeaderKey = self::DEFAULT_DATE_HEADER_KEY;
 
-    public function __construct($credentialScope, \DateTime $date)
+    public function __construct($credentialScope)
     {
         $this->credentialScope = $credentialScope;
-        $this->date = $date;
     }
 
-    public static function create($credentialScope, \DateTime $date = null)
+    public static function create($credentialScope)
     {
-        return new Escher($credentialScope, $date ? $date : self::now());
+        return new Escher($credentialScope);
     }
 
     /**
@@ -45,6 +43,13 @@ class Escher
         return new \DateTime('now', new \DateTimeZone('GMT'));
     }
 
+    /**
+     * @param $keyDB
+     * @param array|null $serverVars
+     * @param null $requestBody
+     * @return mixed
+     * @throws Exception
+     */
     public function authenticate($keyDB, array $serverVars = null, $requestBody = null)
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
@@ -63,15 +68,16 @@ class Escher
         return $authElements->getAccessKeyId();
     }
 
-    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES)
+    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, \DateTime $date = null)
     {
-        $url = $this->appendSigningParams($accessKeyId, $url, $this->date, $expires);
+        $date = $date ? $date : self::now();
+        $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
 
         list($host, $path, $query) = $this->parseUrl($url);
 
         $signature = $this->calculateSignature(
             $secretKey,
-            $this->date,
+            $date,
             'GET',
             $path,
             $query,
@@ -84,18 +90,19 @@ class Escher
         return $url;
     }
 
-    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array())
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), \DateTime $date = null)
     {
+        $date = $date ? $date : self::now();
         list($host, $path, $query) = $this->parseUrl($url);
         list($headerList, $headersToSign) = $this->addMandatoryHeaders(
-            $headerList, $headersToSign, $this->dateHeaderKey, $this->date, $host
+            $headerList, $headersToSign, $this->dateHeaderKey, $date, $host
         );
 
         return $headerList + $this->generateAuthHeader(
             $secretKey,
             $accessKeyId,
             $this->authHeaderKey,
-            $this->date,
+            $date,
             $method,
             $path,
             $query,

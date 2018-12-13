@@ -8,6 +8,7 @@ class AuthenticateRequestTest extends TestBase
 {
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldAuthenticateRequestUsingAuthHeader()
     {
@@ -32,6 +33,12 @@ class AuthenticateRequestTest extends TestBase
     /**
      * @test
      * @dataProvider validPortProvider
+     * @param $httpHost
+     * @param $serverName
+     * @param $serverPort
+     * @param $https
+     * @param $signature
+     * @throws Exception
      */
     public function itShouldAuthenticateRequestRegardlessDefaultPortProvidedOrNot($httpHost, $serverName, $serverPort, $https, $signature)
     {
@@ -70,6 +77,11 @@ class AuthenticateRequestTest extends TestBase
     /**
      * @test
      * @dataProvider requestTamperingProvider
+     * @param $tamperedKey
+     * @param $tamperedValue
+     * @param $expectedErrorMessage
+     * @param $expectedErrorCode
+     * @throws Exception
      */
     public function itShouldFailToValidateInvalidRequests($tamperedKey, $tamperedValue, $expectedErrorMessage, $expectedErrorCode)
     {
@@ -118,6 +130,7 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidateRequestUsingQueryString()
     {
@@ -137,6 +150,7 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidatePresignedUrlRequestWithSpecialCharacters()
     {
@@ -151,7 +165,7 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request')->authenticate($keyDB, $serverVars);
     }
 
     /**
@@ -179,6 +193,7 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidatePresignedUrlRequestWithUnindexedArray()
     {
@@ -193,11 +208,12 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request')->authenticate($keyDB, $serverVars);
     }
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidatePresignedUrlRequestWithIndexedArray()
     {
@@ -212,11 +228,12 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request')->authenticate($keyDB, $serverVars);
     }
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidatePresignedUrlIfSignatureIsTheFirstParam()
     {
@@ -231,11 +248,12 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request')->authenticate($keyDB, $serverVars);
     }
 
     /**
      * @test
+     * @throws Exception
      */
     public function itShouldValidatePresignedUrlIfSignatureIsInTheMiddleOfTheQueryString()
     {
@@ -250,9 +268,14 @@ class AuthenticateRequestTest extends TestBase
             'SERVER_NAME'     => 'service.example.com',
         );
         $keyDB = array('service_api_key' => 'service_secret');
-        $this->createEscher('eu/service/ems_request', new \DateTime('20150310T173248Z', new \DateTimeZone('GMT')))->authenticate($keyDB, $serverVars);
+        $this->createEscher('eu/service/ems_request')->authenticate($keyDB, $serverVars);
     }
 
+    /**
+     * @param $dateString
+     * @return string
+     * @throws Exception
+     */
     private function strtotime($dateString)
     {
         return Utils::parseLongDate($dateString)->format('U');

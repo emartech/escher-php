@@ -21,7 +21,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign =  array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -47,7 +47,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign =  array('content-type', 'host', 'x-ems-date', 'TEST');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -70,7 +70,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -88,7 +88,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', $url, 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', $url, 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEquals($expectedHost, $actualHeaders['host']);
     }
@@ -125,7 +125,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -151,7 +151,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -175,7 +175,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $this->createEscher('us-east-1/iam/aws4_request')->setAuthHeaderKey('Custom-Auth-Header')->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -200,7 +200,7 @@ class SignRequestUsingHeaderTest extends TestBase
         $headersToSign = array('content-type', 'host', 'x-ems-date');
         $actualHeaders = $escher->signRequest(
             'AKIDEXAMPLE', 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY',
-            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign
+            'POST', 'http://iam.amazonaws.com/', 'Action=ListUsers&Version=2010-05-08', $inputHeaders, $headersToSign, $this->getDate()
         );
         $this->assertEqualMaps($expectedHeaders, $actualHeaders);
     }
@@ -216,11 +216,11 @@ class SignRequestUsingHeaderTest extends TestBase
         );
 
         $date = new DateTime('2011/05/11 12:00:00', new DateTimeZone("UTC"));
-        $escher = $this->createEscher('us-east-1/host/aws4_request', $date);
+        $escher = $this->createEscher('us-east-1/host/aws4_request');
 
         $actualHeaders = $escher->signRequest(
             'th3K3y', 'very_secure',
-            'GET', 'http://example.com/something', '', $inputHeaders, array()
+            'GET', 'http://example.com/something', '', $inputHeaders, array(), $date
         );
 
         $expectedHeaders = array(
