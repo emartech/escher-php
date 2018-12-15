@@ -10,3 +10,7 @@ dist: precise
 
 before_script: composer install
 script: composer test
+deploy:
+  provider: script
+  script: curl -XPOST -f -H'content-type:application/json' "https://packagist.org/api/update-package?username=emartech&apiToken=${PACKAGIST_API_TOKEN}" -d"{\"repository\":{\"url\":\"${PACKAGIST_PACKAGE_URL}\"}}"
+
