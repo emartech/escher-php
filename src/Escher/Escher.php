@@ -63,7 +63,7 @@ class Escher
         $authElements->validateMandatorySignedHeaders($this->dateHeaderKey);
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper, $this->clockSkew);
-        $authElements->validateCredentials($this->credentialScope);
+        $authElements->validateCredentials($helper, $this->credentialScope);
         $authElements->validateSignature($helper, $this, $keyDB, $vendorKey);
         return $authElements->getAccessKeyId();
     }
@@ -75,7 +75,7 @@ class Escher
 
         list($host, $path, $query) = $this->parseUrl($url);
 
-        $signature = $this->calculateSignature(
+        list($signature) = $this->calculateSignature(
             $secretKey,
             $date,
             'GET',
@@ -181,8 +181,9 @@ class Escher
 
     private function generateAuthHeader($secretKey, $accessKeyId, $authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
     {
+        list($signature) = $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign);
         $authHeaderValue = Signer::createAuthHeader(
-            $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $headersToSign),
+            $signature,
             $this->fullCredentialScope($date),
             implode(";", $headersToSign),
             $this->hashAlgo,
@@ -231,7 +232,10 @@ class Escher
             $signerKey,
             $hashAlgo
         );
-        return $signature;
+
+        return array(
+            $signature, $canonicalizedRequest
+        );
     }
 
     /**

@@ -147,7 +147,7 @@ class AuthElements
         }
     }
 
-    public function validateCredentials($credentialScope)
+    public function validateCredentials(RequestHelper $helper, $credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
             throw new Exception('Credential scope is invalid', Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
@@ -164,7 +164,7 @@ class AuthElements
         $secret = $this->lookupSecretKey($this->accessKeyId, $keyDB);
 
         $headers = $helper->getHeaderList();
-        $calculated = $escher->getSignature(
+        list($calculated, $canonicalizedRequest) = $escher->getSignature(
             $secret,
             $this->dateTime,
             $helper->getRequestMethod(),
