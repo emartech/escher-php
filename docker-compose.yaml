@@ -1,0 +1,8 @@
+version: '3'
+services:
+  web:
+    image: php:5.3
+    networks:
+      - default
+    volumes:
+      - ".:/var/www/html/"
