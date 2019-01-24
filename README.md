@@ -111,3 +111,8 @@ Configuration
 -------------
 
 TBA
+
+Running tests
+-------------
+1. Install packages with Composer: `composer install`
+2. Run tests with `make tests`
