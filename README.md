@@ -107,6 +107,11 @@ Exceptions
 | 5001 | The request date is not within the accepted time range                              |
 | 6001 | The signatures do not match                                                         |
 
+Debugging
+-------------
+By sending the  `debug:true` header in the request the 3003, 5001, 6001 errors will contain a base64 encoded debug message.
+
+
 Configuration
 -------------
 
