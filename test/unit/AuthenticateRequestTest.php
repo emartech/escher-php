@@ -130,6 +130,87 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
+     * @dataProvider debugProvider
+     * @param $tamperedKey
+     * @param $tamperedValue
+     * @param $expectedErrorMessage
+     * @param $expectedErrorCode
+     * @param $expectedDebugInfo
+     * @throws Exception
+     */
+    public function itShouldReturnDebugMessageForInvalidRequests($tamperedKey, $tamperedValue, $expectedErrorMessage, $expectedErrorCode, $expectedDebugInfo)
+    {
+        $serverVars = array(
+            'HTTP_X_EMS_DATE' => '20110909T233600Z',
+            'HTTP_X_EMS_AUTH' => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+            'REQUEST_TIME'    => $this->strtotime('20110909T233600Z'),
+            'REQUEST_METHOD'  => 'POST',
+            'HTTP_HOST'       => 'iam.amazonaws.com',
+            'CONTENT_TYPE'    => 'application/x-www-form-urlencoded; charset=utf-8',
+            'REQUEST_URI'     => '/',
+            'HTTPS'           => '',
+            'SERVER_PORT'     => '80',
+            'SERVER_NAME'     => 'iam.amazonaws.com',
+            'HTTP_DEBUG'      => 'true',
+        );
+
+        // replace server variable
+        $serverVars[$tamperedKey] = $tamperedValue;
+
+        $keyDB = array('AKIDEXAMPLE' => 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
+
+        try {
+            $this->createEscher('us-east-1/iam/aws4_request')
+                ->authenticate($keyDB, $serverVars, 'Action=ListUsers&Version=2010-05-08');
+            $this->fail('Should fail to validate!');
+        } catch (Exception $ex) {
+            $this->assertStringStartsWith($expectedErrorMessage, $ex->getMessage());
+            $this->assertStringEndsWith("'".base64_encode($expectedDebugInfo)."')", $ex->getMessage());
+            $this->assertEquals($expectedErrorCode, $ex->getCode());
+        }
+    }
+
+    public function debugProvider()
+    {
+        return array(
+            'tampered signature' => array(
+                'HTTP_X_EMS_AUTH',
+                'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date;debug, Signature=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 'The signatures do not match',
+                6001,
+                'POST
+/
+
+content-type:application/x-www-form-urlencoded; charset=utf-8
+debug:true
+host:iam.amazonaws.com
+x-ems-date:20110909T233600Z
+
+content-type;debug;host;x-ems-date
+b6359072c78d70ebee1e81adcbab4f01bf2c23245fa365ef83fe8f1f955085e2'
+            ),
+            'invalid credential' => array(
+                'HTTP_X_EMS_AUTH',
+                'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-2/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date,debug, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+                'Credential scope is invalid',
+                3003,
+                'us-east-1/iam/aws4_request'
+            ),
+            'wrong request time' => array(
+                'REQUEST_TIME',
+                $this->strtotime('20110910T233600Z'),
+                'The request date is not within the accepted time range',
+                5001,
+                json_encode(array(
+                    'server_timestamp' => (int) $this->strtotime('20110910T233600Z'),
+                    'request_timestamp' => (int) $this->strtotime('20110909T233600Z'),
+                    'clock_skew' => \Escher\Escher::DEFAULT_CLOCK_SKEW,
+                ))
+            ),
+        );
+    }
+
+    /**
+     * @test
      * @throws Exception
      */
     public function itShouldValidateRequestUsingQueryString()

@@ -143,14 +143,24 @@ class AuthElements
         }
 
         if (!$this->isInAcceptableInterval($helper->getTimeStamp(), Utils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
-            throw new Exception('The request date is not within the accepted time range', Exception::CODE_EXPIRED_TIME_RANGE);
+            $message = $this->generateExceptionMessage(
+                "The request date is not within the accepted time range",
+                $helper->getHeaderList(),
+                json_encode(array(
+                    'server_timestamp' => (int) $helper->getTimeStamp(),
+                    'request_timestamp' => (int) Utils::getTimeStampOfDateTime($this->dateTime),
+                    'clock_skew' => $clockSkew,
+                ))
+            );
+            throw new Exception($message, Exception::CODE_EXPIRED_TIME_RANGE);
         }
     }
 
     public function validateCredentials(RequestHelper $helper, $credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new Exception('Credential scope is invalid', Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
+            $message = $this->generateExceptionMessage("Credential scope is invalid", $helper->getHeaderList(), $credentialScope);
+            throw new Exception($message, Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
         }
     }
 
@@ -176,7 +186,8 @@ class AuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new Exception("The signatures do not match", Exception::CODE_SIGNATURE_NOT_MATCH);
+            $message = $this->generateExceptionMessage("The signatures do not match", $headers, $canonicalizedRequest);
+            throw new Exception($message, Exception::CODE_SIGNATURE_NOT_MATCH);
         }
     }
 
@@ -279,5 +290,13 @@ class AuthElements
         return (!empty($matches['suffix']) || $matches['prefix'] === '?')
             ? $matches['prefix']
             : $matches['suffix'];
+    }
+
+    private function generateExceptionMessage($message, array $headers, $debugInfo)
+    {
+        if (isset($headers['debug'])) {
+            $message .= ' (Base64 encoded debug message: \'' . base64_encode($debugInfo) . '\')';
+        }
+        return $message;
     }
 }
