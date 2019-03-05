@@ -6,10 +6,10 @@ namespace Escher;
 class Escher
 {
     const DEFAULT_HASH_ALGORITHM = 'SHA256';
-    const DEFAULT_ALGO_PREFIX = 'ESR';
+    const DEFAULT_ALGO_PREFIX = 'EMS';
     const DEFAULT_VENDOR_KEY = 'Escher';
-    const DEFAULT_AUTH_HEADER_KEY = 'X-Escher-Auth';
-    const DEFAULT_DATE_HEADER_KEY = 'X-Escher-Date';
+    const DEFAULT_AUTH_HEADER_KEY = 'X-EMS-Auth';
+    const DEFAULT_DATE_HEADER_KEY = 'X-EMS-Date';
     const DEFAULT_CLOCK_SKEW = 300;
     const DEFAULT_EXPIRES = 86400;
     const ISO8601 = 'Ymd\THis\Z';
