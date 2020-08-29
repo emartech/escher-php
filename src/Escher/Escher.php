@@ -167,9 +167,8 @@ class Escher
         if ($fragmentPosition === false) {
             return $url . $glue . $key . '=' . urlencode($value);
         }
-        else {
-            return substr_replace($url, ($glue . $key . '=' . urlencode($value)), $fragmentPosition, 0);
-        }
+
+        return substr_replace($url, ($glue . $key . '=' . urlencode($value)), $fragmentPosition, 0);
     }
 
     /**

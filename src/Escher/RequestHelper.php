@@ -34,7 +34,8 @@ class RequestHelper
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
             return AuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
-        } else if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
+        }
+        if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
             return AuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
         throw new Exception('Escher authentication is missing', Exception::CODE_MISSING_AUTH);
@@ -113,9 +114,9 @@ class RequestHelper
     {
         if (is_null($port) || $this->isDefaultPort($port)) {
             return $host;
-        } else {
-            return $host . ':' . $port;
         }
+
+        return $host . ':' . $port;
     }
 
     private function isDefaultPort($port)
