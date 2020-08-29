@@ -2,6 +2,8 @@
 
 namespace Escher;
 
+use DateTime;
+use DateTimeZone;
 
 class Escher
 {
@@ -36,11 +38,11 @@ class Escher
     }
 
     /**
-     * @return \DateTime
+     * @return DateTime
      */
     private static function now()
     {
-        return new \DateTime('now', new \DateTimeZone('GMT'));
+        return new DateTime('now', new DateTimeZone('GMT'));
     }
 
     /**
@@ -68,7 +70,7 @@ class Escher
         return $authElements->getAccessKeyId();
     }
 
-    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, \DateTime $date = null)
+    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, DateTime $date = null)
     {
         $date = $date ? $date : self::now();
         $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
@@ -90,7 +92,7 @@ class Escher
         return $url;
     }
 
-    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), \DateTime $date = null)
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), DateTime $date = null)
     {
         $date = $date ? $date : self::now();
         list($host, $path, $query) = $this->parseUrl($url);
@@ -133,7 +135,7 @@ class Escher
         return 'X-' . $this->vendorKey . '-' . $param;
     }
 
-    public function getSignature($secretKey, \DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
+    public function getSignature($secretKey, DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
     {
         list(, $path, $query) = $this->parseUrl($url);
         return $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $signedHeaders);
@@ -149,7 +151,7 @@ class Escher
         return array($host, $path, $query);
     }
 
-    private function toLongDate(\DateTime $date)
+    private function toLongDate(DateTime $date)
     {
         return $date->format(Escher::LONG_DATE);
     }
@@ -174,7 +176,7 @@ class Escher
      * @param $date
      * @return string
      */
-    private function fullCredentialScope(\DateTime $date)
+    private function fullCredentialScope(DateTime $date)
     {
         return $date->format(Escher::SHORT_DATE) . "/" . $this->credentialScope;
     }

@@ -2,13 +2,15 @@
 
 namespace Escher;
 
+use DateTime;
+use DateTimeZone;
 
 class Signer
 {
-    public static function createStringToSign($credentialScope, $canonicalRequestString, \DateTime $date, $hashAlgo, $algoPrefix)
+    public static function createStringToSign($credentialScope, $canonicalRequestString, DateTime $date, $hashAlgo, $algoPrefix)
     {
         $date = clone $date;
-        $date->setTimezone(new \DateTimeZone("GMT"));
+        $date->setTimezone(new DateTimeZone("GMT"));
         $formattedDate = $date->format(Escher::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . "/" . $credentialScope;
         $lines = array();
