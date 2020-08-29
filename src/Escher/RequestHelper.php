@@ -68,8 +68,7 @@ class RequestHelper
     {
         $scheme = (array_key_exists('HTTPS', $this->serverVars) && $this->serverVars["HTTPS"] == "on") ? 'https' : 'http';
         $host = $this->getServerHost();
-        $res = "$scheme://$host" . $this->serverVars["REQUEST_URI"];
-        return $res;
+        return "$scheme://$host" . $this->serverVars["REQUEST_URI"];
     }
 
     private function process(array $serverVars)
