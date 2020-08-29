@@ -50,7 +50,7 @@ class AuthElements
         } else {
             try {
                 $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
-            } catch (Exception $ex) {
+            } catch (\Exception $ex) {
                 throw new Exception('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT', Exception::CODE_FORMAT_INVALID_DATE_HEADER_GMT);
             }
         }
