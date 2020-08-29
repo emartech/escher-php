@@ -16,7 +16,7 @@ class Escher
     const DEFAULT_EXPIRES = 86400;
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
-    const SHORT_DATE = "Ymd";
+    const SHORT_DATE = 'Ymd';
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;
@@ -83,7 +83,7 @@ class Escher
             'GET',
             $path,
             $query,
-            Escher::UNSIGNED_PAYLOAD,
+            self::UNSIGNED_PAYLOAD,
             array('host' => $host),
             (array('host'))
         );
@@ -153,7 +153,7 @@ class Escher
 
     private function toLongDate(DateTime $date)
     {
-        return $date->format(Escher::LONG_DATE);
+        return $date->format(self::LONG_DATE);
     }
 
     private function addGetParameter($url, $key, $value)
@@ -178,7 +178,7 @@ class Escher
      */
     private function fullCredentialScope(DateTime $date)
     {
-        return $date->format(Escher::SHORT_DATE) . "/" . $this->credentialScope;
+        return $date->format(self::SHORT_DATE) . '/' . $this->credentialScope;
     }
 
     private function generateAuthHeader($secretKey, $accessKeyId, $authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
@@ -187,7 +187,7 @@ class Escher
         $authHeaderValue = Signer::createAuthHeader(
             $signature,
             $this->fullCredentialScope($date),
-            implode(";", $headersToSign),
+            implode(';', $headersToSign),
             $this->hashAlgo,
             $this->algoPrefix,
             $accessKeyId

@@ -17,7 +17,7 @@ class RequestCanonicalizer
         $lines = array_merge($lines, self::canonicalizeHeaders($rawHeaders, $headersToSign));
 
         $lines[] = '';
-        $lines[] = implode(";", $headersToSign);
+        $lines[] = implode(';', $headersToSign);
 
         $lines[] = hash($hashAlgo, $payload);
 
@@ -26,24 +26,26 @@ class RequestCanonicalizer
 
     public static function urlEncodeQueryString($query)
     {
-        if (empty($query)) return "";
-        $pairs = explode("&", $query);
+        if (empty($query)) {
+            return '';
+        }
+        $pairs = explode('&', $query);
         $encodedParts = array();
         foreach ($pairs as $pair) {
-            $keyValues = array_pad(explode("=", $pair), 2, '');
-            if (strpos($keyValues[0], " ") !== false) {
-                $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], " "));
-                $keyValues[1] = "";
+            $keyValues = array_pad(explode('=', $pair), 2, '');
+            if (strpos($keyValues[0], ' ') !== false) {
+                $keyValues[0] = substr($keyValues[0], 0, strpos($keyValues[0], ' '));
+                $keyValues[1] = '';
             }
             $keyValues[0] = urldecode($keyValues[0]);
             $keyValues[1] = urldecode($keyValues[1]);
-            $encodedParts[] = implode("=", array(
+            $encodedParts[] = implode('=', array(
                 self::rawUrlEncode(str_replace('+', ' ', $keyValues[0])),
                 self::rawUrlEncode(str_replace('+', ' ', $keyValues[1])),
             ));
         }
         sort($encodedParts);
-        return implode("&", $encodedParts);
+        return implode('&', $encodedParts);
     }
 
     private static function normalizePath($path)
@@ -59,9 +61,11 @@ class RequestCanonicalizer
         $path = implode('/', $path);
         $path = str_replace('./', '', $path);
 
-        $path = str_replace("//", "/", $path);
+        $path = str_replace('//', '/', $path);
 
-        if (empty($path)) return "/";
+        if (empty($path)) {
+            return '/';
+        }
         return $path;
     }
 

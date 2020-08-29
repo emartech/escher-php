@@ -178,7 +178,7 @@ class AuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new Exception("The signatures do not match", Exception::CODE_SIGNATURE_NOT_MATCH);
+            throw new Exception('The signatures do not match', Exception::CODE_SIGNATURE_NOT_MATCH);
         }
     }
 
