@@ -39,6 +39,7 @@ class Escher
 
     /**
      * @return DateTime
+     * @throws \Exception
      */
     private static function now()
     {
