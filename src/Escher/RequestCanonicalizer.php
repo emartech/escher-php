@@ -59,9 +59,7 @@ class RequestCanonicalizer
         }
 
         $path = implode('/', $path);
-        $path = str_replace('./', '', $path);
-
-        $path = str_replace('//', '/', $path);
+        $path = str_replace(array('./', '//'), array('', '/'), $path);
 
         if (empty($path)) {
             return '/';
