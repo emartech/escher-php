@@ -72,7 +72,7 @@ class Escher
 
     public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, DateTime $date = null)
     {
-        $date = $date ? $date : self::now();
+        $date = $date ?: self::now();
         $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
 
         list($host, $path, $query) = $this->parseUrl($url);
@@ -94,7 +94,7 @@ class Escher
 
     public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), DateTime $date = null)
     {
-        $date = $date ? $date : self::now();
+        $date = $date ?: self::now();
         list($host, $path, $query) = $this->parseUrl($url);
         list($headerList, $headersToSign) = $this->addMandatoryHeaders(
             $headerList, $headersToSign, $this->dateHeaderKey, $date, $host
