@@ -76,7 +76,7 @@ class RequestHelper
     {
         $headerList = array();
         foreach ($serverVars as $key => $value) {
-            if (substr($key, 0, 5) === 'HTTP_') {
+            if (strpos($key, 'HTTP_') === 0) {
                 $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
             }
         }
