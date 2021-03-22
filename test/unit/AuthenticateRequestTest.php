@@ -170,12 +170,12 @@ class AuthenticateRequestTest extends TestBase
 
     /**
      * @test
-     * @expectedException Escher\Exception
-     * @expectedExceptionMessage The signatures do not match
-     * @expectedExceptionCode 6001
      */
     public function itShouldFailToValidateInvalidQueryStrings()
     {
+        $this->expectException(Escher\Exception::class);
+        $this->expectExceptionMessage('The signatures do not match');
+        $this->expectExceptionCode(6001);
         $serverVars = array(
             'REQUEST_TIME'    => $this->strtotime('20110511T120000Z'),
             'REQUEST_METHOD'  => 'GET',
@@ -281,4 +281,4 @@ class AuthenticateRequestTest extends TestBase
         return Utils::parseLongDate($dateString)->format('U');
     }
 }
- 
+

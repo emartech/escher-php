@@ -1,8 +1,9 @@
 <?php
 
 use Escher\Escher;
+use PHPUnit\Framework\TestCase;
 
-abstract class TestBase extends PHPUnit_Framework_TestCase
+abstract class TestBase extends TestCase
 {
     protected function assertEqualMaps(array $expected, array $actual, $message = '')
     {

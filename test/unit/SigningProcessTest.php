@@ -3,9 +3,10 @@
 use Escher\Signer;
 use Escher\AuthElements;
 use Escher\RequestCanonicalizer;
+use PHPUnit\Framework\TestCase;
 
 
-class SigningProcessTest extends PHPUnit_Framework_TestCase
+class SigningProcessTest extends TestCase
 {
     private $amazonFixtures = array(
         'get-vanilla',
