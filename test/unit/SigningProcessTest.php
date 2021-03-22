@@ -125,7 +125,7 @@ class SigningProcessTest extends TestCase
         list($method, $requestUri, $body, $headerLines) = $this->parseRawRequest($rawRequest);
         $headersToSign = array();
         foreach ($headerLines as $headerLine) {
-            if ("\t" != $headerLine{0} && false !== strpos($headerLine, ':')) {
+            if ("\t" != $headerLine[0] && false !== strpos($headerLine, ':')) {
                 list ($headerKey) = explode(':', $headerLine, 2);
                 $headersToSign[]= $headerKey;
             }
