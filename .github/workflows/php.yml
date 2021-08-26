@@ -1,0 +1,28 @@
+name: PHP
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-versions: ['7.3', '7.4', '8.0']
+
+    steps:
+    - name: Install prerequesits
+      run: sudo apt update && sudo apt install -y php-mbstring
+    - uses: actions/checkout@v2
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-versions }}
+        extensions: mbstring
+        tools: composer
+    - name: Install dependencies
+      run: composer update && composer install
+    - name: Test
+      run: composer test
+    - name: Deploy
+      if: ${{ matrix.php-versions }} == '7.3' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      run: |
+        curl -XPOST -f -H'content-type:application/json' "https://packagist.org/api/update-package?username=emartech&apiToken=${{secrets.PACKAGIST_API_TOKEN}}" -d"{\"repository\":{\"url\":\"${{secrets.PACKAGIST_PACKAGE_URL}}\"}}"
