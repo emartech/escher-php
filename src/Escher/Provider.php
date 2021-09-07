@@ -2,6 +2,7 @@
 
 namespace Escher;
 
+use ArrayAccess;
 
 class Provider
 {
@@ -49,7 +50,7 @@ class Provider
     }
 
     /**
-     * @return \ArrayAccess|array
+     * @return ArrayAccess|array
      */
     public function getKeyDB()
     {

@@ -2,6 +2,8 @@
 
 namespace Escher;
 
+use DateTime;
+use DateTimeZone;
 
 class Escher
 {
@@ -14,7 +16,7 @@ class Escher
     const DEFAULT_EXPIRES = 86400;
     const ISO8601 = 'Ymd\THis\Z';
     const LONG_DATE = self::ISO8601;
-    const SHORT_DATE = "Ymd";
+    const SHORT_DATE = 'Ymd';
     const UNSIGNED_PAYLOAD = 'UNSIGNED-PAYLOAD';
 
     private $credentialScope;
@@ -36,11 +38,12 @@ class Escher
     }
 
     /**
-     * @return \DateTime
+     * @return DateTime
+     * @throws \Exception
      */
     private static function now()
     {
-        return new \DateTime('now', new \DateTimeZone('GMT'));
+        return new DateTime('now', new DateTimeZone('GMT'));
     }
 
     /**
@@ -68,9 +71,9 @@ class Escher
         return $authElements->getAccessKeyId();
     }
 
-    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, \DateTime $date = null)
+    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, DateTime $date = null)
     {
-        $date = $date ? $date : self::now();
+        $date = $date ?: self::now();
         $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
 
         list($host, $path, $query) = $this->parseUrl($url);
@@ -81,7 +84,7 @@ class Escher
             'GET',
             $path,
             $query,
-            Escher::UNSIGNED_PAYLOAD,
+            self::UNSIGNED_PAYLOAD,
             array('host' => $host),
             (array('host'))
         );
@@ -90,9 +93,9 @@ class Escher
         return $url;
     }
 
-    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), \DateTime $date = null)
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), DateTime $date = null)
     {
-        $date = $date ? $date : self::now();
+        $date = $date ?: self::now();
         list($host, $path, $query) = $this->parseUrl($url);
         list($headerList, $headersToSign) = $this->addMandatoryHeaders(
             $headerList, $headersToSign, $this->dateHeaderKey, $date, $host
@@ -133,7 +136,7 @@ class Escher
         return 'X-' . $this->vendorKey . '-' . $param;
     }
 
-    public function getSignature($secretKey, \DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
+    public function getSignature($secretKey, DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
     {
         list(, $path, $query) = $this->parseUrl($url);
         return $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $signedHeaders);
@@ -149,9 +152,9 @@ class Escher
         return array($host, $path, $query);
     }
 
-    private function toLongDate(\DateTime $date)
+    private function toLongDate(DateTime $date)
     {
-        return $date->format(Escher::LONG_DATE);
+        return $date->format(self::LONG_DATE);
     }
 
     private function addGetParameter($url, $key, $value)
@@ -165,18 +168,17 @@ class Escher
         if ($fragmentPosition === false) {
             return $url . $glue . $key . '=' . urlencode($value);
         }
-        else {
-            return substr_replace($url, ($glue . $key . '=' . urlencode($value)), $fragmentPosition, 0);
-        }
+
+        return substr_replace($url, ($glue . $key . '=' . urlencode($value)), $fragmentPosition, 0);
     }
 
     /**
      * @param $date
      * @return string
      */
-    private function fullCredentialScope(\DateTime $date)
+    private function fullCredentialScope(DateTime $date)
     {
-        return $date->format(Escher::SHORT_DATE) . "/" . $this->credentialScope;
+        return $date->format(self::SHORT_DATE) . '/' . $this->credentialScope;
     }
 
     private function generateAuthHeader($secretKey, $accessKeyId, $authHeaderKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
@@ -185,7 +187,7 @@ class Escher
         $authHeaderValue = Signer::createAuthHeader(
             $signature,
             $this->fullCredentialScope($date),
-            implode(";", $headersToSign),
+            implode(';', $headersToSign),
             $this->hashAlgo,
             $this->algoPrefix,
             $accessKeyId

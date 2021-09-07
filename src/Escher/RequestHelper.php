@@ -34,7 +34,8 @@ class RequestHelper
         $queryParams = $this->getQueryParams();
         if (isset($headerList[strtolower($this->authHeaderKey)])) {
             return AuthElements::parseFromHeaders($headerList, $this->authHeaderKey, $this->dateHeaderKey, $algoPrefix);
-        } else if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
+        }
+        if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
             return AuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
         throw new Exception('Escher authentication is missing', Exception::CODE_MISSING_AUTH);
@@ -66,17 +67,16 @@ class RequestHelper
 
     public function getCurrentUrl()
     {
-        $scheme = (array_key_exists('HTTPS', $this->serverVars) && $this->serverVars["HTTPS"] == "on") ? 'https' : 'http';
+        $scheme = (array_key_exists('HTTPS', $this->serverVars) && $this->serverVars['HTTPS'] == 'on') ? 'https' : 'http';
         $host = $this->getServerHost();
-        $res = "$scheme://$host" . $this->serverVars["REQUEST_URI"];
-        return $res;
+        return "$scheme://$host" . $this->serverVars['REQUEST_URI'];
     }
 
     private function process(array $serverVars)
     {
         $headerList = array();
         foreach ($serverVars as $key => $value) {
-            if (substr($key, 0, 5) === 'HTTP_') {
+            if (strpos($key, 'HTTP_') === 0) {
                 $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;
             }
         }
@@ -90,7 +90,7 @@ class RequestHelper
 
     public function getServerHost()
     {
-        return $this->normalizeHost($this->serverVars['SERVER_NAME'], $this->serverVars["SERVER_PORT"]);
+        return $this->normalizeHost($this->serverVars['SERVER_NAME'], $this->serverVars['SERVER_PORT']);
     }
 
     /**
@@ -114,14 +114,14 @@ class RequestHelper
     {
         if (is_null($port) || $this->isDefaultPort($port)) {
             return $host;
-        } else {
-            return $host . ":" . $port;
         }
+
+        return $host . ':' . $port;
     }
 
     private function isDefaultPort($port)
     {
-        $defaultPort = isset($this->serverVars["HTTPS"]) && $this->serverVars["HTTPS"] === "on" ? '443' : '80';
+        $defaultPort = isset($this->serverVars['HTTPS']) && $this->serverVars['HTTPS'] === 'on' ? '443' : '80';
         return $port == $defaultPort;
     }
 }

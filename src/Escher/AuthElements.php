@@ -2,6 +2,8 @@
 
 namespace Escher;
 
+use DateTime;
+use DateTimeZone;
 
 class AuthElements
 {
@@ -13,7 +15,7 @@ class AuthElements
     private $host;
     private $isFromHeaders;
 
-    public function __construct(array $elementParts, $accessKeyId, $shortDate, $credentialScope, \DateTime $dateTime, $host, $isFromHeaders)
+    public function __construct(array $elementParts, $accessKeyId, $shortDate, $credentialScope, DateTime $dateTime, $host, $isFromHeaders)
     {
         $this->elementParts = $elementParts;
         $this->accessKeyId = $accessKeyId;
@@ -47,8 +49,8 @@ class AuthElements
             $dateTime = Utils::parseLongDate($headerList[strtolower($dateHeaderKey)]);
         } else {
             try {
-                $dateTime = new \DateTime($headerList[strtolower($dateHeaderKey)], new \DateTimeZone('GMT'));
-            } catch (Exception $ex) {
+                $dateTime = new DateTime($headerList[strtolower($dateHeaderKey)], new DateTimeZone('GMT'));
+            } catch (\Exception $ex) {
                 throw new Exception('Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT', Exception::CODE_FORMAT_INVALID_DATE_HEADER_GMT);
             }
         }
@@ -176,7 +178,7 @@ class AuthElements
 
         $provided = $this->getSignature();
         if ($calculated !== $provided) {
-            throw new Exception("The signatures do not match", Exception::CODE_SIGNATURE_NOT_MATCH);
+            throw new Exception('The signatures do not match', Exception::CODE_SIGNATURE_NOT_MATCH);
         }
     }
 

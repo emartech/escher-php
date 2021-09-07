@@ -2,6 +2,8 @@
 
 namespace Escher;
 
+use DateTime;
+use DateTimeZone;
 
 class Utils
 {
@@ -11,9 +13,9 @@ class Utils
             throw new Exception('Date header is invalid, the expected format is 20151104T092022Z', Exception::CODE_FORMAT_INVALID_DATE_HEADER);
         }
         if (!self::advancedDateTimeFunctionsAvailable()) {
-            return new \DateTime($dateString, new \DateTimeZone('GMT'));
+            return new DateTime($dateString, new DateTimeZone('GMT'));
         }
-        return \DateTime::createFromFormat('Ymd\THisT', $dateString, new \DateTimeZone('GMT'));
+        return DateTime::createFromFormat('Ymd\THisT', $dateString, new DateTimeZone('GMT'));
     }
 
     public static function keysToLower($array)
