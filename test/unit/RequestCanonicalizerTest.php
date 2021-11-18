@@ -22,7 +22,7 @@ class RequestCanonicalizerTest extends TestBase
     {
         $query = "email=test%2Bbayxd%40gmail.com";
         $expected = "email=test%20bayxd%40gmail.com";
-        $result = RequestCanonicalizer::urlEncodeQueryString($query, "application/x-www-form-urlencoded");
+        $result = RequestCanonicalizer::urlEncodeQueryString($query, "Content-Type: application/x-www-form-urlencoded");
         $this->assertEquals($expected, $result);
     }
 }
