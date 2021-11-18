@@ -11,7 +11,7 @@ class RequestCanonicalizer
         $lines = array();
         $lines[] = strtoupper($method);
         $lines[] = self::normalizePath($path);
-        $lines[] = self::urlEncodeQueryString($query);
+        $lines[] = self::urlEncodeQueryString($query, $rawHeaders);
 
         sort($headersToSign);
         $lines = array_merge($lines, self::canonicalizeHeaders($rawHeaders, $headersToSign));
@@ -24,7 +24,7 @@ class RequestCanonicalizer
         return implode("\n", $lines);
     }
 
-    public static function urlEncodeQueryString($query)
+    public static function urlEncodeQueryString($query, $headers)
     {
         if (empty($query)) {
             return '';
@@ -40,8 +40,8 @@ class RequestCanonicalizer
             $keyValues[0] = urldecode($keyValues[0]);
             $keyValues[1] = urldecode($keyValues[1]);
             $encodedParts[] = implode('=', array(
-                self::rawUrlEncode(str_replace('+', ' ', $keyValues[0])),
-                self::rawUrlEncode(str_replace('+', ' ', $keyValues[1])),
+                self::rawUrlEncode($keyValues[0], $headers),
+                self::rawUrlEncode($keyValues[1], $headers),
             ));
         }
         sort($encodedParts);
@@ -93,9 +93,13 @@ class RequestCanonicalizer
         return $result;
     }
 
-    private static function rawUrlEncode($urlComponent)
+    private static function rawUrlEncode($urlComponent, $headers)
     {
-        $result = rawurlencode($urlComponent);
+        if(strpos($headers, "application/x-www-form-urlencoded")) {
+            $result = rawurlencode(str_replace('+', ' ', $urlComponent));
+        } else {
+            $result = rawurlencode($urlComponent);
+        }
         if (version_compare(PHP_VERSION, '5.3.4') === -1) {
             $result = str_replace('%7E', '~', $result);
         }
