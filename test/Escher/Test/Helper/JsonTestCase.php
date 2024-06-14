@@ -135,7 +135,7 @@ class JsonTestCase
 
     public function getMandatorySignedHeaders()
     {
-        return $this->data['mandatorySignedHeaders'] ?: [];
+        return $this->data['mandatorySignedHeaders'] ?? [];
     }
 
     public function getAlgoPrefix(): string
@@ -155,12 +155,12 @@ class JsonTestCase
 
     public function getAuthHeaderName(): ?string
     {
-        return $this->data['config']['authHeaderName'];
+        return $this->data['config']['authHeaderName'] ?? null;
     }
 
     public function getDateHeaderName(): ?string
     {
-        return $this->data['config']['dateHeaderName'];
+        return $this->data['config']['dateHeaderName'] ?? null;
     }
 
     public function getApiKey(): string
@@ -170,7 +170,7 @@ class JsonTestCase
 
     public function getApiSecret(): ?string
     {
-        return $this->data['config']['apiSecret'];
+        return $this->data['config']['apiSecret'] ?? null;
     }
 
     public function getKeyDb(): array

@@ -64,11 +64,12 @@ class CentralTest extends TestCase
         $request = $testCase->getRequest();
 
         try {
+            $host = $request['headers']['Host'] ?? $request['headers']['host'];
             $signedHeaders = $escher->signRequest(
                 $testCase->getApiKey(),
                 $testCase->getApiSecret(),
                 $request['method'],
-                'https://' . $request['headers']['Host'] . $request['url'],
+                'https://' . $host . $request['url'],
                 $request['body'],
                 $request['headers'],
                 $testCase->getHeadersToSign(),
