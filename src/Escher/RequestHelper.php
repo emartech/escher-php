@@ -51,16 +51,15 @@ class RequestHelper
         $headerList = $this->process($this->serverVars);
         $headerList['content-type'] = $this->getContentType();
 
-        if (strpos($headerList['host'], ':') === false)
-        {
-            $host = $headerList['host'];
-            $port = null;
+        if (isset($headerList['host'])) {
+            if (strpos($headerList['host'], ':') === false) {
+                $host = $headerList['host'];
+                $port = null;
+            } else {
+                list($host, $port) = explode(':', $headerList['host'], 2);
+            }
+            $headerList['host'] = $this->normalizeHost($host, $port);
         }
-        else
-        {
-            list($host, $port) = explode(':', $headerList['host'], 2);
-        }
-        $headerList['host'] = $this->normalizeHost($host, $port);
 
         return $headerList;
     }
