@@ -119,7 +119,7 @@ class CentralTest extends TestCase
             'REQUEST_TIME' => $testCase->getCurrentTime()->format('U'),
             'HTTPS' => 'on',
             'SERVER_PORT' => '443',
-            'SERVER_NAME' => $request['headers']['Host'],
+            'SERVER_NAME' => $request['headers']['Host'] ?? $request['headers']['host'] ?? null,
         ];
         foreach ($request['headers'] as $k => $v) {
             $serverVars['HTTP_' . str_replace('-', '_', strtoupper($k))] = $v;
