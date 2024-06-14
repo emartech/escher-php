@@ -35,10 +35,10 @@
         "psr-4": {"Escher\\Test\\":  "test/Escher/Test"}
     },
     "require": {
+        "ext-json": "*",
         "php": ">=7.3"
     },
     "require-dev": {
-        "ext-json": "*",
         "phpunit/phpunit": "9.6.19"
     },
     "keywords": [
@@ -54,6 +54,6 @@
         "api"
     ],
     "scripts": {
-        "test": "vendor/bin/phpunit -c test/phpunit.xml"
+        "test": "vendor/bin/phpunit -c phpunit.xml"
     }
 }
