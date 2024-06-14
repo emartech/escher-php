@@ -1,14 +1,17 @@
 <?php
 
-use Escher\Signer;
+namespace Escher\Test\Unit;
+
+use DateTime;
+use DateTimeZone;
 use Escher\AuthElements;
 use Escher\RequestCanonicalizer;
+use Escher\Signer;
 use PHPUnit\Framework\TestCase;
-
 
 class SigningProcessTest extends TestCase
 {
-    private $amazonFixtures = array(
+    private $amazonFixtures = [
         'get-vanilla',
         'post-vanilla',
         'get-vanilla-query',
@@ -42,9 +45,9 @@ class SigningProcessTest extends TestCase
         'get-slash-pointless-dot',
         'get-relative',
         'get-relative-relative',
-    );
+    ];
 
-    private $emarsysFixtures = array(
+    private $emarsysFixtures = [
         'get-header-key-duplicate',
         'get-header-value-order',
         'get-port',
@@ -52,16 +55,16 @@ class SigningProcessTest extends TestCase
         'post-header-value-spaces',
         'post-header-value-spaces-within-quotes',
         'post-payload-utf8',
-    );
+    ];
 
     private function processFixtures($input, $output)
     {
-        $fixtures = array();
-        foreach(array('aws4' => $this->amazonFixtures, 'emarsys' => $this->emarsysFixtures) as $suiteName => $suiteFixtures) {
+        $fixtures = [];
+        foreach(['aws4' => $this->amazonFixtures, 'emarsys' => $this->emarsysFixtures] as $suiteName => $suiteFixtures) {
             foreach ($suiteFixtures as $fixtureName) {
                 $inputFixture = $this->fixture($suiteName, $fixtureName, $input);
                 $outputFixture = $this->fixture($suiteName, $fixtureName, $output);
-                $fixtures["$suiteName : $fixtureName"] = array($inputFixture, $outputFixture);
+                $fixtures["$suiteName : $fixtureName"] = [$inputFixture, $outputFixture];
             }
         }
         return $fixtures;
@@ -123,7 +126,7 @@ class SigningProcessTest extends TestCase
     public function itShouldCalculateCanonicalRequest($rawRequest, $canonicalRequestString)
     {
         list($method, $requestUri, $body, $headerLines) = $this->parseRawRequest($rawRequest);
-        $headersToSign = array();
+        $headersToSign = [];
         foreach ($headerLines as $headerLine) {
             if ("\t" != $headerLine[0] && false !== strpos($headerLine, ':')) {
                 list ($headerKey) = explode(':', $headerLine, 2);
@@ -151,12 +154,12 @@ class SigningProcessTest extends TestCase
         $rows = explode("\n", $content);
         list($method, $requestUri) = explode(' ', $rows[0]);
 
-        return array(
+        return [
             $method,
             $requestUri,
             $rows[count($rows) - 1],
             array_slice($rows, 1, -2),
-        );
+        ];
     }
 
     private function hex2bin($hexstr)
@@ -180,6 +183,6 @@ class SigningProcessTest extends TestCase
 
     private function fixture($suiteName, $fixtureName, $extension)
     {
-        return file_get_contents(dirname(__FILE__) . "/../fixtures/{$suiteName}_testsuite/{$fixtureName}.{$extension}");
+        return file_get_contents(__DIR__ . "/../../../fixtures/{$suiteName}_testsuite/{$fixtureName}.{$extension}");
     }
 }

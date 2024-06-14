@@ -1,3 +1,10 @@
-tests: ## Run tests in docker
-	@docker-compose up -d --build
-	@docker-compose run web /bin/bash -l -c "/var/www/html/vendor/bin/phpunit -c /var/www/html/test/phpunit.xml"
+.PHONY: test
+
+build: ; docker compose build
+
+install: ; docker compose run --rm web composer install
+update: ; docker compose run --rm web composer update
+
+test: ; docker compose run --rm web ./vendor/bin/phpunit --do-not-cache-result -c phpunit.xml
+test-only: ; docker compose run --rm web ./vendor/bin/phpunit --do-not-cache-result --group only -c phpunit.xml
+

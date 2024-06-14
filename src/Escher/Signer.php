@@ -13,7 +13,7 @@ class Signer
         $date->setTimezone(new DateTimeZone('GMT'));
         $formattedDate = $date->format(Escher::LONG_DATE);
         $scope = substr($formattedDate,0, 8) . '/' . $credentialScope;
-        $lines = array();
+        $lines = [];
         $lines[] = $algoPrefix . '-HMAC-' . strtoupper($hashAlgo);
         $lines[] = $formattedDate;
         $lines[] = $scope;

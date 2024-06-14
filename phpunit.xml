@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    backupGlobals="false"
+    backupStaticAttributes="false"
+    beStrictAboutCoversAnnotation="true"
+    beStrictAboutOutputDuringTests="true"
+    colors="true">
+
+    <testsuites>
+        <testsuite name="unit">
+            <directory suffix="Test.php">test/Escher/Test/Unit/</directory>
+        </testsuite>
+        <testsuite name="e2e">
+            <directory suffix="Test.php">test/Escher/Test/EndToEnd/</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

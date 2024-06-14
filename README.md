@@ -88,24 +88,24 @@ Exceptions
 | 5xxx         | Expired exception           |
 | 6xxx         | Signature exceptions        |
 
-| Code | Message                                                                             |
-|------|-------------------------------------------------------------------------------------|
-| 1001 | Escher authentication is missing                                                    |
-| 1100 | The {PARAM} header is missing                                                       |
-| 1101 | Query key: {PARAM} is missing                                                       |
-| 1102 | The host header is missing                                                          |
-| 2001 | Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT        |
-| 2002 | Auth header format is invalid                                                       |
-| 2003 | Invalid {PARAM} query key format                                                    |
-| 2004 | Date header is invalid, the expected format is 20151104T092022Z                     |
-| 3001 | Invalid Escher key                                                                  |
-| 3002 | Hash algorithm is invalid. Only SHA256 and SHA512 are allowed                       |
-| 3003 | Credential scope is invalid                                                         |
-| 3004 | Date in the authorization header is invalid. It must be the same as the date header |
-| 4001 | The host header is not signed                                                       |
-| 4002 | The {PARAM} header is not signed                                                    |
-| 5001 | The request date is not within the accepted time range                              |
-| 6001 | The signatures do not match                                                         |
+| Code | Message                                                                      |
+|------|------------------------------------------------------------------------------|
+| 1001 | The authorization header is missing                                          |
+| 1100 | The {PARAM} header is missing                                                |
+| 1101 | Query key: {PARAM} is missing                                                |
+| 1102 | The host header is missing                                                   |
+| 2001 | Date header is invalid, the expected format is Wed, 04 Nov 2015 09:20:22 GMT |
+| 2002 | Could not parse auth header                                                  |
+| 2003 | Invalid {PARAM} query key format                                             |
+| 2004 | Date header is invalid, the expected format is 20151104T092022Z              |
+| 3001 | Invalid Escher key                                                           |
+| 3002 | Only SHA256 and SHA512 hash algorithms are allowed                           |
+| 3003 | The credential scope is invalid                                              |
+| 3004 | The credential date does not match with the request date                     |
+| 4001 | The host header is not signed                                                |
+| 4002 | The {PARAM} header is not signed                                             |
+| 5001 | The request date is not within the accepted time range                       |
+| 6001 | The signatures do not match                                                  |
 
 Configuration
 -------------

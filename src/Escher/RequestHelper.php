@@ -38,7 +38,7 @@ class RequestHelper
         if($this->getRequestMethod() === 'GET' && isset($queryParams[$this->paramKey($vendorKey, 'Signature')])) {
             return AuthElements::parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix);
         }
-        throw new Exception('Escher authentication is missing', Exception::CODE_MISSING_AUTH);
+        throw new Exception('The authorization header is missing', Exception::CODE_MISSING_AUTH);
     }
 
     public function getTimeStamp()
@@ -74,7 +74,7 @@ class RequestHelper
 
     private function process(array $serverVars)
     {
-        $headerList = array();
+        $headerList = [];
         foreach ($serverVars as $key => $value) {
             if (strpos($key, 'HTTP_') === 0) {
                 $headerList[strtolower(str_replace('_', '-', substr($key, 5)))] = $value;

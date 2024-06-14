@@ -8,10 +8,10 @@ class RequestCanonicalizer
     public static function canonicalize($method, $requestUri, $payload, $rawHeaders, array $headersToSign, $hashAlgo)
     {
         list($path, $query) = array_pad(explode('?', $requestUri, 2), 2, '');
-        $lines = array();
+        $lines = [];
         $lines[] = strtoupper($method);
         $lines[] = self::normalizePath($path);
-        $lines[] = self::urlEncodeQueryString($query, $rawHeaders);
+        $lines[] = self::urlEncodeQueryString($query);
 
         sort($headersToSign);
         $lines = array_merge($lines, self::canonicalizeHeaders($rawHeaders, $headersToSign));
@@ -24,13 +24,13 @@ class RequestCanonicalizer
         return implode("\n", $lines);
     }
 
-    public static function urlEncodeQueryString($query, $headers)
+    public static function urlEncodeQueryString($query)
     {
         if (empty($query)) {
             return '';
         }
         $pairs = explode('&', $query);
-        $encodedParts = array();
+        $encodedParts = [];
         foreach ($pairs as $pair) {
             $keyValues = array_pad(explode('=', $pair), 2, '');
             if (strpos($keyValues[0], ' ') !== false) {
@@ -39,10 +39,10 @@ class RequestCanonicalizer
             }
             $keyValues[0] = urldecode($keyValues[0]);
             $keyValues[1] = urldecode($keyValues[1]);
-            $encodedParts[] = implode('=', array(
-                self::rawUrlEncode($keyValues[0], $headers),
-                self::rawUrlEncode($keyValues[1], $headers),
-            ));
+            $encodedParts[] = implode('=', [
+                self::rawUrlEncode($keyValues[0]),
+                self::rawUrlEncode($keyValues[1]),
+            ]);
         }
         sort($encodedParts);
         return implode('&', $encodedParts);
@@ -59,7 +59,7 @@ class RequestCanonicalizer
         }
 
         $path = implode('/', $path);
-        $path = str_replace(array('./', '//'), array('', '/'), $path);
+        $path = str_replace(['./', '//'], ['', '/'], $path);
 
         if (empty($path)) {
             return '/';
@@ -74,7 +74,7 @@ class RequestCanonicalizer
      */
     private static function canonicalizeHeaders($rawHeaders, array $headersToSign)
     {
-        $result = array();
+        $result = [];
         foreach (explode("\n", $rawHeaders) as $header) {
             // TODO: add multiline header handling
             list ($key, $value) = explode(':', $header, 2);
@@ -93,17 +93,9 @@ class RequestCanonicalizer
         return $result;
     }
 
-    private static function rawUrlEncode($urlComponent, $headers)
+    private static function rawUrlEncode($urlComponent)
     {
-        if(strpos($headers, "application/x-www-form-urlencoded")) {
-            $result = rawurlencode(str_replace('+', ' ', $urlComponent));
-        } else {
-            $result = rawurlencode($urlComponent);
-        }
-        if (version_compare(PHP_VERSION, '5.3.4') === -1) {
-            $result = str_replace('%7E', '~', $result);
-        }
-        return $result;
+        return str_replace(['%21', '%2A'], ['!', '*'], rawurlencode($urlComponent));
     }
 
     /**
@@ -112,7 +104,7 @@ class RequestCanonicalizer
      */
     private static function nomalizeHeaderValue($value)
     {
-        $result = array();
+        $result = [];
         foreach (explode('"', trim($value)) as $index => $piece) {
             $result[] = $index % 2 === 1 ? $piece : preg_replace('/\s+/', ' ', $piece);
         }

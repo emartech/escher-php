@@ -66,24 +66,24 @@ class AuthElements
     public static function parseAuthHeader($headerContent, $algoPrefix)
     {
         $pattern = '/^' . $algoPrefix . '-HMAC-([A-Z0-9\,]+)(.*)' .
-                                     'Credential=([A-Za-z0-9\/\-_]+),(.*)' .
+                                     'Credential=([A-Za-z0-9\/\-_ ]+),(.*)' .
                                      'SignedHeaders=([A-Za-z\-;]+),(.*)' .
                                      'Signature=([0-9a-f]+)$/';
 
         if (!preg_match($pattern, $headerContent, $matches)) {
-            throw new Exception('Auth header format is invalid', Exception::CODE_FORMAT_INVALID_AUTH_HEADER);
+            throw new Exception('Could not parse auth header', Exception::CODE_FORMAT_INVALID_AUTH_HEADER);
         }
-        return array(
+        return [
             'Algorithm'     => $matches[1],
             'Credentials'   => $matches[3],
             'SignedHeaders' => $matches[5],
             'Signature'     => $matches[7],
-        );
+        ];
     }
 
     public static function parseFromQuery($headerList, $queryParams, $vendorKey, $algoPrefix)
     {
-        $elementParts = array();
+        $elementParts = [];
         $paramKey = self::checkParam($queryParams, $vendorKey, 'Algorithm');
 
         $pattern = '/^' . $algoPrefix . '-HMAC-([A-Z0-9\,]+)$/';
@@ -104,13 +104,13 @@ class AuthElements
 
     private static function basicQueryParamKeys()
     {
-        return array(
+        return [
             'Credentials',
             'Date',
             'Expires',
             'SignedHeaders',
             'Signature'
-        );
+        ];
     }
 
     /**
@@ -141,7 +141,7 @@ class AuthElements
     {
         $shortDate = $this->dateTime->format('Ymd');
         if ($shortDate !== $this->getShortDate()) {
-            throw new Exception('Date in the authorization header is invalid. It must be the same as the date header', Exception::CODE_ARGUMENT_INVALID_DATE);
+            throw new Exception('The credential date does not match with the request date', Exception::CODE_ARGUMENT_INVALID_DATE);
         }
 
         if (!$this->isInAcceptableInterval($helper->getTimeStamp(), Utils::getTimeStampOfDateTime($this->dateTime), $clockSkew)) {
@@ -152,7 +152,7 @@ class AuthElements
     public function validateCredentials(RequestHelper $helper, $credentialScope)
     {
         if (!$this->checkCredentials($credentialScope)) {
-            throw new Exception('Credential scope is invalid', Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
+            throw new Exception('The credential scope is invalid', Exception::CODE_ARGUMENT_INVALID_CREDENTIAL_SCOPE);
         }
     }
 
@@ -192,9 +192,9 @@ class AuthElements
 
     public function validateHashAlgo()
     {
-        if(!in_array(strtoupper($this->getAlgorithm()), array('SHA256','SHA512')))
+        if(!in_array(strtoupper($this->getAlgorithm()), ['SHA256','SHA512']))
         {
-            throw new Exception('Hash algorithm is invalid. Only SHA256 and SHA512 are allowed', Exception::CODE_ARGUMENT_INVALID_HASH);
+            throw new Exception('Only SHA256 and SHA512 hash algorithms are allowed', Exception::CODE_ARGUMENT_INVALID_HASH);
         }
     }
 
@@ -202,14 +202,16 @@ class AuthElements
      * @param string $dateHeaderKey
      * @throws Exception
      */
-    public function validateMandatorySignedHeaders($dateHeaderKey)
+    public function validateMandatorySignedHeaders($mandatorySignedHeaders)
     {
         $signedHeaders = $this->getSignedHeaders();
         if (!in_array('host', $signedHeaders)) {
             throw new Exception('The host header is not signed', Exception::CODE_NOT_SIGNED_HOST_HEADER);
         }
-        if ($this->isFromHeaders && !in_array(strtolower($dateHeaderKey), $signedHeaders)) {
-            throw new Exception('The ' . strtolower($dateHeaderKey) . ' header is not signed', Exception::CODE_NOT_SIGNED_HEADER_PARAM);
+        foreach ($mandatorySignedHeaders as $headerName) {
+            if ($this->isFromHeaders && !in_array(strtolower($headerName), $signedHeaders)) {
+                throw new Exception('The ' . strtolower($headerName) . ' header is not signed', Exception::CODE_NOT_SIGNED_HEADER_PARAM);
+            }
         }
     }
 
@@ -253,7 +255,7 @@ class AuthElements
         $url = $helper->getCurrentUrl();
         $signaturePattern = "/(?P<prefix>[?&])X-${vendorKey}-Signature=[a-fA-F0-9]{64}(?P<suffix>&?)/";
 
-        return preg_replace_callback($signaturePattern, array($this, 'handleStripAuthParamMatches'), $url);
+        return preg_replace_callback($signaturePattern, [$this, 'handleStripAuthParamMatches'], $url);
     }
 
     private function getExpires()

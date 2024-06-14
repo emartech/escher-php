@@ -22,7 +22,7 @@ class Utils
     {
         if (count($array) === 0)
         {
-            return array();
+            return [];
         }
         return array_combine(
             array_map('strtolower', array_keys($array)),

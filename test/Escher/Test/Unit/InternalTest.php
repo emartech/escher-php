@@ -1,9 +1,13 @@
 <?php
 
+namespace Escher\Test\Unit;
+
+use DateTime;
+use DateTimeZone;
 use Escher\AuthElements;
 use Escher\RequestHelper;
 use Escher\Signer;
-
+use Escher\Test\Helper\TestBase;
 
 class InternalTest extends TestBase
 {
@@ -30,20 +34,20 @@ class InternalTest extends TestBase
      */
     public function itShouldCollectBodyAndHeadersFromServerVariables()
     {
-        $serverVars = array(
+        $serverVars = [
             'REQUEST_TIME' => time(),
             'REQUEST_METHOD' => 'GET',
             'HTTP_HOST' => 'iam.amazonaws.com',
             'CONTENT_TYPE' => 'application/x-www-form-urlencoded; charset=utf-8',
             'REQUEST_URI' => '/path?query=string'
-        );
+        ];
         $requestBody = 'BODY';
         $helper = new RequestHelper($serverVars, $requestBody, 'Authorization', 'X-Ems-Date');
         $this->assertEquals($requestBody, $helper->getRequestBody());
-        $expectedHeaders = array(
+        $expectedHeaders = [
             'content-type' => 'application/x-www-form-urlencoded; charset=utf-8',
             'host' => 'iam.amazonaws.com',
-        );
+        ];
         $this->assertEqualMaps($expectedHeaders, $helper->getHeaderList());
     }
 
@@ -53,28 +57,29 @@ class InternalTest extends TestBase
      */
     public function itShouldParseAuthorizationHeader($authHeaderName, $dateHeaderName)
     {
-        $headerList = array(
-            'host'          => 'iam.amazonaws.com',
+        $headerList = [
+            'host' => 'iam.amazonaws.com',
             $dateHeaderName => '20110909T233600Z',
             $authHeaderName => 'EMS-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/iam/aws4_request, SignedHeaders=content-type;host;x-ems-date, Signature=f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
-        );
+        ];
         $authHeader = AuthElements::parseFromHeaders($headerList, $authHeaderName, $dateHeaderName, 'EMS');
 
         $this->assertEquals(new DateTime('20110909T233600Z', new DateTimeZone('GMT')), $authHeader->getDateTime());
         $this->assertEquals('AKIDEXAMPLE', $authHeader->getAccessKeyId());
         $this->assertEquals('20110909', $authHeader->getShortDate());
         $this->assertEquals('us-east-1/iam/aws4_request', $authHeader->getCredentialScope());
-        $this->assertEquals(array('content-type', 'host', 'x-ems-date'), $authHeader->getSignedHeaders());
-        $this->assertEquals('f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd', $authHeader->getSignature());
+        $this->assertEquals(['content-type', 'host', 'x-ems-date'], $authHeader->getSignedHeaders());
+        $this->assertEquals('f36c21c6e16a71a6e8dc56673ad6354aeef49c577a22fd58a190b5fcf8891dbd',
+            $authHeader->getSignature());
     }
 
     public function headerNames()
     {
-        return array(
-            'default'       => array('authorization', 'date'),
-            'upcase'        => array('Authorization', 'Date'),
-            'custom'        => array('x-ems-auth',    'x-ems-date'),
-            'custom upcase' => array('X-Ems-Auth',    'X-Ems-Date'),
-        );
+        return [
+            'default' => ['authorization', 'date'],
+            'upcase' => ['Authorization', 'Date'],
+            'custom' => ['x-ems-auth', 'x-ems-date'],
+            'custom upcase' => ['X-Ems-Auth', 'X-Ems-Date'],
+        ];
     }
 }

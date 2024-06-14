@@ -27,6 +27,11 @@ class Escher
     private $authHeaderKey = self::DEFAULT_AUTH_HEADER_KEY;
     private $dateHeaderKey = self::DEFAULT_DATE_HEADER_KEY;
 
+    /**
+     * @var array
+     */
+    public $debugInfo = [];
+
     public function __construct($credentialScope)
     {
         $this->credentialScope = $credentialScope;
@@ -53,7 +58,7 @@ class Escher
      * @return mixed
      * @throws Exception
      */
-    public function authenticate($keyDB, array $serverVars = null, $requestBody = null)
+    public function authenticate($keyDB, array $serverVars = null, $requestBody = null, $mandatorySignedHeaders = [])
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
@@ -61,9 +66,23 @@ class Escher
         $algoPrefix = $this->algoPrefix;
         $vendorKey = $this->vendorKey;
         $helper = new RequestHelper($serverVars, $requestBody, $this->authHeaderKey, $this->dateHeaderKey);
+
+        if (!in_array(strtolower($helper->getRequestMethod()), ['get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'])) {
+            throw new Exception('The request method is invalid');
+        }
+        if (!is_array($mandatorySignedHeaders)) {
+            throw new Exception('The mandatorySignedHeaders parameter must be undefined or array of strings');
+        }
+        foreach ($mandatorySignedHeaders as $headerName) {
+            if (!is_string($headerName)) {
+                throw new Exception('The mandatorySignedHeaders parameter must be undefined or array of strings');
+            }
+        }
+
         $authElements = $helper->getAuthElements($this->vendorKey, $algoPrefix);
 
-        $authElements->validateMandatorySignedHeaders($this->dateHeaderKey);
+        $mandatorySignedHeaders[] = $this->dateHeaderKey;
+        $authElements->validateMandatorySignedHeaders($mandatorySignedHeaders);
         $authElements->validateHashAlgo();
         $authElements->validateDates($helper, $this->clockSkew);
         $authElements->validateCredentials($helper, $this->credentialScope);
@@ -76,7 +95,12 @@ class Escher
         $date = $date ?: self::now();
         $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
 
-        list($host, $path, $query) = $this->parseUrl($url);
+        list($host, $port, $path, $query) = $this->parseUrl($url);
+        $portInOriginalUrl = $port && strpos($url, ':' . $port) !== false;
+        $portInParsedHost = $port && strpos($host, ':' . $port) !== false;
+        if ($portInOriginalUrl && !$portInParsedHost) {
+            $host .= ':' . $port;
+        }
 
         list($signature) = $this->calculateSignature(
             $secretKey,
@@ -85,18 +109,25 @@ class Escher
             $path,
             $query,
             self::UNSIGNED_PAYLOAD,
-            array('host' => $host),
-            (array('host'))
+            ['host' => $host],
+            ['host']
         );
         $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
 
         return $url;
     }
 
-    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = array(), $headersToSign = array(), DateTime $date = null)
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = [], $headersToSign = [], DateTime $date = null)
     {
+        if (!in_array(strtolower($method), ['get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'])) {
+            throw new Exception('The request method is invalid');
+        }
+        if (!$accessKeyId || !$secretKey) {
+            throw new Exception('Invalid Escher key');
+        }
+
         $date = $date ?: self::now();
-        list($host, $path, $query) = $this->parseUrl($url);
+        list($host, , $path, $query) = $this->parseUrl($url);
         list($headerList, $headersToSign) = $this->addMandatoryHeaders(
             $headerList, $headersToSign, $this->dateHeaderKey, $date, $host
         );
@@ -117,13 +148,13 @@ class Escher
 
     private function appendSigningParams($accessKeyId, $url, $date, $expires)
     {
-        $signingParams = array(
+        $signingParams = [
             'Algorithm'     => $this->algoPrefix. '-HMAC-' . $this->hashAlgo,
             'Credentials'   => $accessKeyId . '/' . $this->fullCredentialScope($date),
             'Date'          => $this->toLongDate($date),
             'Expires'       => $expires,
             'SignedHeaders' => 'host',
-        );
+        ];
         foreach ($signingParams as $param => $value)
         {
             $url = $this->addGetParameter($url, $this->generateParamName($param), $value);
@@ -138,23 +169,29 @@ class Escher
 
     public function getSignature($secretKey, DateTime $date, $method, $url, $requestBody, $headerList, $signedHeaders)
     {
-        list(, $path, $query) = $this->parseUrl($url);
+        list(, , $path, $query) = $this->parseUrl($url);
         return $this->calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, $headerList, $signedHeaders);
     }
 
     private function parseUrl($url)
     {
-        $urlParts = parse_url($url);
+        $urlParts = parse_url(str_replace('#', '%23', $url));
         $defaultPort = $urlParts['scheme'] === 'http' ? 80 : 443;
-        $host = $urlParts['host'] . (isset($urlParts['port']) && $urlParts['port'] != $defaultPort ? ':' . $urlParts['port'] : '');
-        $path = isset($urlParts['path']) ? $urlParts['path'] : null;
-        $query = isset($urlParts['query']) ? $urlParts['query'] : '';
-        return array($host, $path, $query);
+        $port = isset($urlParts['port']) ? intval($urlParts['port']) : null;
+        $host = $urlParts['host'] . ($port && $port !== $defaultPort ? ':' . $port : '');
+        $path = $urlParts['path'] ?? null;
+        $query = $urlParts['query'] ?? '';
+        return [$host, $port, $path, $query];
     }
 
     private function toLongDate(DateTime $date)
     {
         return $date->format(self::LONG_DATE);
+    }
+
+    private function toHeaderDate(DateTime $date)
+    {
+        return str_replace(' +0000', ' GMT', $date->format('r'));
     }
 
     private function addGetParameter($url, $key, $value)
@@ -192,7 +229,7 @@ class Escher
             $this->algoPrefix,
             $accessKeyId
         );
-        return array(strtolower($authHeaderKey) => $authHeaderValue);
+        return [strtolower($authHeaderKey) => $authHeaderValue];
     }
 
     private function calculateSignature($secretKey, $date, $method, $path, $query, $requestBody, array $headerList, array $headersToSign)
@@ -201,9 +238,9 @@ class Escher
         $algoPrefix = $this->algoPrefix;
         $requestUri = $path . ($query ? '?' . $query : '');
         // canonicalization works with raw headers
-        $rawHeaderLines = array();
+        $rawHeaderLines = [];
         foreach ($headerList as $headerKey => $headerValue) {
-            $rawHeaderLines []= $headerKey . ':' . $headerValue;
+            $rawHeaderLines[] = $headerKey . ':' . $headerValue;
         }
         $canonicalizedRequest = RequestCanonicalizer::canonicalize(
             $method,
@@ -213,6 +250,7 @@ class Escher
             $headersToSign,
             $hashAlgo
         );
+        $this->debugInfo['canonicalizedRequest'] = $canonicalizedRequest;
 
         $stringToSign = Signer::createStringToSign(
             $this->credentialScope,
@@ -221,6 +259,7 @@ class Escher
             $hashAlgo,
             $algoPrefix
         );
+        $this->debugInfo['stringToSign'] = $stringToSign;
 
         $signerKey = Signer::calculateSigningKey(
             $secretKey,
@@ -235,9 +274,7 @@ class Escher
             $hashAlgo
         );
 
-        return array(
-            $signature, $canonicalizedRequest
-        );
+        return [$signature, $canonicalizedRequest];
     }
 
     /**
@@ -250,11 +287,15 @@ class Escher
      */
     private function addMandatoryHeaders($headerList, $headersToSign, $dateHeaderKey, $date, $host)
     {
-        $mandatoryHeaders = array(strtolower($dateHeaderKey) => $this->toLongDate($date), 'host' => $host);
+        $dateHeaderKey = strtolower($dateHeaderKey);
+        $mandatoryHeaders = [
+            $dateHeaderKey => $dateHeaderKey === 'date' ? $this->toHeaderDate($date) : $this->toLongDate($date),
+            'host' => $host,
+        ];
         $headerList = Utils::keysToLower($headerList) + $mandatoryHeaders;
         $headersToSign = array_unique(array_merge(array_map('strtolower', $headersToSign), array_keys($mandatoryHeaders)));
         sort($headersToSign);
-        return array($headerList, $headersToSign);
+        return [$headerList, $headersToSign];
     }
 
     /**
@@ -265,7 +306,7 @@ class Escher
      */
     private function fetchRequestBodyFor($method)
     {
-        return in_array($method, array('PUT', 'POST')) ? file_get_contents('php://input') : '';
+        return in_array($method, ['PUT', 'POST', 'PATCH']) ? file_get_contents('php://input') : '';
     }
 
     /**
