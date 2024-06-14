@@ -1,8 +1,0 @@
-POST / http/1.1
-DATE:Mon, 09 Sep 2011 23:36:00 GMT
-host:host.foo.com
-ZOO:zoobar
-zoo:foobar
-zoo:zoobar
-Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=date;host;zoo, Signature=e466e59a8f69db46393c688fc3b4fdca8de56046bdab1d963ea3d9c27f5781f0
-

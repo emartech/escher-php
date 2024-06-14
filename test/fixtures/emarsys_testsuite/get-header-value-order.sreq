@@ -1,9 +1,0 @@
-POST / http/1.1
-DATE:Mon, 09 Sep 2011 23:36:00 GMT
-host:host.foo.com
-p:z
-p:a
-p:p
-p:a
-Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20110909/us-east-1/host/aws4_request, SignedHeaders=date;host;p, Signature=bb7956f64dfab89c02bcf8ce99819d83b830048c6fad8a24e1fbbc49ee200e8a
-
