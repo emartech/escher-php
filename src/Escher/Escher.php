@@ -92,6 +92,14 @@ class Escher
 
     public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, DateTime $date = null)
     {
+        $fragmentPosition = strpos($url, '#');
+        if ($fragmentPosition !== false) {
+            $fragment = substr($url, $fragmentPosition);
+            $url = substr($url, 0, $fragmentPosition);
+        } else {
+            $fragment = '';
+        }
+
         $date = $date ?: self::now();
         $url = $this->appendSigningParams($accessKeyId, $url, $date, $expires);
 
@@ -114,7 +122,7 @@ class Escher
         );
         $url = $this->addGetParameter($url, $this->generateParamName('Signature'), $signature);
 
-        return $url;
+        return $url . $fragment;
     }
 
     public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = [], $headersToSign = [], DateTime $date = null)
