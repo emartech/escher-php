@@ -54,12 +54,7 @@ class CentralTest extends TestCase
             $this->markTestSkipped(self::$ignoredTestCases["{$testCase->suite}/{$testCase->type}/{$testCase->name}"]);
         }
 
-        $escher = Escher::create($testCase->getCredentialScope())
-            ->setAlgoPrefix($testCase->getAlgoPrefix())
-            ->setVendorKey($testCase->getVendorKey())
-            ->setHashAlgo($testCase->getHashAlgo())
-            ->setAuthHeaderKey($testCase->getAuthHeaderName())
-            ->setDateHeaderKey($testCase->getDateHeaderName());
+        $escher = $this->getEscher($testCase);
 
         $request = $testCase->getRequest();
 
@@ -106,11 +101,7 @@ class CentralTest extends TestCase
             $this->markTestSkipped(self::$ignoredTestCases["{$testCase->suite}/{$testCase->type}/{$testCase->name}"]);
         }
 
-        $escher = Escher::create($testCase->getCredentialScope())
-            ->setAlgoPrefix($testCase->getAlgoPrefix())
-            ->setVendorKey($testCase->getVendorKey())
-            ->setAuthHeaderKey($testCase->getAuthHeaderName())
-            ->setDateHeaderKey($testCase->getDateHeaderName());
+        $escher = $this->getEscher($testCase);
 
         $request = $testCase->getRequest();
         $serverVars = [
@@ -151,11 +142,7 @@ class CentralTest extends TestCase
             $this->markTestSkipped(self::$ignoredTestCases["{$testCase->suite}/{$testCase->type}/{$testCase->name}"]);
         }
 
-        $escher = Escher::create($testCase->getCredentialScope())
-            ->setAlgoPrefix($testCase->getAlgoPrefix())
-            ->setVendorKey($testCase->getVendorKey())
-            ->setAuthHeaderKey($testCase->getAuthHeaderName())
-            ->setDateHeaderKey($testCase->getDateHeaderName());
+        $escher = $this->getEscher($testCase);
 
         $request = $testCase->getRequest();
         $url = $escher->presignUrl(
@@ -167,5 +154,27 @@ class CentralTest extends TestCase
         );
 
         $this->assertEquals($testCase->getExpectedUrl(), $url);
+    }
+
+    private function getEscher(JsonTestCase $testCase): Escher
+    {
+        $escher = Escher::create($testCase->getCredentialScope());
+        if ($testCase->getAlgoPrefix()) {
+            $escher->setAlgoPrefix($testCase->getAlgoPrefix());
+        }
+        if ($testCase->getVendorKey()) {
+            $escher->setVendorKey($testCase->getVendorKey());
+        }
+        if ($testCase->getHashAlgo()) {
+            $escher->setHashAlgo($testCase->getHashAlgo());
+        }
+        if ($testCase->getAuthHeaderName()) {
+            $escher->setAuthHeaderKey($testCase->getAuthHeaderName());
+        }
+        if ($testCase->getDateHeaderName()) {
+            $escher->setDateHeaderKey($testCase->getDateHeaderName());
+        }
+
+        return $escher;
     }
 }

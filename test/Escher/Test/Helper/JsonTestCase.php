@@ -138,19 +138,19 @@ class JsonTestCase
         return $this->data['mandatorySignedHeaders'] ?? [];
     }
 
-    public function getAlgoPrefix(): string
+    public function getAlgoPrefix(): ?string
     {
-        return $this->data['config']['algoPrefix'];
+        return $this->data['config']['algoPrefix'] ?? null;
     }
 
-    public function getVendorKey(): string
+    public function getVendorKey(): ?string
     {
-        return $this->data['config']['vendorKey'];
+        return $this->data['config']['vendorKey'] ?? null;
     }
 
-    public function getHashAlgo(): string
+    public function getHashAlgo(): ?string
     {
-        return $this->data['config']['hashAlgo'];
+        return $this->data['config']['hashAlgo'] ?? null;
     }
 
     public function getAuthHeaderName(): ?string
