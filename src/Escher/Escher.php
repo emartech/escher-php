@@ -58,7 +58,7 @@ class Escher
      * @return mixed
      * @throws Exception
      */
-    public function authenticate($keyDB, array $serverVars = null, $requestBody = null, $mandatorySignedHeaders = [])
+    public function authenticate($keyDB, ?array $serverVars = null, $requestBody = null, $mandatorySignedHeaders = [])
     {
         $serverVars = null === $serverVars ? $_SERVER : $serverVars;
         $requestBody = null === $requestBody ? $this->fetchRequestBodyFor($serverVars['REQUEST_METHOD']) : $requestBody;
@@ -90,7 +90,7 @@ class Escher
         return $authElements->getAccessKeyId();
     }
 
-    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, DateTime $date = null)
+    public function presignUrl($accessKeyId, $secretKey, $url, $expires = Escher::DEFAULT_EXPIRES, ?DateTime $date = null)
     {
         $fragmentPosition = strpos($url, '#');
         if ($fragmentPosition !== false) {
@@ -125,7 +125,7 @@ class Escher
         return $url . $fragment;
     }
 
-    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = [], $headersToSign = [], DateTime $date = null)
+    public function signRequest($accessKeyId, $secretKey, $method, $url, $requestBody, $headerList = [], $headersToSign = [], ?DateTime $date = null)
     {
         if (!in_array(strtolower($method), ['get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'])) {
             throw new Exception('The request method is invalid');

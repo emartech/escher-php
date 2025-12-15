@@ -253,7 +253,7 @@ class AuthElements
     private function stripAuthParams(RequestHelper $helper, $vendorKey)
     {
         $url = $helper->getCurrentUrl();
-        $signaturePattern = "/(?P<prefix>[?&])X-${vendorKey}-Signature=[a-fA-F0-9]{64}(?P<suffix>&?)/";
+        $signaturePattern = "/(?P<prefix>[?&])X-{$vendorKey}-Signature=[a-fA-F0-9]{64}(?P<suffix>&?)/";
 
         return preg_replace_callback($signaturePattern, [$this, 'handleStripAuthParamMatches'], $url);
     }
