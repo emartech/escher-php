@@ -18,7 +18,7 @@ jobs:
     steps:
     - name: Install prerequesits
       run: sudo apt update && sudo apt install -y php-mbstring
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: recursive
     - uses: shivammathur/setup-php@v2
